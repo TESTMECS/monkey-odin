@@ -1,3 +1,4 @@
+#+feature dynamic-literals
 /*%desc{
 {"Parser for the Monkey Language"}}
 */
@@ -320,6 +321,51 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 }
 //%endsection
 //%section hash table
+@(test)
+test_hash_table :: proc(t: ^testing.T) {
+	input := `{"one": 1, "two": 2, "three": 3}`
+
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
+	}
+
+	stmt, ok := program[0].(Ast_Hash_Table)
+	if !ok {
+		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", ast_type(program[0]))
+		return
+	}
+
+	if len(stmt) != 3 {
+		log.errorf("length of the hash table is not 3, got'%d'", len(stmt))
+		return
+	}
+
+	expected := map[string]int {
+		"one"   = 1,
+		"two"   = 2,
+		"three" = 3,
+	}
+	defer delete(expected)
+
+	for key, ev in expected {
+		value, key_exists := stmt[key]
+		if !key_exists {
+			log.errorf("key '%s' does not exist in the hash table", key)
+			continue
+		}
+		literal_value_is_valid(&value, ev)
+	}
+}
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	result := mem_alloc(&p.managed, Ast_Hash_Table)
@@ -347,8 +393,41 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	return result^
 }
 //%endsection
-
 //%section let
+@(test)
+test_let_statement :: proc(t: ^testing.T) {
+	input := `
+	let x = 5;
+	let y = true;
+	let foobar = y;
+	`
+
+
+	tests := [?]struct {
+		expected_identifier: string,
+		expected_value:      Literal,
+	}{{"x", 5}, {"y", true}, {"foobar", "y"}}
+
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 3 {
+		log.errorf("program does not contain 3 statements, got='%v'", len(program))
+		return
+	}
+
+	for test_case, i in tests {
+		if !stmt_is_let(program[i], test_case.expected_identifier, test_case.expected_value) {
+			log.errorf("test [%d] has failed", i)
+		}
+	}
+}
 @(private = "file")
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
@@ -363,8 +442,42 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 	return Ast_Let{name = name, value = new_clone(value, p.managed.allocator)}
 }
 //%endsection
-
 //%section return
+@(test)
+test_parsing_return_statement :: proc(t: ^testing.T) {
+	input := `
+	return 5;
+	return 10;
+	return 100;
+	`
+
+
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 3 {
+		log.errorf("program does not contain 3 statements, got='%v'", len(program))
+		return
+	}
+
+	tests := [?]struct {
+		expected_identifier: string,
+	}{{"x"}, {"y"}, {"foobar"}}
+
+	for _, i in tests {
+		stmt := program[i]
+		_, ok := stmt.(Ast_Ret)
+		if !ok {
+			log.errorf("test [%d]: stmt is not a return statement. got='%v'", i, ast_type(stmt))
+		}
+	}
+}
 @(private = "file")
 parse_return_statement :: proc(p: ^Parser) -> Node {
 	next_token(p)
@@ -375,8 +488,28 @@ parse_return_statement :: proc(p: ^Parser) -> Node {
 	return Ast_Ret{return_value = new_clone(return_value, p.managed.allocator)}
 }
 //%endsection
-
 //%section prefix
+@(test)
+test_prefix_expression :: proc(t: ^testing.T) {
+	prefix_tests := [?]struct {
+		input:         string,
+		operator:      string,
+		operand_value: Literal,
+	}{{"!5;", "!", 5}, {"-15;", "-", 15}, {"!true;", "!", true}, {"!false;", "!", false}}
+
+	defer free_all(context.temp_allocator)
+
+	for test_case, i in prefix_tests {
+		if !prefix_test_case_is_ok(
+			i,
+			test_case.input,
+			test_case.operator,
+			test_case.operand_value,
+		) {
+			log.errorf("Test [%d] has failed", i)
+		}
+	}
+}
 @(private = "file")
 parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	op := string(p.cur_token.text_slice)
@@ -388,6 +521,39 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node {
 //%endsection
 
 //%section infix
+@(test)
+test_parsing_infix :: proc(t: ^testing.T) {
+	tests := []struct {
+		input:       string,
+		left_value:  Literal,
+		operator:    string,
+		right_value: Literal,
+	} {
+		{"5 + 5;", 5, "+", 5},
+		{"5 - 5;", 5, "-", 5},
+		{"5 * 5;", 5, "*", 5},
+		{"5 / 5;", 5, "/", 5},
+		{"5 > 5;", 5, ">", 5},
+		{"5 < 5;", 5, "<", 5},
+		{"5 == 5;", 5, "==", 5},
+		{"5 != 5;", 5, "!=", 5},
+		{"true == true", true, "==", true},
+		{"true != false", true, "!=", false},
+		{"false == false", false, "==", false},
+	}
+	defer free_all(context.temp_allocator)
+
+	for test_case, i in tests {
+		if !infix_test_case_is_valid(
+			test_case.input,
+			test_case.left_value,
+			test_case.operator,
+			test_case.right_value,
+		) {
+			log.errorf("Test [%d] has failed", i)
+		}
+	}
+}
 @(private = "file")
 parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	op := string(p.cur_token.text_slice)
@@ -403,7 +569,6 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	}
 }
 //%endsection
-
 //%section grouped
 @(private = "file")
 parse_grouped_expression :: proc(p: ^Parser) -> Node {
@@ -705,8 +870,93 @@ infix_expression_is_valid :: proc(
 	}
 	return true
 }
+//%endsection
+//%section statement
+stmt_is_let :: proc(s: Node, name: string, expected_value: Literal) -> bool {
+	let_stmt, ok := s.(Ast_Let)
+	if !ok {
+		log.errorf("s is not a let statement. got='%v'", ast_type(s))
+		return false
+	}
+	if let_stmt.name != name {
+		log.errorf("let_stmt.name is not '%s', got='%s'", name, let_stmt.name)
+		return false
+	}
+	return literal_value_is_valid(let_stmt.value, expected_value)
+}
+prefix_test_case_is_ok :: proc(
+	test_number: int,
+	input: string,
+	operator: string,
+	operand_value: Literal,
+) -> bool {
+	p := ParserNew()
+	p->init()
 
+	defer mem_manager_reset(&p.managed)
 
+	program := p->parse(input)
+
+	if parser_has_error(p) do return false
+
+	if len(program) != 1 {
+		log.errorf(
+			"test [%d]: program does not contain 1 statement, got='%v'",
+			test_number,
+			len(program),
+		)
+
+		return false
+	}
+
+	infix, ok := program[0].(Ast_Prefix)
+	if !ok {
+		log.errorf(
+			"test [%d]: program[0] is not 'Node_Prefix_Expression', got='%v'",
+			test_number,
+			ast_type(program[0]),
+		)
+		return false
+	}
+
+	if infix.op != operator {
+		log.errorf(
+			"test [%d]: wrong infix operator expected='%s', got='%s'",
+			test_number,
+			operator,
+			infix.op,
+		)
+		return false
+	}
+
+	if !literal_value_is_valid(infix.operand, operand_value) {
+		log.errorf("test [%d]'s operand value has failed", test_number)
+		return false
+	}
+
+	return true
+}
+infix_test_case_is_valid :: proc(
+	input: string,
+	left_value: Literal,
+	operator: string,
+	right_value: Literal,
+) -> bool {
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return false
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return false
+	}
+	return infix_expression_is_valid(&program[0], left_value, operator, right_value)
+}
 //%endsection
 //%endsection test helper functions
 
