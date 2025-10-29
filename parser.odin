@@ -1,0 +1,712 @@
+/*%desc{
+{"Parser for the Monkey Language"}}
+*/
+package monkey
+
+import "core:fmt"
+import "core:log"
+import "core:mem"
+import "core:strconv"
+import "core:strings"
+import "core:testing"
+
+//%type{Parser::struct}
+Parser :: struct {
+	l:            Lexer,
+	cur_token:    Token,
+	peek_token:   Token,
+	errors:       [dynamic]string,
+	init:         proc(p: ^Parser) -> mem.Allocator_Error,
+	parse:        proc(p: ^Parser, input: string) -> Ast_Program,
+	clear_errors: proc(p: ^Parser),
+	//%todo:namechange -> mem
+	managed:      Simple_Mem_Manager,
+}
+//%proc::()::Parser
+ParserNew :: proc() -> Parser {
+	p: Parser
+	p.l = LexerNew()
+	p.init = parser_init
+	p.parse = parse_program
+	p.clear_errors = parser_clear_errors
+
+	err := MM_New(&p.managed)
+	if err != .None {
+		panic("Failed to initialize parser memory manager")
+	}
+
+	return p
+}
+
+// parser_init creates a new %Parser::managed::Simple_Mem_Manager or returns $mem.Allocator_Error
+//%proc::(%Parser)::%mem.Allocator_Error
+parser_init :: proc(p: ^Parser) -> mem.Allocator_Error {
+	return MM_New(&p.managed)
+}
+
+// parser_clear_errors calls %delete(%Parser::errors::[dynamic]string)
+// %proc::(%Parser)::void
+parser_clear_errors :: proc(p: ^Parser) {
+	delete(p.errors)
+	p.errors = {}
+}
+//%section::Precedence
+//%desc{{"Lowest is 0, max is hmmm 6-7"}}
+@(private = "file")
+Precedence :: enum {
+	Lowest,
+	Equals,
+	Less_Greater,
+	Sum,
+	Product,
+	Prefix,
+	Call,
+	Index,
+}
+
+//%type{map::Token_Type,Precedence::}
+@(rodata)
+@(private = "file")
+GetPrecedence := #partial [Token_Type]Precedence {
+	.Plus         = .Sum,
+	.Minus        = .Sum,
+	.Asterisk     = .Product,
+	.Slash        = .Product,
+	.Less_Than    = .Less_Greater,
+	.Greater_Than = .Less_Greater,
+	.Equal        = .Equals,
+	.Not_Equal    = .Equals,
+	.Left_Paren   = .Call,
+	.Left_Bracket = .Index,
+}
+
+// peek_precedence returns the %Precedence::enum for the %Parser::peek_token::Token.
+@(private = "file")
+peek_precedence :: proc(p: ^Parser) -> Precedence {
+	return GetPrecedence[p.peek_token.type]
+}
+
+// cur_precedence return the %Precedence::enum for %Parser::cur_token::Token.
+@(private = "file")
+cur_precedence :: proc(p: ^Parser) -> Precedence {
+	return GetPrecedence[p.cur_token.type]
+}
+//%endsection
+
+//%type{proc(p:%Parser)}
+@(private = "file")
+prefix_parse_fn :: #type proc(p: ^Parser) -> Node
+
+//%type{proc(p:%Parser,left:%Node)}
+@(private = "file")
+infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
+
+//%map[%Token_Type]%prefix_parse_fn::proc::(%Parser)::%Node
+@(private = "file")
+prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
+	.Identifier   = parse_identifier,
+	.Int          = parse_integer_literal,
+	.String       = parse_string_literal,
+	.Minus        = parse_prefix_expression,
+	.Bang         = parse_prefix_expression,
+	.Left_Paren   = parse_grouped_expression,
+	.Left_Bracket = parse_array_literal,
+	.Left_Brace   = parse_hash_table_literal,
+	.Function     = parse_function_literal,
+	.True         = parse_boolean_literal,
+	.False        = parse_boolean_literal,
+	.If           = parse_if_expression,
+}
+
+//%map[%Token_Type]%infix_parse_fn::proc::(%Parser, %Node)::%Node
+@(private = "file")
+infix_parse_fns := #partial [Token_Type]infix_parse_fn {
+	.Plus         = parse_infix_expression,
+	.Minus        = parse_infix_expression,
+	.Asterisk     = parse_infix_expression,
+	.Slash        = parse_infix_expression,
+	.Less_Than    = parse_infix_expression,
+	.Greater_Than = parse_infix_expression,
+	.Equal        = parse_infix_expression,
+	.Not_Equal    = parse_infix_expression,
+	.Left_Paren   = parse_call_expression,
+	.Left_Bracket = parse_index_expression,
+}
+
+//%proc::%Parser::%Token_Type::bool
+current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
+	return p.cur_token.type == t
+}
+
+//%section peek
+@(private = "file")
+peek_error :: proc(p: ^Parser, t: Token_Type) {
+	msg := p.managed.string_builder
+	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
+}
+
+@(private = "file")
+peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
+	return p.cur_token.type == t
+}
+
+@(private = "file")
+expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
+	if peek_token_is(p, t) {
+		next_token(p)
+		return true
+	}
+	peek_error(p, t)
+	return false
+}
+//%endsection
+
+//%type{proc()->{%Parser::l::Lexer, %next_token{proc(p:%Parser)->{@self}}}
+@(private = "file")
+next_token :: proc(p: ^Parser) {
+	p.cur_token = p.peek_token
+	p.peek_token = p.l->next_token()
+}
+
+
+/*%section parse::
+		%pattern{
+		test::proc();
+		testee::proc(%Parser)::%Node }
+*/
+//%section parse identifier
+@(test)
+test_parse_identifier :: proc(t: ^testing.T) {
+	input := "foobar;"
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("Program does not contain at least 1 statement, got'%v'", len(program))
+		return
+	}
+	identifier_is_valid(&program[0], "foobar")
+}
+
+@(private = "file")
+parse_identifier :: proc(p: ^Parser) -> Node {
+	return Ast_Identifier{string(p.cur_token.text_slice)}
+}
+//%endsection
+//%section string literal
+@(test)
+test_parse_string_literal :: proc(t: ^testing.T) {
+	input := `"hello world";`
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
+	}
+	literal, str_ok := program[0].(string)
+	if !str_ok {
+		log.errorf("expression is not string, got='%v'", ast_type(program[0]))
+		return
+	}
+
+	if literal != "hello world" {
+		log.errorf("string is not 'hello world', got='%s'", literal)
+	}
+}
+
+@(private = "file")
+parse_string_literal :: proc(p: ^Parser) -> Node {
+	return string(p.cur_token.text_slice)
+}
+//%endsection
+//%section integer literal
+@(test)
+test_integer_literal :: proc(t: ^testing.T, il: ^Node, expected_value: int) -> bool {
+	val, ok := il.(int)
+	if !ok {
+		log.errorf("il is not 'int', got='%v'", ast_type(il))
+		return false
+	}
+
+	if val != expected_value {
+		log.errorf("value is not '%d', got='%d'", expected_value, val)
+		return false
+	}
+	return true
+}
+@(private = "file")
+parse_integer_literal :: proc(p: ^Parser) -> Node {
+	value, ok := strconv.parse_int(string(p.cur_token.text_slice))
+	if !ok {
+		msg := p.managed.string_builder
+		fmt.sbprintf(&msg, "could not parse %s as integer", p.l.input)
+		append(&p.errors, strings.to_string(msg))
+		return nil
+	}
+	return value
+}
+//%endsection
+//%section boolean
+@(test)
+test_boolean :: proc(t: ^testing.T, b: Node, expected_value: bool) -> bool {
+	blit, ok := b.(bool)
+	if !ok {
+		log.errorf("expression is not boolean, got='%v'", ast_type(b))
+		return false
+	}
+
+	if blit != expected_value {
+		log.errorf("blit is not '%v', got='%v'", expected_value, blit)
+		return false
+	}
+	return true
+}
+@(private = "file")
+parse_boolean_literal :: proc(p: ^Parser) -> Node {
+	return current_token_is(p, .True)
+}
+//%endsection
+//%section array
+@(test)
+test_array :: proc(t: ^testing.T) {
+	input := "[1,2*2,3+3]"
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
+	}
+
+	stmt, ok := program[0].(Ast_Array)
+	if !ok {
+		log.errorf("program[0] is not Ast_Array, got='%v'", ast_type(program[0]))
+		return
+	}
+	if len(stmt) != 3 {
+		log.errorf("length of the array is not 3, got='%d'", len(stmt))
+		return
+	}
+
+	literal_value_is_valid(&stmt[0], 1)
+	infix_expression_is_valid(&stmt[1], 2, "*", 2)
+	infix_expression_is_valid(&stmt[2], 3, "+", 3)
+}
+@(private = "file")
+parse_array_literal :: proc(p: ^Parser) -> Node {
+	result, ok := parse_expression_list(p, .Right_Bracket)
+	if !ok do return nil
+
+	return Ast_Array(result)
+}
+//%endsection
+//%section hash table
+@(private = "file")
+parse_hash_table_literal :: proc(p: ^Parser) -> Node {
+	result := mem_alloc(&p.managed, Ast_Hash_Table)
+	for !peek_token_is(p, .Right_Brace) {
+		next_token(p)
+
+		key_expr := parse_expression(p, .Lowest)
+
+		key, ok := key_expr.(string)
+		if !ok {
+			msg := p.managed.string_builder
+			fmt.sbprintf(&msg, "expected key to be 'string', got '%s' instead.", ast_type(key))
+			append(&p.errors, strings.to_string(msg))
+			return nil
+		}
+
+		if !expect_peek(p, .Colon) do return nil
+		next_token(p)
+		value := parse_expression(p, .Lowest)
+		result[key] = value
+		if !peek_token_is(p, .Right_Brace) && !expect_peek(p, .Comma) do return nil
+	}
+	if !expect_peek(p, .Right_Brace) do return nil
+
+	return result^
+}
+//%endsection
+
+//%section let
+@(private = "file")
+parse_let_statement :: proc(p: ^Parser) -> Node {
+	if !expect_peek(p, .Identifier) do return nil
+	name := string(p.cur_token.text_slice)
+	if !expect_peek(p, .Assign) do return nil
+	next_token(p)
+	value := parse_expression(p, .Lowest)
+	if value == nil do return nil
+
+	if peek_token_is(p, .Semicolon) do next_token(p)
+
+	return Ast_Let{name = name, value = new_clone(value, p.managed.allocator)}
+}
+//%endsection
+
+//%section return
+@(private = "file")
+parse_return_statement :: proc(p: ^Parser) -> Node {
+	next_token(p)
+
+	return_value := parse_expression(p, .Lowest)
+	if return_value == nil do return nil
+	if peek_token_is(p, .Semicolon) do next_token(p)
+	return Ast_Ret{return_value = new_clone(return_value, p.managed.allocator)}
+}
+//%endsection
+
+//%section prefix
+@(private = "file")
+parse_prefix_expression :: proc(p: ^Parser) -> Node {
+	op := string(p.cur_token.text_slice)
+	next_token(p)
+	operand := parse_expression(p, .Prefix)
+	if operand == nil do return nil
+	return Ast_Prefix{op = op, operand = new_clone(operand, p.managed.allocator)}
+}
+//%endsection
+
+//%section infix
+@(private = "file")
+parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
+	op := string(p.cur_token.text_slice)
+
+	prec := cur_precedence(p)
+	next_token(p)
+	right := parse_expression(p, prec)
+	if right == nil do return nil
+	return Ast_Infix {
+		op = op,
+		left = new_clone(left, p.managed.allocator),
+		right = new_clone(right, p.managed.allocator),
+	}
+}
+//%endsection
+
+//%section grouped
+@(private = "file")
+parse_grouped_expression :: proc(p: ^Parser) -> Node {
+	next_token(p)
+	expr := parse_expression(p, .Lowest)
+	if !expect_peek(p, .Right_Paren) do return nil
+	return expr
+}
+//%endsection
+//%section block
+@(private = "file")
+parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
+	block := mem_alloc(&p.managed, Ast_Block)
+
+	next_token(p)
+
+	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
+		stmt := parse_statement(p)
+		if stmt != nil do append(block, stmt)
+		next_token(p)
+	}
+	return block^
+}
+//%endsection
+//%section if expression
+@(private = "file")
+parse_if_expression :: proc(p: ^Parser) -> Node {
+	next_token(p)
+
+	condition := parse_expression(p, .Lowest)
+	if condition == nil do return nil
+
+	if !expect_peek(p, .Left_Brace) do return nil
+
+	then := parse_block_statement(p)
+
+	orelse: Ast_Block = nil
+	if peek_token_is(p, .Else) {
+		next_token(p)
+		if !expect_peek(p, .Left_Brace) do return nil
+		orelse = parse_block_statement(p)
+	}
+
+	return Ast_If {
+		condition = new_clone(condition, p.managed.allocator),
+		then = then,
+		orelse = orelse,
+	}
+}
+//%endsection
+//%section functions
+@(private = "file")
+parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
+	identifiers := mem_alloc(&p.managed, [dynamic]Ast_Identifier)
+
+	if peek_token_is(p, .Right_Paren) {
+		next_token(p)
+		return identifiers^
+	}
+
+	next_token(p)
+
+	append(identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+
+	for peek_token_is(p, .Comma) {
+		next_token(p)
+		next_token(p)
+		append(identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+	}
+
+	if !expect_peek(p, .Right_Paren) do return nil
+
+	return identifiers^
+}
+@(private = "file")
+parse_function_literal :: proc(p: ^Parser) -> Node {
+	if !expect_peek(p, .Left_Paren) do return nil
+
+	parameters := parse_function_parameters(p)
+
+	if !expect_peek(p, .Left_Brace) do return nil
+
+	body := parse_block_statement(p)
+
+	return Ast_Function{body = body, parameters = parameters}
+}
+//%endsection
+//%section expression
+@(private = "file")
+parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
+	args := mem_alloc(&p.managed, [dynamic]Node)
+
+	if peek_token_is(p, end) {
+		next_token(p)
+		return args^, true
+	}
+
+	next_token(p)
+	arg := parse_expression(p, .Lowest)
+
+	append(args, arg)
+	for peek_token_is(p, .Comma) {
+		next_token(p)
+		next_token(p)
+
+		arg1 := parse_expression(p, .Lowest)
+		if arg1 == nil do return nil, false
+
+		append(args, arg1)
+	}
+
+	if !expect_peek(p, end) do return nil, false
+
+	return args^, true
+}
+
+@(private = "file")
+parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
+	arguments, ok := parse_expression_list(p, .Right_Paren)
+	if !ok do return nil
+	return Ast_Call{function = new_clone(function, p.managed.allocator), arguments = arguments}
+}
+
+@(private = "file")
+parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
+	next_token(p)
+	index := parse_expression(p, .Lowest)
+
+	if !expect_peek(p, .Right_Bracket) do return nil
+
+	return Ast_Index {
+		operand = new_clone(operand, p.managed.allocator),
+		index = new_clone(index, p.managed.allocator),
+	}
+}
+
+@(private = "file")
+no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
+	msg := p.managed.string_builder
+	fmt.sbprintf(&msg, "unexpected token '%v'", t)
+	append(&p.errors, strings.to_string(msg))
+}
+
+@(private = "file")
+parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
+	prefix := prefix_parse_fns[p.cur_token.type]
+
+	if prefix == nil {
+		no_prefix_parse_fn_error(p, p.cur_token.type)
+		return nil
+	}
+	left_expr := prefix(p)
+	for !peek_token_is(p, .Semicolon) && prec < peek_precedence(p) {
+		infix := infix_parse_fns[p.peek_token.type]
+		if infix == nil do return left_expr
+
+		next_token(p)
+
+		left_expr = infix(p, left_expr)
+	}
+
+	return left_expr
+}
+
+@(private = "file")
+parse_expression_statement :: proc(p: ^Parser) -> Node {
+	expr := parse_expression(p, .Lowest)
+	if peek_token_is(p, .Semicolon) do next_token(p)
+	return expr
+}
+//%endsection
+//%section statement
+@(private = "file")
+parse_statement :: proc(p: ^Parser) -> Node {
+	#partial switch p.cur_token.type {
+	case .Let:
+		return parse_let_statement(p)
+	case .Return:
+		return parse_return_statement(p)
+	}
+	return parse_expression_statement(p)
+}
+@(private = "file")
+parse_program :: proc(p: ^Parser, input: string) -> Ast_Program {
+
+	p.l->init(input)
+
+	next_token(p)
+	next_token(p)
+
+	program := mem_alloc(&p.managed, Ast_Program)
+
+	for p.cur_token.type != .EOF {
+		if stmt := parse_statement(p); stmt != nil {
+			append(program, stmt)
+		}
+		next_token(p)
+	}
+	return program^
+}
+//%endsection
+//%endsection
+//%section test helper functions
+parser_has_error :: proc(p: Parser) -> bool {
+	if len(p.errors) == 0 do return false
+
+	log.errorf("parser has %d errors", len(p.errors))
+	for msg, _ in p.errors {
+		log.errorf("parser error: %q", msg)
+	}
+
+	return true
+}
+
+//%section literals are valid
+Literal :: union {
+	int,
+	string,
+	bool,
+}
+integer_literal_is_valid :: proc(il: ^Node, expected_value: int) -> bool {
+	val, ok := il.(int)
+	if !ok {
+		log.errorf("il is not 'int', got='%v'", ast_type(il))
+		return false
+	}
+	if val != expected_value {
+		log.errorf("value is not '%d', got='%d'", expected_value, val)
+		return false
+	}
+	return true
+}
+identifier_is_valid :: proc(expr: ^Node, expected_value: string) -> bool {
+	ident, ok := expr.(Ast_Identifier)
+	if !ok {
+		log.errorf("expression is not Ast_Identifier, got='%v'", ast_type(expr))
+		return false
+	}
+
+	if ident.value != expected_value {
+		log.errorf("ident.value is not '%s', got='%s'", expected_value, ident.value)
+		return false
+	}
+
+	return true
+}
+boolean_is_valid :: proc(b: ^Node, expected_value: bool) -> bool {
+	blit, ok := b.(bool)
+	if !ok {
+		log.errorf("expression is not boolean, got='%v'", ast_type(b))
+		return false
+	}
+	if blit != expected_value {
+		log.errorf("blit is not '%v', got='%v'", expected_value, blit)
+		return false
+	}
+	return true
+}
+literal_value_is_valid :: proc(lit: ^Node, expected: Literal) -> bool {
+	switch v in expected {
+	case int:
+		return integer_literal_is_valid(lit, v)
+
+	case string:
+		return identifier_is_valid(lit, v)
+
+	case bool:
+		return boolean_is_valid(lit, v)
+	}
+
+	unreachable()
+}
+//%section expression is valid
+infix_expression_is_valid :: proc(
+	expression: ^Node,
+	left_value: Literal,
+	operator: string,
+	right_value: Literal,
+) -> bool {
+	infix, ok := expression.(Ast_Infix)
+	if !ok {
+		log.errorf("expression is not 'Ast_Infix', got'%v'", ast_type(expression))
+		return false
+	}
+
+	if infix.op != operator {
+		log.errorf("wrong infix operator expected='%s', got='%s'", operator, infix.op)
+		return false
+	}
+
+	if !literal_value_is_valid(infix.left, left_value) {
+		log.errorf("test's left value has failed")
+		return false
+	}
+
+	if !literal_value_is_valid(infix.right, right_value) {
+		log.errorf("test's right value has failed")
+		return false
+	}
+	return true
+}
+
+
+//%endsection
+//%endsection test helper functions
+
