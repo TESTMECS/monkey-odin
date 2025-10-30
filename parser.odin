@@ -3,52 +3,45 @@
 {"Parser for the Monkey Language"}}
 */
 package monkey
-
 import "core:fmt"
 import "core:log"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
-
 //%type{Parser::struct}
 Parser :: struct {
-	l:            Lexer,
-	cur_token:    Token,
-	peek_token:   Token,
-	errors:       [dynamic]string,
-	init:         proc(p: ^Parser),
-	parse:        proc(p: ^Parser, input: string) -> Ast_Program,
-	clear_errors: proc(p: ^Parser),
-	//%todo:namechange -> mem
-	vmem:         VArena,
+	//%desc{{"reading"}}
+	l:          Lexer,
+	cur_token:  Token,
+	peek_token: Token,
+	//%desc{{"method"}}
+	parse:      proc(p: ^Parser) -> Ast_Program,
+	//%desc{{"mem managed"}}
+	errors:     [dynamic]string,
+	free:       proc(p: ^Parser),
+	vmem:       VArena,
 }
-//%proc::()::Parser
-ParserNew :: proc() -> Parser {
-	return Parser {
-		l = LexerNew(),
-		init = ParserArenaAlloc,
-		parse = ParseTheProgram,
-		clear_errors = ParserClearErrors,
+//%desc{{"Creates a new Lexer and initalizes vmem"}}
+Parser_New :: proc(input: string) -> Parser {
+	p := Parser {
+		l     = Lexer_New(input),
+		parse = Parse_Program,
+		free  = Parser_Free,
 	}
-}
-
-// ParserArenaAlloc creates a new %Parser::managed::Simple_Mem_Manager
-//%proc::(%Parser)::void
-ParserArenaAlloc :: proc(p: ^Parser) {
-	err := MM_New(&p.vmem)
+	err := Vmem_New(&p.vmem)
 	if err != .None {
 		panic("Failed to initialize parser memory manager")
 	}
+	return p
 }
-
-// ParserClearErrors calls %delete(%Parser::errors::[dynamic]string)
-// %proc::(%Parser)::void
-ParserClearErrors :: proc(p: ^Parser) {
+//%desc{{"clears %Parser::vmem::VArena and %Parser::errors::[dyn]string"}}
+Parser_Free :: proc(p: ^Parser) {
+	VmemReset(&p.vmem)
 	delete(p.errors)
 	p.errors = {}
 }
 //%section::Precedence
-//%desc{{"Lowest is 0, max is hmmm 6-7"}}
+//%desc{{"Lowest is 0, max is ab 6-7"}}
 @(private = "file")
 Precedence :: enum {
 	Lowest,
@@ -75,7 +68,7 @@ GetPrecedence := #partial [Token_Type]Precedence {
 	.Left_Paren   = .Call,
 	.Left_Bracket = .Index,
 }
-// peek_precedence returns the %Precedence::enum for the %Parser::peek_token::Token.
+//%desc{{"peek_precedence returns the %Precedence::enum for the %Parser::peek_token::Token."}}
 @(private = "file")
 peek_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.peek_token.type]
@@ -92,7 +85,7 @@ prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 //%type{proc(p:%Parser,left:%Node)}
 @(private = "file")
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-//%map[%Token_Type]%prefix_parse_fn::proc::(%Parser)::%Node
+//%type{map[%Token_Type]%prefix_parse_fn::proc::(%Parser)::%Node}
 @(private = "file")
 prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.Identifier   = parse_identifier,
@@ -108,7 +101,7 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.False        = parse_boolean_literal,
 	.If           = parse_if_expression,
 }
-//%map[%Token_Type]%infix_parse_fn::proc::(%Parser, %Node)::%Node
+//%type{%map[%Token_Type]%infix_parse_fn::proc::(%Parser, %Node)::%Node}
 @(private = "file")
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Plus         = parse_infix_expression,
@@ -122,7 +115,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren   = parse_call_expression,
 	.Left_Bracket = parse_index_expression,
 }
-//%proc::%Parser::%Token_Type::bool
+//%type{%proc::%Parser::%Token_Type::bool}
 current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return p.cur_token.type == t
 }
@@ -164,15 +157,10 @@ next_token :: proc(p: ^Parser) {
 @(test)
 test_parse_identifier :: proc(t: ^testing.T) {
 	input := "foobar;"
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("Program does not contain at least 1 statement, got'%v'", len(program))
 		return
@@ -188,15 +176,10 @@ parse_identifier :: proc(p: ^Parser) -> Node {
 @(test)
 test_parse_string_literal :: proc(t: ^testing.T) {
 	input := `"hello world";`
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
@@ -206,12 +189,10 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 		log.errorf("expression is not string, got='%v'", ast_type(program[0]))
 		return
 	}
-
 	if literal != "hello world" {
 		log.errorf("string is not 'hello world', got='%s'", literal)
 	}
 }
-
 @(private = "file")
 parse_string_literal :: proc(p: ^Parser) -> Node {
 	return string(p.cur_token.text_slice)
@@ -221,16 +202,10 @@ parse_string_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_integer_literal :: proc(t: ^testing.T) {
 	input := "5;"
-
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
@@ -253,15 +228,10 @@ parse_integer_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_boolean :: proc(t: ^testing.T) {
 	input := "true;"
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
@@ -277,21 +247,15 @@ parse_boolean_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_array :: proc(t: ^testing.T) {
 	input := "[1,2*2,3+3]"
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
 	}
-
-	stmt, ok := program[0].(Ast_Array)
+	stmt, ok := program[0].(Ast_Array) // check array
 	if !ok {
 		log.errorf("program[0] is not Ast_Array, got='%v'", ast_type(program[0]))
 		return
@@ -300,7 +264,6 @@ test_array :: proc(t: ^testing.T) {
 		log.errorf("length of the array is not 3, got='%d'", len(stmt))
 		return
 	}
-
 	literal_value_is_valid(&stmt[0], 1)
 	infix_expression_is_valid(&stmt[1], 2, "*", 2)
 	infix_expression_is_valid(&stmt[2], 3, "+", 3)
@@ -309,7 +272,6 @@ test_array :: proc(t: ^testing.T) {
 parse_array_literal :: proc(p: ^Parser) -> Node {
 	result, ok := parse_expression_list(p, .Right_Bracket)
 	if !ok do return nil
-
 	return Ast_Array(result)
 }
 //%endsection
@@ -317,39 +279,29 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_hash_table :: proc(t: ^testing.T) {
 	input := `{"one": 1, "two": 2, "three": 3}`
-
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
 	}
-
 	stmt, ok := program[0].(Ast_Hash_Table)
 	if !ok {
 		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", ast_type(program[0]))
 		return
 	}
-
 	if len(stmt) != 3 {
 		log.errorf("length of the hash table is not 3, got'%d'", len(stmt))
 		return
 	}
-
 	expected := map[string]int {
 		"one"   = 1,
 		"two"   = 2,
 		"three" = 3,
 	}
 	defer delete(expected)
-
 	for key, ev in expected {
 		value, key_exists := stmt[key]
 		if !key_exists {
@@ -361,13 +313,10 @@ test_hash_table :: proc(t: ^testing.T) {
 }
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := MemAlloc(&p.vmem, Ast_Hash_Table)
-
+	result := VmemAlloc(&p.vmem, Ast_Hash_Table)
 	for !peek_token_is(p, .Right_Brace) {
 		next_token(p)
-
 		key_expr := parse_expression(p, .Lowest)
-
 		key, ok := key_expr.(string)
 		if !ok {
 			msg := p.vmem.string_builder
@@ -375,7 +324,6 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 			append(&p.errors, strings.to_string(msg))
 			return nil
 		}
-
 		if !expect_peek(p, .Colon) do return nil
 		next_token(p)
 		value := parse_expression(p, .Lowest)
@@ -383,7 +331,6 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		if !peek_token_is(p, .Right_Brace) && !expect_peek(p, .Comma) do return nil
 	}
 	if !expect_peek(p, .Right_Brace) do return nil
-
 	return result^
 }
 //%endsection
@@ -401,21 +348,14 @@ test_let_statement :: proc(t: ^testing.T) {
 		expected_identifier: string,
 		expected_value:      Literal,
 	}{{"x", 5}, {"y", true}, {"foobar", "y"}}
-
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 3 {
 		log.errorf("program does not contain 3 statements, got='%v'", len(program))
 		return
 	}
-
 	for test_case, i in tests {
 		if !stmt_is_let(program[i], test_case.expected_identifier, test_case.expected_value) {
 			log.errorf("test [%d] has failed", i)
@@ -430,9 +370,7 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	value := parse_expression(p, .Lowest)
 	if value == nil do return nil
-
 	if peek_token_is(p, .Semicolon) do next_token(p)
-
 	return Ast_Let{name = name, value = new_clone(value, p.vmem.allocator)}
 }
 //%endsection
@@ -446,24 +384,17 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	`
 
 
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return
-
 	if len(program) != 3 {
 		log.errorf("program does not contain 3 statements, got='%v'", len(program))
 		return
 	}
-
 	tests := [?]struct {
 		expected_identifier: string,
 	}{{"x"}, {"y"}, {"foobar"}}
-
 	for _, i in tests {
 		stmt := program[i]
 		_, ok := stmt.(Ast_Ret)
@@ -475,7 +406,6 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 @(private = "file")
 parse_return_statement :: proc(p: ^Parser) -> Node {
 	next_token(p)
-
 	return_value := parse_expression(p, .Lowest)
 	if return_value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
@@ -490,9 +420,7 @@ test_prefix_expression :: proc(t: ^testing.T) {
 		operator:      string,
 		operand_value: Literal,
 	}{{"!5;", "!", 5}, {"-15;", "-", 15}, {"!true;", "!", true}, {"!false;", "!", false}}
-
-	defer free_all(context.temp_allocator)
-
+	defer free_all(context.allocator)
 	for test_case, i in prefix_tests {
 		if !prefix_test_case_is_ok(
 			i,
@@ -513,7 +441,6 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Prefix{op = op, operand = new_clone(operand, p.vmem.allocator)}
 }
 //%endsection
-
 //%section infix
 @(test)
 test_parsing_infix :: proc(t: ^testing.T) {
@@ -535,8 +462,7 @@ test_parsing_infix :: proc(t: ^testing.T) {
 		{"true != false", true, "!=", false},
 		{"false == false", false, "==", false},
 	}
-	defer free_all(context.temp_allocator)
-
+	defer free_all(context.allocator)
 	for test_case, i in tests {
 		if !infix_test_case_is_valid(
 			test_case.input,
@@ -551,7 +477,6 @@ test_parsing_infix :: proc(t: ^testing.T) {
 @(private = "file")
 parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	op := string(p.cur_token.text_slice)
-
 	prec := cur_precedence(p)
 	next_token(p)
 	right := parse_expression(p, prec)
@@ -575,10 +500,8 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 //%section block
 @(private = "file")
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := MemAlloc(&p.vmem, Ast_Block)
-
+	block := VmemAlloc(&p.vmem, Ast_Block)
 	next_token(p)
-
 	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
 		stmt := parse_statement(p)
 		if stmt != nil do append(block, stmt)
@@ -612,7 +535,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 //%section functions
 @(private = "file")
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	identifiers := MemAlloc(&p.vmem, [dynamic]Ast_Identifier)
+	identifiers := VmemAlloc(&p.vmem, [dynamic]Ast_Identifier)
 
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
@@ -650,7 +573,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	//%memerr
-	args := MemAlloc(&p.vmem, [dynamic]Node)
+	args := VmemAlloc(&p.vmem, [dynamic]Node)
 
 	if peek_token_is(p, end) {
 		next_token(p)
@@ -740,15 +663,12 @@ parse_statement :: proc(p: ^Parser) -> Node {
 }
 //%desc{{"calls init on the lexer with the input."}}
 @(private = "file")
-ParseTheProgram :: proc(p: ^Parser, input: string) -> Ast_Program {
-
-	p.l->init(input)
-
+Parse_Program :: proc(p: ^Parser) -> Ast_Program {
 	next_token(p)
 	next_token(p)
 
 	//%mem_alloc
-	program := MemAlloc(&p.vmem, Ast_Program)
+	program := VmemAlloc(&p.vmem, Ast_Program)
 
 	for p.cur_token.type != .EOF {
 		if stmt := parse_statement(p); stmt != nil {
@@ -760,8 +680,6 @@ ParseTheProgram :: proc(p: ^Parser, input: string) -> Ast_Program {
 }
 //%endsection
 //%endsection
-
-
 //%section Test Helper functions
 parser_has_error :: proc(p: Parser) -> bool {
 	if len(p.errors) == 0 do return false
@@ -864,7 +782,7 @@ infix_expression_is_valid :: proc(
 //%endsection
 //%section statement
 stmt_is_let :: proc(s: Node, name: string, expected_value: Literal) -> bool {
-	let_stmt, ok := s.(Ast_Let)
+	let_stmt, ok := s.(Ast_Let) // check let
 	if !ok {
 		log.errorf("s is not a let statement. got='%v'", ast_type(s))
 		return false
@@ -881,26 +799,19 @@ prefix_test_case_is_ok :: proc(
 	operator: string,
 	operand_value: Literal,
 ) -> bool {
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return false
-
 	if len(program) != 1 {
 		log.errorf(
 			"test [%d]: program does not contain 1 statement, got='%v'",
 			test_number,
 			len(program),
 		)
-
 		return false
 	}
-
-	infix, ok := program[0].(Ast_Prefix)
+	infix, ok := program[0].(Ast_Prefix) // check infix
 	if !ok {
 		log.errorf(
 			"test [%d]: program[0] is not 'Node_Prefix_Expression', got='%v'",
@@ -909,7 +820,6 @@ prefix_test_case_is_ok :: proc(
 		)
 		return false
 	}
-
 	if infix.op != operator {
 		log.errorf(
 			"test [%d]: wrong infix operator expected='%s', got='%s'",
@@ -919,12 +829,10 @@ prefix_test_case_is_ok :: proc(
 		)
 		return false
 	}
-
 	if !literal_value_is_valid(infix.operand, operand_value) {
 		log.errorf("test [%d]'s operand value has failed", test_number)
 		return false
 	}
-
 	return true
 }
 infix_test_case_is_valid :: proc(
@@ -933,15 +841,10 @@ infix_test_case_is_valid :: proc(
 	operator: string,
 	right_value: Literal,
 ) -> bool {
-	p := ParserNew()
-	p->init()
-
-	defer MemMangerReset(&p.vmem)
-
-	program := p->parse(input)
-
+	p := Parser_New(input)
+	defer p->free()
+	program := p->parse()
 	if parser_has_error(p) do return false
-
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return false

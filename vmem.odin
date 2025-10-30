@@ -35,7 +35,7 @@ VArena :: struct {
 	registry:       [dynamic]rawptr,
 }
 //{{"Initialize the manager"}}
-MM_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
+Vmem_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
 	err := vmem.arena_init_growing(&m.arena, reserved)
 	if err != .None {
 		return err
@@ -49,15 +49,16 @@ MM_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_E
 	return .None
 }
 //{{"Allocate any type from this arena"}}
-MemAlloc :: proc(m: ^VArena, $T: typeid) -> ^T {
+//MemAlloc
+VmemAlloc :: proc(m: ^VArena, $T: typeid) -> ^T {
 	return new(T, m.allocator)
 }
 //%desc{{"Register something manually (optional, for cleanup tracking)"}}
-MemRegister :: proc(m: ^VArena, ptr: rawptr) {
+VmemRegister :: proc(m: ^VArena, ptr: rawptr) {
 	append(&m.registry, ptr)
 }
 //%desc{{"Reset the entire memory pool (destroys everything allocated inside)"}}
-MemMangerReset :: proc(m: ^VArena) {
+VmemReset :: proc(m: ^VArena) {
 	delete(m.registry)
 	m.registry = {}
 

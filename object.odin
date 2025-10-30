@@ -23,6 +23,7 @@ ObjectBuilinFunction :: #type proc(
 	ok: bool,
 )
 
+Instructions :: struct {}
 ObjectArray :: distinct [dynamic]ObjectBase
 
 ObjectCompiledFunction :: struct {
@@ -117,7 +118,7 @@ ObjectInspect :: proc {
 
 @(private = "file")
 object_inspect_val :: proc(o: Object, sb: ^strings.Builder) {
-	obj := obj
+	obj := o
 	object_inspect_ptr(&obj, sb)
 }
 

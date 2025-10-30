@@ -19,15 +19,21 @@ Lexer :: struct {
 	pos:        int,
 	read_pos:   int,
 	ch:         u8,
-	init:       proc(l: ^Lexer, input: string),
+	//%desc{{"main method"}}
 	next_token: proc(l: ^Lexer) -> Token,
 }
-
 // Lexer returns a new lexer
-LexerNew :: proc() -> Lexer {
-	return {next_token = next_token, init = init}
+Lexer_New :: proc(input: string) -> Lexer {
+	l := Lexer {
+		next_token = next_token,
+	}
+	l.ch = 0
+	l.input = transmute([]u8)input
+	l.pos = 0
+	l.read_pos = 0
+	read_char(&l)
+	return l
 }
-
 @(private = "file")
 is_letter :: proc(ch: u8) -> bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
@@ -41,17 +47,6 @@ is_digit :: proc(ch: u8) -> bool {
 @(private = "file")
 token_from_current_char :: proc(l: ^Lexer, type: Token_Type) -> Token {
 	return GetToken(type, l.input, l.pos, 1)
-}
-
-// init sets the lexer struct and begins to `read_char`
-@(private = "file")
-init :: proc(l: ^Lexer, input: string) {
-	l.ch = 0
-	l.input = transmute([]u8)input
-	l.pos = 0
-	l.read_pos = 0
-
-	read_char(l)
 }
 
 @(private = "file")
@@ -88,7 +83,6 @@ create_string :: proc(l: ^Lexer) -> Token {
 
 	return GetToken(.String, l.input, start, l.pos - start)
 }
-
 // read_char increases `read_pos` by 1 and sets `ch, pos`
 @(private = "file")
 read_char :: proc(l: ^Lexer) {
@@ -100,13 +94,11 @@ read_char :: proc(l: ^Lexer) {
 	l.pos = l.read_pos
 	l.read_pos += 1
 }
-
 // `peek_char` returns 0 if `read_pos` is outside of input
 @(private = "file")
 peek_char :: proc(l: ^Lexer) -> u8 {
 	return l.read_pos >= len(l.input) ? 0 : l.input[l.read_pos]
 }
-
 // next_token reads in the next token and then calls `read_char`
 @(private = "file")
 next_token :: proc(l: ^Lexer) -> Token {
@@ -311,8 +303,7 @@ test_lexer :: proc(t: ^testing.T) {
 		// end of test cases
 	}
 
-	l := LexerNew()
-	l->init(input)
+	l := Lexer_New(input)
 
 	for test_case, i in tests {
 		tok := l->next_token()
