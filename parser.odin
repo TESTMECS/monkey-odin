@@ -19,24 +19,18 @@ Parser :: struct {
 	//%desc{{"mem managed"}}
 	errors:     [dynamic]string,
 	free:       proc(p: ^Parser),
-	vmem:       VArena,
 }
-//%desc{{"Creates a new Lexer and initalizes vmem"}}
+//%desc{{"Creates a new Lexer"}}
 Parser_New :: proc(input: string) -> Parser {
 	p := Parser {
 		l     = Lexer_New(input),
 		parse = Parse_Program,
 		free  = Parser_Free,
 	}
-	err := Vmem_New(&p.vmem)
-	if err != .None {
-		panic("Failed to initialize parser memory manager")
-	}
 	return p
 }
-//%desc{{"clears %Parser::vmem::VArena and %Parser::errors::[dyn]string"}}
+//%desc{{"clears %Parser::errors::[dyn]string"}}
 Parser_Free :: proc(p: ^Parser) {
-	VmemReset(&p.vmem)
 	delete(p.errors)
 	p.errors = {}
 }
@@ -123,8 +117,10 @@ current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 //%patttern{proc(%Parser, %Token_Type)}
 @(private = "file")
 peek_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := p.vmem.string_builder
+	msg := strings.builder_make(context.allocator)
+	defer strings.builder_destroy(&msg)
 	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
+	append(&p.errors, strings.to_string(msg))
 }
 @(private = "file")
 peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
@@ -216,7 +212,8 @@ test_integer_literal :: proc(t: ^testing.T) {
 parse_integer_literal :: proc(p: ^Parser) -> Node {
 	value, ok := strconv.parse_int(string(p.cur_token.text_slice))
 	if !ok {
-		msg := p.vmem.string_builder
+		msg := strings.builder_make(context.allocator)
+		defer strings.builder_destroy(&msg)
 		fmt.sbprintf(&msg, "could not parse %s as integer", p.l.input)
 		append(&p.errors, strings.to_string(msg))
 		return nil
@@ -313,14 +310,16 @@ test_hash_table :: proc(t: ^testing.T) {
 }
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := VmemAlloc(&p.vmem, Ast_Hash_Table)
+	result := make(Ast_Hash_Table, context.allocator)
+	defer delete(result)
 	for !peek_token_is(p, .Right_Brace) {
 		next_token(p)
 		key_expr := parse_expression(p, .Lowest)
 		key, ok := key_expr.(string)
 		if !ok {
-			msg := p.vmem.string_builder
-			fmt.sbprintf(&msg, "expected key to be 'string', got '%s' instead.", ast_type(key))
+			msg := strings.builder_make(context.allocator)
+			defer strings.builder_destroy(&msg)
+			fmt.sbprintf(&msg, "expected key to be 'string', got '%s' instead.", ast_type(key_expr))
 			append(&p.errors, strings.to_string(msg))
 			return nil
 		}
@@ -331,7 +330,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		if !peek_token_is(p, .Right_Brace) && !expect_peek(p, .Comma) do return nil
 	}
 	if !expect_peek(p, .Right_Brace) do return nil
-	return result^
+	return result
 }
 //%endsection
 //%section let
@@ -371,7 +370,7 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 	value := parse_expression(p, .Lowest)
 	if value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Let{name = name, value = new_clone(value, p.vmem.allocator)}
+	return Ast_Let{name = name, value = new_clone(value, context.allocator)} 
 }
 //%endsection
 //%section return
@@ -409,7 +408,7 @@ parse_return_statement :: proc(p: ^Parser) -> Node {
 	return_value := parse_expression(p, .Lowest)
 	if return_value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Ret{return_value = new_clone(return_value, p.vmem.allocator)}
+	return Ast_Ret{return_value = new_clone(return_value, context.allocator)}
 }
 //%endsection
 //%section prefix
@@ -438,7 +437,7 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	operand := parse_expression(p, .Prefix)
 	if operand == nil do return nil
-	return Ast_Prefix{op = op, operand = new_clone(operand, p.vmem.allocator)}
+	return Ast_Prefix{op = op, operand = new_clone(operand, context.allocator)}
 }
 //%endsection
 //%section infix
@@ -483,8 +482,8 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	if right == nil do return nil
 	return Ast_Infix {
 		op = op,
-		left = new_clone(left, p.vmem.allocator),
-		right = new_clone(right, p.vmem.allocator),
+		left = new_clone(left, context.allocator),
+		right = new_clone(right, context.allocator), 
 	}
 }
 //%endsection
@@ -500,14 +499,15 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 //%section block
 @(private = "file")
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := VmemAlloc(&p.vmem, Ast_Block)
+	block := make(Ast_Block, 0, 16, context.allocator)
+	defer delete(block)
 	next_token(p)
 	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
 		stmt := parse_statement(p)
-		if stmt != nil do append(block, stmt)
+		if stmt != nil do append(&block, stmt)
 		next_token(p)
 	}
-	return block^
+	return block
 }
 //%endsection
 //%section if expression
@@ -529,32 +529,33 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 		orelse = parse_block_statement(p)
 	}
 
-	return Ast_If{condition = new_clone(condition, p.vmem.allocator), then = then, orelse = orelse}
+	return Ast_If{condition = &condition, then = then, orelse = orelse}
 }
 //%endsection
 //%section functions
 @(private = "file")
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	identifiers := VmemAlloc(&p.vmem, [dynamic]Ast_Identifier)
+	identifiers := make([dynamic]Ast_Identifier, 0, 16, context.allocator)
+	defer delete(identifiers)
 
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
-		return identifiers^
+		return identifiers
 	}
 
 	next_token(p)
 
-	append(identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+	append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
 
 	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
-		append(identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+		append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
 	}
 
 	if !expect_peek(p, .Right_Paren) do return nil
 
-	return identifiers^
+	return identifiers
 }
 @(private = "file")
 parse_function_literal :: proc(p: ^Parser) -> Node {
@@ -573,17 +574,18 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	//%memerr
-	args := VmemAlloc(&p.vmem, [dynamic]Node)
+	args := make([dynamic]Node, 0, 16, context.allocator)
+	defer delete(args)
 
 	if peek_token_is(p, end) {
 		next_token(p)
-		return args^, true
+		return args, true
 	}
 
 	next_token(p)
 	arg := parse_expression(p, .Lowest)
 
-	append(args, arg)
+	append(&args, arg)
 	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
@@ -591,18 +593,19 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 		arg1 := parse_expression(p, .Lowest)
 		if arg1 == nil do return nil, false
 
-		append(args, arg1)
+		append(&args, arg1)
 	}
 
 	if !expect_peek(p, end) do return nil, false
 
-	return args^, true
+	return args, true
 }
 @(private = "file")
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
-	return Ast_Call{function = new_clone(function, p.vmem.allocator), arguments = arguments}
+	f := new_clone(function, context.allocator)
+	return Ast_Call{function = f, arguments = arguments}
 }
 
 @(private = "file")
@@ -612,14 +615,16 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 
 	if !expect_peek(p, .Right_Bracket) do return nil
 
+	o := new_clone(operand, context.allocator)
 	return Ast_Index {
-		operand = new_clone(operand, p.vmem.allocator),
-		index = new_clone(index, p.vmem.allocator),
+		operand = o,
+		index = &index,
 	}
 }
 @(private = "file")
 no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := p.vmem.string_builder
+	msg := strings.builder_make(context.allocator)
+	defer strings.builder_destroy(&msg)
 	fmt.sbprintf(&msg, "unexpected token '%v'", t)
 	append(&p.errors, strings.to_string(msg))
 }
@@ -668,15 +673,16 @@ Parse_Program :: proc(p: ^Parser) -> Ast_Program {
 	next_token(p)
 
 	//%mem_alloc
-	program := VmemAlloc(&p.vmem, Ast_Program)
+	program := make(Ast_Program, 0, 16, context.allocator)
+	defer delete(program)
 
 	for p.cur_token.type != .EOF {
 		if stmt := parse_statement(p); stmt != nil {
-			append(program, stmt)
+			append(&program, stmt)
 		}
 		next_token(p)
 	}
-	return program^
+	return program
 }
 //%endsection
 //%endsection
@@ -853,4 +859,3 @@ infix_test_case_is_valid :: proc(
 }
 //%endsection
 //%endsection test helper functions
-

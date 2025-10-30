@@ -360,3 +360,9 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 	unimplemented()
 }
 
+new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T {
+	ptr := new(T, allocator)
+	ptr^ = value
+	return ptr
+}
+
