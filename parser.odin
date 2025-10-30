@@ -117,7 +117,7 @@ current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 //%patttern{proc(%Parser, %Token_Type)}
 @(private = "file")
 peek_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := strings.builder_make(context.allocator)
+	msg := strings.builder_make(context.temp_allocator)
 	defer strings.builder_destroy(&msg)
 	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
 	append(&p.errors, strings.to_string(msg))
@@ -212,7 +212,7 @@ test_integer_literal :: proc(t: ^testing.T) {
 parse_integer_literal :: proc(p: ^Parser) -> Node {
 	value, ok := strconv.parse_int(string(p.cur_token.text_slice))
 	if !ok {
-		msg := strings.builder_make(context.allocator)
+		msg := strings.builder_make(context.temp_allocator)
 		defer strings.builder_destroy(&msg)
 		fmt.sbprintf(&msg, "could not parse %s as integer", p.l.input)
 		append(&p.errors, strings.to_string(msg))
@@ -275,15 +275,20 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 //%section hash table
 @(test)
 test_hash_table :: proc(t: ^testing.T) {
-	input := `{"one": 1, "two": 2, "three": 3}`
+	input := `{"one": 1, "two": 2, "three": 3};`
+
 	p := Parser_New(input)
 	defer p->free()
+
 	program := p->parse()
+
 	if parser_has_error(p) do return
+
 	if len(program) != 1 {
 		log.errorf("program does not contain 1 statement, got='%v'", len(program))
 		return
 	}
+
 	stmt, ok := program[0].(Ast_Hash_Table)
 	if !ok {
 		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", ast_type(program[0]))
@@ -299,6 +304,7 @@ test_hash_table :: proc(t: ^testing.T) {
 		"three" = 3,
 	}
 	defer delete(expected)
+
 	for key, ev in expected {
 		value, key_exists := stmt[key]
 		if !key_exists {
@@ -307,19 +313,24 @@ test_hash_table :: proc(t: ^testing.T) {
 		}
 		literal_value_is_valid(&value, ev)
 	}
+
 }
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := make(Ast_Hash_Table, context.allocator)
+	result := make(Ast_Hash_Table, context.temp_allocator)
 	defer delete(result)
 	for !peek_token_is(p, .Right_Brace) {
 		next_token(p)
 		key_expr := parse_expression(p, .Lowest)
 		key, ok := key_expr.(string)
 		if !ok {
-			msg := strings.builder_make(context.allocator)
+			msg := strings.builder_make(context.temp_allocator)
 			defer strings.builder_destroy(&msg)
-			fmt.sbprintf(&msg, "expected key to be 'string', got '%s' instead.", ast_type(key_expr))
+			fmt.sbprintf(
+				&msg,
+				"expected key to be 'string', got '%s' instead.",
+				ast_type(key_expr),
+			)
 			append(&p.errors, strings.to_string(msg))
 			return nil
 		}
@@ -348,8 +359,9 @@ test_let_statement :: proc(t: ^testing.T) {
 		expected_value:      Literal,
 	}{{"x", 5}, {"y", true}, {"foobar", "y"}}
 	p := Parser_New(input)
-	defer p->free()
 	program := p->parse()
+	defer p->free()
+
 	if parser_has_error(p) do return
 	if len(program) != 3 {
 		log.errorf("program does not contain 3 statements, got='%v'", len(program))
@@ -370,7 +382,7 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 	value := parse_expression(p, .Lowest)
 	if value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Let{name = name, value = new_clone(value, context.allocator)} 
+	return Ast_Let{name = name, value = new_clone(value, context.temp_allocator)}
 }
 //%endsection
 //%section return
@@ -408,7 +420,7 @@ parse_return_statement :: proc(p: ^Parser) -> Node {
 	return_value := parse_expression(p, .Lowest)
 	if return_value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Ret{return_value = new_clone(return_value, context.allocator)}
+	return Ast_Ret{return_value = new_clone(return_value, context.temp_allocator)}
 }
 //%endsection
 //%section prefix
@@ -419,7 +431,7 @@ test_prefix_expression :: proc(t: ^testing.T) {
 		operator:      string,
 		operand_value: Literal,
 	}{{"!5;", "!", 5}, {"-15;", "-", 15}, {"!true;", "!", true}, {"!false;", "!", false}}
-	defer free_all(context.allocator)
+	defer free_all(context.temp_allocator)
 	for test_case, i in prefix_tests {
 		if !prefix_test_case_is_ok(
 			i,
@@ -437,7 +449,7 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	operand := parse_expression(p, .Prefix)
 	if operand == nil do return nil
-	return Ast_Prefix{op = op, operand = new_clone(operand, context.allocator)}
+	return Ast_Prefix{op = op, operand = new_clone(operand, context.temp_allocator)}
 }
 //%endsection
 //%section infix
@@ -461,7 +473,7 @@ test_parsing_infix :: proc(t: ^testing.T) {
 		{"true != false", true, "!=", false},
 		{"false == false", false, "==", false},
 	}
-	defer free_all(context.allocator)
+	defer free_all(context.temp_allocator)
 	for test_case, i in tests {
 		if !infix_test_case_is_valid(
 			test_case.input,
@@ -482,8 +494,8 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	if right == nil do return nil
 	return Ast_Infix {
 		op = op,
-		left = new_clone(left, context.allocator),
-		right = new_clone(right, context.allocator), 
+		left = new_clone(left, context.temp_allocator),
+		right = new_clone(right, context.temp_allocator),
 	}
 }
 //%endsection
@@ -499,7 +511,7 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 //%section block
 @(private = "file")
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := make(Ast_Block, 0, 16, context.allocator)
+	block := make(Ast_Block, 0, 16, context.temp_allocator)
 	defer delete(block)
 	next_token(p)
 	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
@@ -535,7 +547,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 //%section functions
 @(private = "file")
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	identifiers := make([dynamic]Ast_Identifier, 0, 16, context.allocator)
+	identifiers := make([dynamic]Ast_Identifier, 0, 16, context.temp_allocator)
 	defer delete(identifiers)
 
 	if peek_token_is(p, .Right_Paren) {
@@ -574,7 +586,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	//%memerr
-	args := make([dynamic]Node, 0, 16, context.allocator)
+	args := make([dynamic]Node, 0, 16, context.temp_allocator)
 	defer delete(args)
 
 	if peek_token_is(p, end) {
@@ -604,7 +616,7 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
-	f := new_clone(function, context.allocator)
+	f := new_clone(function, context.temp_allocator)
 	return Ast_Call{function = f, arguments = arguments}
 }
 
@@ -615,15 +627,12 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 
 	if !expect_peek(p, .Right_Bracket) do return nil
 
-	o := new_clone(operand, context.allocator)
-	return Ast_Index {
-		operand = o,
-		index = &index,
-	}
+	o := new_clone(operand, context.temp_allocator)
+	return Ast_Index{operand = o, index = &index}
 }
 @(private = "file")
 no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := strings.builder_make(context.allocator)
+	msg := strings.builder_make(context.temp_allocator)
 	defer strings.builder_destroy(&msg)
 	fmt.sbprintf(&msg, "unexpected token '%v'", t)
 	append(&p.errors, strings.to_string(msg))
@@ -673,7 +682,7 @@ Parse_Program :: proc(p: ^Parser) -> Ast_Program {
 	next_token(p)
 
 	//%mem_alloc
-	program := make(Ast_Program, 0, 16, context.allocator)
+	program := make(Ast_Program, 0, 16, context.temp_allocator)
 	defer delete(program)
 
 	for p.cur_token.type != .EOF {
@@ -859,3 +868,4 @@ infix_test_case_is_valid :: proc(
 }
 //%endsection
 //%endsection test helper functions
+

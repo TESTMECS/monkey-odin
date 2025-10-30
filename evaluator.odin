@@ -19,15 +19,12 @@ Evaluator :: struct {
 }
 Evaluator_New :: proc() -> Evaluator {
 	new_env := Env_New()
-
 	e := Evaluator {
 		_env = new_env,
 		eval = eval_statements,
 		free = eval_free,
 	}
-
 	evaluator_mem_init(&e)
-
 	return e
 }
 evaluator_mem_init :: proc(e: ^Evaluator) {
@@ -48,5 +45,14 @@ eval_statements :: proc(
 }
 eval_free :: proc(e: ^Evaluator) {
 	VmemReset(&e.vmem)
+}
+
+@(private = "file")
+new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
+	sb := &e.vmem.string_builder
+	strings.builder_reset(sb)
+	fmt.sbprintf(sb, str, ..args)
+	err := strings.to_string(sb^)
+	return strings.clone(err, e.vmem.allocator)
 }
 
