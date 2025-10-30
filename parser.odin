@@ -10,18 +10,16 @@ import "core:strings"
 import "core:testing"
 //%type{Parser::struct}
 Parser :: struct {
-	//%desc{{"reading"}}
 	l:          Lexer,
 	cur_token:  Token,
 	peek_token: Token,
-	//%desc{{"method"}}
-	parse:      proc(p: ^Parser) -> Ast_Program,
-	//%desc{{"mem managed"}}
 	errors:     [dynamic]string,
+	//%desc{{"methods"}}
+	parse:      proc(p: ^Parser) -> Ast_Program,
 	free:       proc(p: ^Parser),
 }
 //%desc{{"Creates a new Lexer"}}
-Parser_New :: proc(input: string) -> Parser {
+Parser__New__ :: proc(input: string) -> Parser {
 	p := Parser {
 		l     = Lexer_New(input),
 		parse = Parse_Program,
@@ -153,7 +151,7 @@ next_token :: proc(p: ^Parser) {
 @(test)
 test_parse_identifier :: proc(t: ^testing.T) {
 	input := "foobar;"
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -172,7 +170,7 @@ parse_identifier :: proc(p: ^Parser) -> Node {
 @(test)
 test_parse_string_literal :: proc(t: ^testing.T) {
 	input := `"hello world";`
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -198,7 +196,7 @@ parse_string_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_integer_literal :: proc(t: ^testing.T) {
 	input := "5;"
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -225,7 +223,7 @@ parse_integer_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_boolean :: proc(t: ^testing.T) {
 	input := "true;"
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -244,7 +242,7 @@ parse_boolean_literal :: proc(p: ^Parser) -> Node {
 @(test)
 test_array :: proc(t: ^testing.T) {
 	input := "[1,2*2,3+3]"
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -277,7 +275,7 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 test_hash_table :: proc(t: ^testing.T) {
 	input := `{"one": 1, "two": 2, "three": 3};`
 
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -358,7 +356,7 @@ test_let_statement :: proc(t: ^testing.T) {
 		expected_identifier: string,
 		expected_value:      Literal,
 	}{{"x", 5}, {"y", true}, {"foobar", "y"}}
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	program := p->parse()
 	defer p->free()
 
@@ -373,6 +371,7 @@ test_let_statement :: proc(t: ^testing.T) {
 		}
 	}
 }
+
 @(private = "file")
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
@@ -395,7 +394,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	`
 
 
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return
@@ -523,6 +522,51 @@ parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
 }
 //%endsection
 //%section if expression
+@(test)
+test_parse_if_expression :: proc(t: ^testing.T) {
+	input := `
+	if true { 10 } else { 20 }
+	`
+
+
+	p := Parser__New__(input)
+	defer p->free()
+	program := p->parse()
+	if parser_has_error(p) do return
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
+	}
+	stmt, ok := program[0].(Ast_If) // check if
+	if !ok {
+		log.errorf("program[0] is not Ast_If, got='%v'", ast_type(program[0]))
+		return
+	}
+	if !literal_value_is_valid(stmt.condition, true) {
+		log.errorf("stmt.condition is not 'true', got='%v'", ast_type(stmt.condition))
+		return
+	}
+	if len(stmt.then) != 1 {
+		log.errorf("stmt.then does not contain 1 statement, got='%v'", len(stmt.then))
+		return
+	}
+	if !literal_value_is_valid(&stmt.then[0], 10) {
+		log.errorf("stmt.then[0] is not '10', got='%v'", ast_type(stmt.then[0]))
+		return
+	}
+	if stmt.orelse == nil {
+		log.errorf("stmt.orelse is nil, expected else block")
+		return
+	}
+	if len(stmt.orelse) != 1 {
+		log.errorf("stmt.orelse does not contain 1 statement, got='%v'", len(stmt.orelse))
+		return
+	}
+	if !literal_value_is_valid(&stmt.orelse[0], 20) {
+		log.errorf("stmt.orelse[0] is not '20', got='%v'", ast_type(stmt.orelse[0]))
+		return
+	}
+}
 @(private = "file")
 parse_if_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
@@ -541,7 +585,11 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 		orelse = parse_block_statement(p)
 	}
 
-	return Ast_If{condition = &condition, then = then, orelse = orelse}
+	return Ast_If {
+		condition = new_clone(condition, context.temp_allocator),
+		then = then,
+		orelse = orelse,
+	}
 }
 //%endsection
 //%section functions
@@ -628,7 +676,7 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	if !expect_peek(p, .Right_Bracket) do return nil
 
 	o := new_clone(operand, context.temp_allocator)
-	return Ast_Index{operand = o, index = &index}
+	return Ast_Index{operand = o, index = new_clone(index, context.temp_allocator)}
 }
 @(private = "file")
 no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
@@ -814,7 +862,7 @@ prefix_test_case_is_ok :: proc(
 	operator: string,
 	operand_value: Literal,
 ) -> bool {
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return false
@@ -856,7 +904,7 @@ infix_test_case_is_valid :: proc(
 	operator: string,
 	right_value: Literal,
 ) -> bool {
-	p := Parser_New(input)
+	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return false

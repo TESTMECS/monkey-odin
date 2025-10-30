@@ -9,7 +9,6 @@ Environment :: struct {
 	free:  proc(env: ^Environment),
 	vmem:  VArena,
 }
-
 Env_New :: proc(outer: ^Environment = nil) -> Environment {
 	e := Environment {
 		get   = env_get,
@@ -17,20 +16,21 @@ Env_New :: proc(outer: ^Environment = nil) -> Environment {
 		free  = env_free,
 		outer = outer,
 	}
-	err := Vmem_New(&e.vmem)
+	v := VArena__New__()
+	err := v->init()
 	if err != .None {
 		panic("Failed to initialize environment memory manager")
 	}
+	e.vmem = v
 	return e
 }
-
-Env_Enclosed :: proc(
+Env__Enclosed__ :: proc(
 	outer: ^Environment,
 	reserved: uint,
 	allocator := context.allocator,
 ) -> Environment {
 	env := Env_New(outer)
-	store := VmemAlloc(&env.vmem, map[string]ObjectBase)
+	store := Vmem__Alloc__(&outer.vmem, map[string]ObjectBase)
 	return new_clone(env, allocator)^
 }
 Env_Set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase {
@@ -39,7 +39,7 @@ Env_Set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase 
 }
 @(private = "file")
 env_free :: proc(e: ^Environment) {
-	VmemReset(&e.vmem)
+	e.vmem->reset()
 }
 @(private = "file")
 env_get :: proc(e: ^Environment, name: string) -> (ObjectBase, bool) {
