@@ -23,18 +23,18 @@ package monkey
 import "core:mem"
 import vmem "core:mem/virtual"
 import st "core:strings"
-// A simple memory pool with an arena allocator and optional registry
+//%desc{{"A simple memory pool with an arena allocator and optional registry"}}
 VArena :: struct {
-	// Areana stores the allocations
+	//%desc{{"Areana stores the allocations"}}
 	arena:          vmem.Arena,
-	// Allocator is the reserved allocator for `@self`
+	//%desc{{"Allocator is the reserved allocator for `@self`"}}
 	allocator:      mem.Allocator,
-	// string_builder for easier string building attached to `@self`
+	//%desc{{"string_builder for easier string building attached to `@self`"}}
 	string_builder: st.Builder,
-	// Optional: track dynamic arrays, maps, etc. for manual `free`
+	//%desc{{"Optional: track dynamic arrays, maps, etc. for manual `free`"}}
 	registry:       [dynamic]rawptr,
 }
-// Initialize the manager
+//{{"Initialize the manager"}}
 MM_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
 	err := vmem.arena_init_growing(&m.arena, reserved)
 	if err != .None {
@@ -42,25 +42,22 @@ MM_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_E
 	}
 
 	m.allocator = vmem.arena_allocator(&m.arena)
+
 	m.string_builder = st.builder_make(m.allocator)
 	m.registry = make([dynamic]rawptr, 0, 32, m.allocator)
 
 	return .None
 }
-
-// Allocate any type from this arena
-mem_alloc :: proc(m: ^VArena, $T: typeid) -> ^T {
+//{{"Allocate any type from this arena"}}
+MemAlloc :: proc(m: ^VArena, $T: typeid) -> ^T {
 	return new(T, m.allocator)
 }
-
-// Register something manually (optional, for cleanup tracking)
-mem_register :: proc(m: ^VArena, ptr: rawptr) {
+//%desc{{"Register something manually (optional, for cleanup tracking)"}}
+MemRegister :: proc(m: ^VArena, ptr: rawptr) {
 	append(&m.registry, ptr)
 }
-
-// Reset the entire memory pool (destroys everything allocated inside)
-mem_manager_reset :: proc(m: ^VArena) {
-	// Optional: custom freeing logic for registered pointers, if needed
+//%desc{{"Reset the entire memory pool (destroys everything allocated inside)"}}
+MemMangerReset :: proc(m: ^VArena) {
 	delete(m.registry)
 	m.registry = {}
 

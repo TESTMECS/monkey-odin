@@ -167,7 +167,7 @@ test_parse_identifier :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -191,7 +191,7 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -225,7 +225,7 @@ test_integer_literal :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -256,7 +256,7 @@ test_boolean :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -280,7 +280,7 @@ test_array :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -321,7 +321,7 @@ test_hash_table :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -361,7 +361,7 @@ test_hash_table :: proc(t: ^testing.T) {
 }
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := mem_alloc(&p.vmem, Ast_Hash_Table)
+	result := MemAlloc(&p.vmem, Ast_Hash_Table)
 
 	for !peek_token_is(p, .Right_Brace) {
 		next_token(p)
@@ -405,7 +405,7 @@ test_let_statement :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -449,7 +449,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -575,7 +575,7 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 //%section block
 @(private = "file")
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := mem_alloc(&p.vmem, Ast_Block)
+	block := MemAlloc(&p.vmem, Ast_Block)
 
 	next_token(p)
 
@@ -612,7 +612,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 //%section functions
 @(private = "file")
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	identifiers := mem_alloc(&p.vmem, [dynamic]Ast_Identifier)
+	identifiers := MemAlloc(&p.vmem, [dynamic]Ast_Identifier)
 
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
@@ -650,7 +650,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	//%memerr
-	args := mem_alloc(&p.vmem, [dynamic]Node)
+	args := MemAlloc(&p.vmem, [dynamic]Node)
 
 	if peek_token_is(p, end) {
 		next_token(p)
@@ -748,7 +748,7 @@ ParseTheProgram :: proc(p: ^Parser, input: string) -> Ast_Program {
 	next_token(p)
 
 	//%mem_alloc
-	program := mem_alloc(&p.vmem, Ast_Program)
+	program := MemAlloc(&p.vmem, Ast_Program)
 
 	for p.cur_token.type != .EOF {
 		if stmt := parse_statement(p); stmt != nil {
@@ -884,7 +884,7 @@ prefix_test_case_is_ok :: proc(
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -936,7 +936,7 @@ infix_test_case_is_valid :: proc(
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.vmem)
+	defer MemMangerReset(&p.vmem)
 
 	program := p->parse(input)
 
