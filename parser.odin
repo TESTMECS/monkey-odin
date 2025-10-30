@@ -235,18 +235,23 @@ parse_string_literal :: proc(p: ^Parser) -> Node {
 //%endsection
 //%section integer literal
 @(test)
-test_integer_literal :: proc(t: ^testing.T, il: ^Node, expected_value: int) -> bool {
-	val, ok := il.(int)
-	if !ok {
-		log.errorf("il is not 'int', got='%v'", ast_type(il))
-		return false
-	}
+test_integer_literal :: proc(t: ^testing.T) {
+	input := "5;"
 
-	if val != expected_value {
-		log.errorf("value is not '%d', got='%d'", expected_value, val)
-		return false
+	p := ParserNew()
+	p->init()
+
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
 	}
-	return true
+	literal_value_is_valid(&program[0], 5)
 }
 @(private = "file")
 parse_integer_literal :: proc(p: ^Parser) -> Node {
@@ -262,18 +267,22 @@ parse_integer_literal :: proc(p: ^Parser) -> Node {
 //%endsection
 //%section boolean
 @(test)
-test_boolean :: proc(t: ^testing.T, b: Node, expected_value: bool) -> bool {
-	blit, ok := b.(bool)
-	if !ok {
-		log.errorf("expression is not boolean, got='%v'", ast_type(b))
-		return false
-	}
+test_boolean :: proc(t: ^testing.T) {
+	input := "true;"
+	p := ParserNew()
+	p->init()
 
-	if blit != expected_value {
-		log.errorf("blit is not '%v', got='%v'", expected_value, blit)
-		return false
+	defer mem_manager_reset(&p.managed)
+
+	program := p->parse(input)
+
+	if parser_has_error(p) do return
+
+	if len(program) != 1 {
+		log.errorf("program does not contain 1 statement, got='%v'", len(program))
+		return
 	}
-	return true
+	literal_value_is_valid(&program[0], true)
 }
 @(private = "file")
 parse_boolean_literal :: proc(p: ^Parser) -> Node {
