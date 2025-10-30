@@ -24,7 +24,7 @@ import "core:mem"
 import vmem "core:mem/virtual"
 import st "core:strings"
 // A simple memory pool with an arena allocator and optional registry
-Simple_Mem_Manager :: struct {
+VArena :: struct {
 	// Areana stores the allocations
 	arena:          vmem.Arena,
 	// Allocator is the reserved allocator for `@self`
@@ -35,7 +35,7 @@ Simple_Mem_Manager :: struct {
 	registry:       [dynamic]rawptr,
 }
 // Initialize the manager
-MM_New :: proc(m: ^Simple_Mem_Manager, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
+MM_New :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
 	err := vmem.arena_init_growing(&m.arena, reserved)
 	if err != .None {
 		return err
@@ -49,17 +49,17 @@ MM_New :: proc(m: ^Simple_Mem_Manager, reserved: uint = 1 * mem.Megabyte) -> mem
 }
 
 // Allocate any type from this arena
-mem_alloc :: proc(m: ^Simple_Mem_Manager, $T: typeid) -> ^T {
+mem_alloc :: proc(m: ^VArena, $T: typeid) -> ^T {
 	return new(T, m.allocator)
 }
 
 // Register something manually (optional, for cleanup tracking)
-mem_register :: proc(m: ^Simple_Mem_Manager, ptr: rawptr) {
+mem_register :: proc(m: ^VArena, ptr: rawptr) {
 	append(&m.registry, ptr)
 }
 
 // Reset the entire memory pool (destroys everything allocated inside)
-mem_manager_reset :: proc(m: ^Simple_Mem_Manager) {
+mem_manager_reset :: proc(m: ^VArena) {
 	// Optional: custom freeing logic for registered pointers, if needed
 	delete(m.registry)
 	m.registry = {}

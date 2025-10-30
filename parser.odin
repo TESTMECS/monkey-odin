@@ -6,7 +6,6 @@ package monkey
 
 import "core:fmt"
 import "core:log"
-import "core:mem"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
@@ -21,31 +20,30 @@ Parser :: struct {
 	parse:        proc(p: ^Parser, input: string) -> Ast_Program,
 	clear_errors: proc(p: ^Parser),
 	//%todo:namechange -> mem
-	managed:      Simple_Mem_Manager,
+	vmem:         VArena,
 }
 //%proc::()::Parser
 ParserNew :: proc() -> Parser {
-	p: Parser
-	p.l = LexerNew()
-	p.init = parser_init
-	p.parse = parse_program
-	p.clear_errors = parser_clear_errors
-
-	return p
+	return Parser {
+		l = LexerNew(),
+		init = ParserArenaAlloc,
+		parse = ParseTheProgram,
+		clear_errors = ParserClearErrors,
+	}
 }
 
-// parser_init creates a new %Parser::managed::Simple_Mem_Manager
+// ParserArenaAlloc creates a new %Parser::managed::Simple_Mem_Manager
 //%proc::(%Parser)::void
-parser_init :: proc(p: ^Parser) {
-	err := MM_New(&p.managed)
+ParserArenaAlloc :: proc(p: ^Parser) {
+	err := MM_New(&p.vmem)
 	if err != .None {
 		panic("Failed to initialize parser memory manager")
 	}
 }
 
-// parser_clear_errors calls %delete(%Parser::errors::[dynamic]string)
+// ParserClearErrors calls %delete(%Parser::errors::[dynamic]string)
 // %proc::(%Parser)::void
-parser_clear_errors :: proc(p: ^Parser) {
+ParserClearErrors :: proc(p: ^Parser) {
 	delete(p.errors)
 	p.errors = {}
 }
@@ -62,7 +60,6 @@ Precedence :: enum {
 	Call,
 	Index,
 }
-
 //%type{map::Token_Type,Precedence::}
 @(rodata)
 @(private = "file")
@@ -78,28 +75,23 @@ GetPrecedence := #partial [Token_Type]Precedence {
 	.Left_Paren   = .Call,
 	.Left_Bracket = .Index,
 }
-
 // peek_precedence returns the %Precedence::enum for the %Parser::peek_token::Token.
 @(private = "file")
 peek_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.peek_token.type]
 }
-
 // cur_precedence return the %Precedence::enum for %Parser::cur_token::Token.
 @(private = "file")
 cur_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.cur_token.type]
 }
 //%endsection
-
 //%type{proc(p:%Parser)}
 @(private = "file")
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
-
 //%type{proc(p:%Parser,left:%Node)}
 @(private = "file")
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-
 //%map[%Token_Type]%prefix_parse_fn::proc::(%Parser)::%Node
 @(private = "file")
 prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
@@ -116,7 +108,6 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.False        = parse_boolean_literal,
 	.If           = parse_if_expression,
 }
-
 //%map[%Token_Type]%infix_parse_fn::proc::(%Parser, %Node)::%Node
 @(private = "file")
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
@@ -131,24 +122,21 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren   = parse_call_expression,
 	.Left_Bracket = parse_index_expression,
 }
-
 //%proc::%Parser::%Token_Type::bool
 current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return p.cur_token.type == t
 }
-
 //%section peek
+//%patttern{proc(%Parser, %Token_Type)}
 @(private = "file")
 peek_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := p.managed.string_builder
+	msg := p.vmem.string_builder
 	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
 }
-
 @(private = "file")
 peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return p.peek_token.type == t
 }
-
 @(private = "file")
 expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
 	if peek_token_is(p, t) {
@@ -159,19 +147,18 @@ expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return false
 }
 //%endsection
-
+//%desc{{"Modifies %Parser::cur_token::Token and %Parser::peek_token::Token"}}
 //%type{proc()->{%Parser::l::Lexer, %next_token{proc(p:%Parser)->{@self}}}
 @(private = "file")
 next_token :: proc(p: ^Parser) {
 	p.cur_token = p.peek_token
 	p.peek_token = p.l->next_token()
 }
-
-
-/*%section parse::
-		%pattern{
-		test::proc();
-		testee::proc(%Parser)::%Node }
+/*%section Parse
+	%pattern{
+		"test"::proc();
+		"testee"::proc(%Parser)::%Node 
+	}
 */
 //%section parse identifier
 @(test)
@@ -180,7 +167,7 @@ test_parse_identifier :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -192,7 +179,6 @@ test_parse_identifier :: proc(t: ^testing.T) {
 	}
 	identifier_is_valid(&program[0], "foobar")
 }
-
 @(private = "file")
 parse_identifier :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{string(p.cur_token.text_slice)}
@@ -205,7 +191,7 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -239,7 +225,7 @@ test_integer_literal :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -255,7 +241,7 @@ test_integer_literal :: proc(t: ^testing.T) {
 parse_integer_literal :: proc(p: ^Parser) -> Node {
 	value, ok := strconv.parse_int(string(p.cur_token.text_slice))
 	if !ok {
-		msg := p.managed.string_builder
+		msg := p.vmem.string_builder
 		fmt.sbprintf(&msg, "could not parse %s as integer", p.l.input)
 		append(&p.errors, strings.to_string(msg))
 		return nil
@@ -270,7 +256,7 @@ test_boolean :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -294,7 +280,7 @@ test_array :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -335,7 +321,7 @@ test_hash_table :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -375,7 +361,8 @@ test_hash_table :: proc(t: ^testing.T) {
 }
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := mem_alloc(&p.managed, Ast_Hash_Table)
+	result := mem_alloc(&p.vmem, Ast_Hash_Table)
+
 	for !peek_token_is(p, .Right_Brace) {
 		next_token(p)
 
@@ -383,7 +370,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 
 		key, ok := key_expr.(string)
 		if !ok {
-			msg := p.managed.string_builder
+			msg := p.vmem.string_builder
 			fmt.sbprintf(&msg, "expected key to be 'string', got '%s' instead.", ast_type(key))
 			append(&p.errors, strings.to_string(msg))
 			return nil
@@ -418,7 +405,7 @@ test_let_statement :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -446,7 +433,7 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 
 	if peek_token_is(p, .Semicolon) do next_token(p)
 
-	return Ast_Let{name = name, value = new_clone(value, p.managed.allocator)}
+	return Ast_Let{name = name, value = new_clone(value, p.vmem.allocator)}
 }
 //%endsection
 //%section return
@@ -462,7 +449,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -492,7 +479,7 @@ parse_return_statement :: proc(p: ^Parser) -> Node {
 	return_value := parse_expression(p, .Lowest)
 	if return_value == nil do return nil
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Ret{return_value = new_clone(return_value, p.managed.allocator)}
+	return Ast_Ret{return_value = new_clone(return_value, p.vmem.allocator)}
 }
 //%endsection
 //%section prefix
@@ -523,7 +510,7 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	operand := parse_expression(p, .Prefix)
 	if operand == nil do return nil
-	return Ast_Prefix{op = op, operand = new_clone(operand, p.managed.allocator)}
+	return Ast_Prefix{op = op, operand = new_clone(operand, p.vmem.allocator)}
 }
 //%endsection
 
@@ -571,8 +558,8 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	if right == nil do return nil
 	return Ast_Infix {
 		op = op,
-		left = new_clone(left, p.managed.allocator),
-		right = new_clone(right, p.managed.allocator),
+		left = new_clone(left, p.vmem.allocator),
+		right = new_clone(right, p.vmem.allocator),
 	}
 }
 //%endsection
@@ -588,7 +575,7 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 //%section block
 @(private = "file")
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := mem_alloc(&p.managed, Ast_Block)
+	block := mem_alloc(&p.vmem, Ast_Block)
 
 	next_token(p)
 
@@ -619,17 +606,13 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 		orelse = parse_block_statement(p)
 	}
 
-	return Ast_If {
-		condition = new_clone(condition, p.managed.allocator),
-		then = then,
-		orelse = orelse,
-	}
+	return Ast_If{condition = new_clone(condition, p.vmem.allocator), then = then, orelse = orelse}
 }
 //%endsection
 //%section functions
 @(private = "file")
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	identifiers := mem_alloc(&p.managed, [dynamic]Ast_Identifier)
+	identifiers := mem_alloc(&p.vmem, [dynamic]Ast_Identifier)
 
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
@@ -667,7 +650,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	//%memerr
-	args := mem_alloc(&p.managed, [dynamic]Node)
+	args := mem_alloc(&p.vmem, [dynamic]Node)
 
 	if peek_token_is(p, end) {
 		next_token(p)
@@ -692,12 +675,11 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 
 	return args^, true
 }
-
 @(private = "file")
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
-	return Ast_Call{function = new_clone(function, p.managed.allocator), arguments = arguments}
+	return Ast_Call{function = new_clone(function, p.vmem.allocator), arguments = arguments}
 }
 
 @(private = "file")
@@ -708,18 +690,16 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	if !expect_peek(p, .Right_Bracket) do return nil
 
 	return Ast_Index {
-		operand = new_clone(operand, p.managed.allocator),
-		index = new_clone(index, p.managed.allocator),
+		operand = new_clone(operand, p.vmem.allocator),
+		index = new_clone(index, p.vmem.allocator),
 	}
 }
-
 @(private = "file")
 no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := p.managed.string_builder
+	msg := p.vmem.string_builder
 	fmt.sbprintf(&msg, "unexpected token '%v'", t)
 	append(&p.errors, strings.to_string(msg))
 }
-
 @(private = "file")
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
@@ -740,7 +720,6 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 
 	return left_expr
 }
-
 @(private = "file")
 parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
@@ -759,8 +738,9 @@ parse_statement :: proc(p: ^Parser) -> Node {
 	}
 	return parse_expression_statement(p)
 }
+//%desc{{"calls init on the lexer with the input."}}
 @(private = "file")
-parse_program :: proc(p: ^Parser, input: string) -> Ast_Program {
+ParseTheProgram :: proc(p: ^Parser, input: string) -> Ast_Program {
 
 	p.l->init(input)
 
@@ -768,7 +748,7 @@ parse_program :: proc(p: ^Parser, input: string) -> Ast_Program {
 	next_token(p)
 
 	//%mem_alloc
-	program := mem_alloc(&p.managed, Ast_Program)
+	program := mem_alloc(&p.vmem, Ast_Program)
 
 	for p.cur_token.type != .EOF {
 		if stmt := parse_statement(p); stmt != nil {
@@ -780,7 +760,9 @@ parse_program :: proc(p: ^Parser, input: string) -> Ast_Program {
 }
 //%endsection
 //%endsection
-//%section test helper functions
+
+
+//%section Test Helper functions
 parser_has_error :: proc(p: Parser) -> bool {
 	if len(p.errors) == 0 do return false
 
@@ -902,7 +884,7 @@ prefix_test_case_is_ok :: proc(
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
@@ -954,7 +936,7 @@ infix_test_case_is_valid :: proc(
 	p := ParserNew()
 	p->init()
 
-	defer mem_manager_reset(&p.managed)
+	defer mem_manager_reset(&p.vmem)
 
 	program := p->parse(input)
 
