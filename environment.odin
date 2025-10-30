@@ -1,28 +1,24 @@
 package monkey
+import "core:fmt"
+import "core:strings"
 //%type{Environment::struct}
 Environment :: struct {
 	store: map[string]ObjectBase,
-	//%note:"recursive env"
 	outer: ^Environment,
+	//%methods
 	get:   proc(env: ^Environment, name: string) -> (ObjectBase, bool),
 	set:   proc(env: ^Environment, name: string, value: ObjectBase) -> ObjectBase,
 	free:  proc(env: ^Environment),
 	vmem:  VArena,
 }
 Env_New :: proc(outer: ^Environment = nil) -> Environment {
-	e := Environment {
-		get   = env_get,
-		set   = Env_Set,
-		free  = env_free,
-		outer = outer,
-	}
 	v := VArena__New__()
 	err := v->init()
 	if err != .None {
 		panic("Failed to initialize environment memory manager")
 	}
-	e.vmem = v
-	return e
+	//Store is still empty
+	return Environment{get = env_get, set = env_set, free = env_free, outer = outer, vmem = v}
 }
 Env__Enclosed__ :: proc(
 	outer: ^Environment,
@@ -30,10 +26,11 @@ Env__Enclosed__ :: proc(
 	allocator := context.allocator,
 ) -> Environment {
 	env := Env_New(outer)
-	store := Vmem__Alloc__(&outer.vmem, map[string]ObjectBase)
-	return new_clone(env, allocator)^
+	env.store = make(map[string]ObjectBase, reserved, allocator)
+	env_clone := new_clone(env, allocator)^
+	return env_clone
 }
-Env_Set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase {
+env_set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase {
 	e.store[name] = value
 	return value
 }

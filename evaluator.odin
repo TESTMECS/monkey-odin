@@ -14,13 +14,15 @@ Evaluator :: struct {
 		ObjectBase,
 		bool,
 	),
+	free: proc(e: ^Evaluator),
 	vmem: VArena,
 }
 Evaluator__New__ :: proc() -> Evaluator {
-	new_env := Env_New()
+	new_env := Env_New() // this is where store should be allocated.
 	e := Evaluator {
 		_env = new_env,
 		eval = eval_statements,
+		free = eval_free,
 	}
 	v := VArena__New__()
 	err := v->init()
@@ -30,6 +32,10 @@ Evaluator__New__ :: proc() -> Evaluator {
 	}
 	e.vmem = v
 	return e
+}
+eval_free :: proc(e: ^Evaluator) {
+	e.vmem->reset()
+	e._env->free()
 }
 eval_statements :: proc(
 	e: ^Evaluator,
@@ -346,11 +352,10 @@ apply_function :: proc(
 					len(args),
 				),
 				false
-
 		}
-
 		extended_env := extend_function_env(e, function, args)
 		evaluated, success := eval(e, function.body, &extended_env)
+		extended_env->free()
 		return ToObjectBase(evaluated), success
 
 	case ObjectBuilinFunction:
@@ -699,19 +704,18 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 	program := p->parse()
 	if parser_has_error(p) do return nil, Evaluator{}, false
 
-	e := Evaluator__New__()
-	evaluated, ok := e->eval(program, context.temp_allocator)
+	e := Evaluator__New__() // Create the evaluator
+	evaluated, ok := e->eval(program, e.vmem.allocator) // Evaluate the program
 	if !ok {
 		if print_errors do log.errorf("eval failed: %s", evaluated)
-		e.vmem->reset()
+		e->free()
 		return nil, Evaluator{}, false
 	}
 	return evaluated, e, true
 }
 eval_test_is_valid :: proc(input: string, print_errors := true) -> (ObjectBase, bool) {
 	evaluated, e, ok := eval_test_get(input, print_errors)
-	defer if !ok do e.vmem->reset()
-
+	defer if !ok do e->free()
 	return evaluated, ok
 }
 integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {
@@ -896,6 +900,67 @@ test_eval_if_expression :: proc(t: ^testing.T) {
 					ObjectType(evaluated),
 				)
 			}
+		}
+	}
+}
+
+@(test)
+test_eval_return_statement :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	} {
+		{"return 10;", 10},
+		{"return 10; 9;", 10},
+		{"return 2 * 5; 9;", 10},
+		{"9; return 2 * 5; 9;", 10},
+		{
+			`
+    if 10 > 1 {
+        if 10 > 1 {
+            return 10;
+        }
+
+        return 1;
+    }`,
+			10,
+		},
+	}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
+		}
+	}
+}
+
+@(test)
+test_eval_let_statements :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	} {
+		{"let a = 5; a;", 5},
+		{"let a = 5 * 5; a;", 25},
+		{"let a = 5; let b = a; b;", 5},
+		{"let a = 5; let b = a; let c = a + b + 5; c;", 15},
+	}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
 		}
 	}
 }
