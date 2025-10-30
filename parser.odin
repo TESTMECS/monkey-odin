@@ -17,7 +17,7 @@ Parser :: struct {
 	cur_token:    Token,
 	peek_token:   Token,
 	errors:       [dynamic]string,
-	init:         proc(p: ^Parser) -> mem.Allocator_Error,
+	init:         proc(p: ^Parser),
 	parse:        proc(p: ^Parser, input: string) -> Ast_Program,
 	clear_errors: proc(p: ^Parser),
 	//%todo:namechange -> mem
@@ -31,18 +31,16 @@ ParserNew :: proc() -> Parser {
 	p.parse = parse_program
 	p.clear_errors = parser_clear_errors
 
+	return p
+}
+
+// parser_init creates a new %Parser::managed::Simple_Mem_Manager
+//%proc::(%Parser)::void
+parser_init :: proc(p: ^Parser) {
 	err := MM_New(&p.managed)
 	if err != .None {
 		panic("Failed to initialize parser memory manager")
 	}
-
-	return p
-}
-
-// parser_init creates a new %Parser::managed::Simple_Mem_Manager or returns $mem.Allocator_Error
-//%proc::(%Parser)::%mem.Allocator_Error
-parser_init :: proc(p: ^Parser) -> mem.Allocator_Error {
-	return MM_New(&p.managed)
 }
 
 // parser_clear_errors calls %delete(%Parser::errors::[dynamic]string)
@@ -148,7 +146,7 @@ peek_error :: proc(p: ^Parser, t: Token_Type) {
 
 @(private = "file")
 peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
-	return p.cur_token.type == t
+	return p.peek_token.type == t
 }
 
 @(private = "file")
@@ -668,6 +666,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 //%section expression
 @(private = "file")
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
+	//%memerr
 	args := mem_alloc(&p.managed, [dynamic]Node)
 
 	if peek_token_is(p, end) {
@@ -768,6 +767,7 @@ parse_program :: proc(p: ^Parser, input: string) -> Ast_Program {
 	next_token(p)
 	next_token(p)
 
+	//%mem_alloc
 	program := mem_alloc(&p.managed, Ast_Program)
 
 	for p.cur_token.type != .EOF {
