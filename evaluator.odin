@@ -1,3 +1,4 @@
+#+feature dynamic-literals
 package monkey
 import "base:runtime"
 import "core:fmt"
@@ -480,7 +481,8 @@ eval_hash_table_literal :: proc(
 	Object,
 	bool,
 ) {
-	ht := Vmem__Alloc__(&e.vmem, ObjectHashTable)
+	ht := make(ObjectHashTable, len(node), e.vmem.allocator)
+	// ht := Vmem__Alloc__(&e.vmem, ObjectHashTable)
 
 	for key_node, value_node in node {
 		key, key_is_valid := eval(e, key_node, current_env)
@@ -489,10 +491,10 @@ eval_hash_table_literal :: proc(
 		value, value_is_valid := eval(e, value_node, current_env)
 		if !value_is_valid do return value, false
 
-		ht[(ToObjectBase(key)).(string)] = ToObjectBase(value)
+		key_conv, key_is_string := ToObjectBase(key).(string)
+		ht[key_conv] = ToObjectBase(value)
 	}
-
-	return ObjectBase(ht), true
+	return ObjectBase(&ht), true
 }
 
 @(private = "file")
@@ -1119,6 +1121,54 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 
 	if !integer_object_is_valid(arr[2], 6) {
 		log.errorf("arr[2] does not match")
+	}
+}
+
+@(test)
+test_eval_hash_literals :: proc(t: ^testing.T) {
+	input := `
+    {
+        "one": 10 - 9,
+        "two": 1 + 1,
+        "three": 6 / 2,
+    }`
+
+
+	evaluated, ok := eval_test_is_valid(input)
+	if !ok do return
+
+	ht, is_hash_table := evaluated.(^ObjectHashTable)
+	if !is_hash_table {
+		log.errorf("expected hash table object but got '%v'", ObjectType(evaluated))
+		return
+	}
+
+	expected := map[string]int {
+		"one"   = 1,
+		"two"   = 2,
+		"three" = 3,
+	}
+	defer delete(expected)
+
+	if len(ht) != len(expected) {
+		log.errorf(
+			"Hash table has wrong number of pairs, expected='%d', got='%d'",
+			len(expected),
+			len(ht),
+		)
+		return
+	}
+
+	for expected_key, expected_value in expected {
+		value, key_exists := ht[expected_key]
+		if !key_exists {
+			log.errorf("key '%v' expected but does not exist", expected_key)
+			continue
+		}
+
+		if !integer_object_is_valid(value, expected_value) {
+			log.errorf("key '%s' has wrong value", expected_key)
+		}
 	}
 }
 
