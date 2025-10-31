@@ -8,23 +8,19 @@ Compiler_State :: struct {
 	symbol_table: Symbol_Table,
 	constants:    [dynamic]ObjectBase,
 	globals:      []ObjectBase,
-	//%methods
 	free:         proc(state: ^Compiler_State),
 	vmem:         VArena,
 }
-
 Compiler_State__New__ :: proc() -> Compiler_State {
 	v := VArena__New__()
 	err := v->init()
+
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
 	return Compiler_State {
-		//%type{globals::[]ObjectBase}
 		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
-		//%type{symbol_table::Symbol_Table}
 		symbol_table = Symbol_Table__New__(v.allocator),
-		//%method{free::proc(state::^Compiler_State)}
 		free = proc(state: ^Compiler_State) {
 			state.vmem->reset()
 			delete(state.globals)
@@ -34,7 +30,6 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 	}
 }
 //%endsection
-
 //%section compiler typedefs
 Emitted_Instruction :: struct {
 	op_code: Opcode,
@@ -53,11 +48,9 @@ Compilation_Scope :: struct {
 }
 
 Compiler :: struct {
-	compiler_state:               ^Compiler_State,
-	symbol_table:                 ^Symbol_Table,
+	using compiler_state:         ^Compiler_State,
 	scopes:                       ^[dynamic]Compilation_Scope,
 	scopes_idx:                   int,
-	//%desc{{"called in %Compiler__New__, calls %Compiler::compile"}}
 	compile_program:              proc(c: ^Compiler, node: Ast_Program) -> (err: string),
 	compile:                      proc(c: ^Compiler, node: Node) -> (err: string),
 	emit:                         proc(c: ^Compiler, op: Opcode, operands: ..int) -> int,
@@ -76,14 +69,14 @@ Compiler :: struct {
 }
 //%endsection
 //%section Public Functions
-Compiler__New__ :: proc(allocator := context.allocator) -> Compiler {
+Compiler__New__ :: proc() -> Compiler {
+	state := Compiler_State__New__()
 	return Compiler {
+		compiler_state = &state,
 		scopes_idx = 0,
 		//%methods
-		//%method{compile_program::proc(c::^Compiler, program::Ast_Program) -> (err::string)}
 		compile_program = proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 			err = ""
-
 			for stmt in program {
 				if err = compile(c, stmt); err != "" do return
 				if Ast__IsExpression__(stmt) {
@@ -92,24 +85,23 @@ Compiler__New__ :: proc(allocator := context.allocator) -> Compiler {
 			}
 			return
 		},
-		//%method{compile::proc(c::^Compiler, node::Node) -> (err::string)}
 		compile = compile,
-		//%method{emit::proc(c::^Compiler, op::Opcode, operands: variadic int) -> int}
 		emit = proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
+			//%desc{{"emits an instruction to the current scope"}}
 			ins := make_instructions(op, ..operands)
 			pos := c->add_instructions(ins[:])
 			c->set_last_instruction(op, pos)
 			return pos
 		},
-		//%method{bytecode::proc(c::^Compiler) -> Bytecode}
 		bytecode = proc(c: ^Compiler) -> Bytecode {
+			//%desc{{"returns the bytecode for the current scope"}}
 			return Bytecode {
 				instructions = c->current_instructions()[:],
 				constants = c.compiler_state.constants[:],
 			}
 		},
-		//%method{enter_scope::proc(c::^Compiler)}
 		enter_scope = proc(c: ^Compiler) {
+			//%desc{{"enters a new scope"}}
 			scope := Compilation_Scope{}
 			instr := make(Instructions, STACK_SIZE, c.compiler_state.vmem.allocator)
 			scope.instructions = &instr
@@ -118,62 +110,58 @@ Compiler__New__ :: proc(allocator := context.allocator) -> Compiler {
 			// symbol_clone := new_clone(c.symbol_table, c.compiler_state.vmem.allocator)
 			// c.symbol_table = Symbol_Table__New__(outer = symbol_clone)
 		},
-		//%method{leave_scope::proc(c::^Compiler) -> ^Instructions}
 		leave_scope = proc(c: ^Compiler) -> ^Instructions {
+			//%desc{{"leaves the current scope and returns the instructions"}}
 			instructions := c->current_instructions()
 			pop(c.scopes)
 			c.scopes_idx = len(c.scopes) - 1
-			c.symbol_table = c.symbol_table.outer
+			c.symbol_table = c.symbol_table.outer^
 			return instructions
 		},
-		//%method{current_instructions::proc(c::^Compiler) -> ^Instructions}
 		current_instructions = proc(c: ^Compiler) -> ^Instructions {
 			return c.scopes[c.scopes_idx].instructions
 		},
-		//%method{set_last_instruction::proc(c::^Compiler, op::Opcode, pos::int)}
 		set_last_instruction = proc(c: ^Compiler, op: Opcode, pos: int) {
+			//%desc{{"sets the last instruction for the current scope"}}
 			prev := c.scopes[c.scopes_idx].last_instruction
 			last := Emitted_Instruction{op, pos}
-
 			c.scopes[c.scopes_idx].previous_instruction = prev
 			c.scopes[c.scopes_idx].last_instruction = &last
 		},
-		//%method{add_instructions::proc(c::^Compiler, instructions::[]byte) -> int}
 		add_instructions = proc(c: ^Compiler, instructions: []byte) -> int {
+			//%desc{{"adds instructions to the current scope"}}
 			pos := len(c->current_instructions())
 			append(c->current_instructions(), ..instructions)
 			return pos
 		},
-		//%method{replace_last_pop_with_return::proc(c::^Compiler)}
 		replace_last_pop_with_return = proc(c: ^Compiler) {
+			//%desc{{"replaces the last pop instruction with a return instruction"}}
 			last_pop := c.scopes[c.scopes_idx].last_instruction.pos
 			c->replace_instructions(last_pop, make_instructions(.Ret_V)[:])
 			c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 		},
-		//%method{add_constant::proc(c::^Compiler, obj::ObjectBase) -> int}
 		add_constant = proc(c: ^Compiler, obj: ObjectBase) -> int {
 			append(&c.compiler_state.constants, obj)
 			return len(c.compiler_state.constants) - 1
 		},
-		//%method{remove_last_pop::proc(c::^Compiler)}
 		remove_last_pop = proc(c: ^Compiler) {
 			ordered_remove(c->current_instructions(), c.scopes[c.scopes_idx].last_instruction.pos)
 			c.scopes[c.scopes_idx].last_instruction = c.scopes[c.scopes_idx].previous_instruction
 		},
-		//%method{last_instruction_is::proc(c::^Compiler, op::Opcode) -> bool}
 		last_instruction_is = proc(c: ^Compiler, op: Opcode) -> bool {
+			//%desc{{"returns true if the last instruction is of the given type"}}
 			if len(c->current_instructions()) == 0 do return false
 			return c.scopes[c.scopes_idx].last_instruction.op_code == op
 		},
-		//%method{replace_instructions::proc(c::^Compiler, pos::int, new_instructions::[]byte)}
 		replace_instructions = proc(c: ^Compiler, pos: int, new_instructions: []byte) {
+			//%desc{{"replaces instructions at the given position with the given instructions"}}
 			ins := c->current_instructions()
 			for i := 0; i < len(new_instructions); i += 1 {
 				ins[pos + i] = new_instructions[i]
 			}
 		},
-		//%method{change_operand::proc(c::^Compiler, pos::int, new_operand::int)}
 		change_operand = proc(c: ^Compiler, pos: int, new_operand: int) {
+			//%desc{{"changes the operand of the instruction at the given position"}}
 			op := Opcode(c->current_instructions()[pos])
 			new_instructions := make_instructions(op, new_operand)
 			c->replace_instructions(pos, new_instructions[:])
@@ -181,7 +169,6 @@ Compiler__New__ :: proc(allocator := context.allocator) -> Compiler {
 	}
 }
 //%endsection
-
 //%section: main recursive compile method
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""

@@ -2,8 +2,9 @@ package monkey
 
 import "core:fmt"
 import "core:log"
-import "core:mem"
+import "core:reflect"
 import "core:strings"
+import "core:testing"
 
 STACK_SIZE :: 2048
 
@@ -12,14 +13,15 @@ GLOBALS_SIZE :: 65536
 MAX_FRAMES :: 1024
 
 VM :: struct {
+	compiler_state:         ^Compiler_State, // maybe using?
 	constants:              []ObjectBase,
-	compiler_state:         ^Compiler_State,
-	frames:                 ^[MAX_FRAMES]Frame,
+	frames:                 []Frame,
 	frames_idx:             int,
-	stack:                  ^[]ObjectBase,
+	stack:                  []ObjectBase,
 	sp:                     int, //Top of stack is sp-1
 	vmem:                   VArena,
 	//%methods
+	free:                   proc(v: ^VM),
 	run:                    proc(v: ^VM) -> (err: string),
 	stack_top:              proc(v: ^VM) -> ObjectBase,
 	last_popped_stack_elem: proc(v: ^VM) -> ObjectBase,
@@ -45,16 +47,29 @@ VM :: struct {
 	push_frame:             proc(v: ^VM, f: Frame),
 }
 
-Vm__New__ :: proc(allocator := context.allocator) -> VM {
-	//%section vm functions
+Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
+	v := VArena__New__()
+	err := v->init()
+	if err != nil {
+		panic("Arena Allocation Failed: Evaluator_new")
+	}
 	return VM {
-		//%method{run::proc(v::^VM) -> (err::string)}
+		stack = make([]ObjectBase, STACK_SIZE, v.allocator),
+		frames = make([]Frame, MAX_FRAMES, v.allocator),
+		frames_idx = 0,
+		constants = bytecode.constants,
+		vmem = v,
+		//%methods
+		free = proc(v: ^VM) {
+			v.vmem->reset()
+			delete(v.constants)
+			delete(v.stack)
+			delete(v.frames)
+		},
 		run = run_vm,
-		//%method{current_frame::proc(v::^VM) -> ^Frame}
 		current_frame = proc(v: ^VM) -> ^Frame {
 			return &v.frames[v.frames_idx - 1]
 		},
-		//%method{push::proc(v::^VM, obj::ObjectBase)}
 		push = proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 			if v.sp >= STACK_SIZE {
 				sb := &v.vmem.string_builder
@@ -66,22 +81,18 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			v.sp += 1
 			return ""
 		},
-		//%method{pop::proc(v::^VM) -> ObjectBase}
 		pop = proc(v: ^VM) -> ObjectBase {
 			o := v.stack[v.sp - 1]
 			v.sp -= 1
 			return o
 		},
-		//%method{last_popped::proc(v::^VM) -> ObjectBase}
 		last_popped = proc(v: ^VM) -> ObjectBase {
 			return v.stack[v.sp]
 		},
-		//%method{stack_top::proc(v::^VM) -> ObjectBase}
 		stack_top = proc(v: ^VM) -> ObjectBase {
 			if v.sp == 0 do return nil
 			return v.stack[v.sp - 1]
 		},
-		//%method{exec_binary_op::proc(v::^VM, op:Opcode)->(err:string)}
 		exec_binary_op = proc(v: ^VM, op: Opcode) -> (err: string) {
 			right := v->pop()
 			left := v->pop()
@@ -102,7 +113,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			)
 			return strings.to_string(sb^)
 		},
-		//%method{exec_binary_int_op::proc(v::^VM, op:Opcode, left:int, right:int)->(err:string)}
 		exec_binary_int_op = proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 			result: int
 
@@ -123,7 +133,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			return v->push(result)
 		},
-		//%method{exec_binary_string_op::proc(v::^VM, op:Opcode, left:string, right:string)->(err:string)}
 		exec_binary_string_op = proc(
 			v: ^VM,
 			op: Opcode,
@@ -149,7 +158,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			return v->push(result)
 
 		},
-		//%method{exec_compare_op::proc(v::^VM, op:Opcode)->(err:string)}
 		exec_compare_op = proc(v: ^VM, op: Opcode) -> (err: string) {
 			right := v->pop()
 			left := v->pop()
@@ -193,7 +201,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			fmt.sbprintf(sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
 			return strings.to_string(sb^)
 		},
-		//%method{exec_compare_int_op::proc(v::^VM, op:Opcode, left:int, right:int)->(err:string)}
 		exec_compare_int_op = proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 			result: bool
 			#partial switch op {
@@ -211,7 +218,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			return v->push(result)
 		},
-		//%method{exec_call::proc(v::^VM, function:ObjectBase)->(err:string)}
 		exec_not_op = proc(v: ^VM) -> (err: string) {
 			o := v->pop()
 			#partial switch operand in o {
@@ -224,7 +230,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			unreachable()
 		},
-		//%method{exec_neg_op::proc(v::^VM)->(err:string)}
 		exec_neg_op = proc(v: ^VM) -> (err: string) {
 			o := v->pop()
 			operand, ok := o.(int)
@@ -236,7 +241,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			return v->push(-operand)
 		},
-		//%method{exec_idx_expr::proc(v::^VM, operand:ObjectBase, index:ObjectBase)->(err:string)}
 		exec_idx_expr = proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 			if ObjectType(operand) == ObjectArray && ObjectType(index) == int {
 				return v->exec_arr_idx(operand.(ObjectArray), index.(int))
@@ -249,19 +253,16 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			fmt.sbprintf(sb, "index operator does not support: '%v'", ObjectType(operand))
 			return strings.to_string(sb^)
 		},
-		//%method{exec_arr_idx::proc(v::^VM, arr:ObjectArray, index:int)->(err:string)}
 		exec_arr_idx = proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string) {
 			max := len(arr) - 1
 			if index < 0 || index > max do return v->push(NULL)
 			return v->push(arr[index])
 		},
-		//%method{exec_ht_idx::proc(v::^VM, ht:ObjectHashTable, key:string)->(err:string)}
 		exec_ht_idx = proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 			value, key_exists := ht[key]
 			if !key_exists do return v->push(NULL)
 			return v->push(value)
 		},
-		//%method{exec_call::proc(v::^VM, num_args:int)->(err:string)}
 		exec_call = proc(v: ^VM, num_args: int) -> (err: string) {
 			fn, ok := v.stack[v.sp - 1 - int(num_args)].(ObjectCompiledFunction)
 			if !ok {
@@ -290,7 +291,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			v.sp = frame.base_pointer + fn.num_locals
 			return ""
 		},
-		//%method{build_array::proc(v::^VM, start:int, end:int)->ObjectBase}
 		build_array = proc(v: ^VM, start, end: int) -> ObjectBase {
 			elements := make(ObjectArray, end - start, v.vmem.allocator)
 
@@ -299,7 +299,6 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			return elements
 		},
-		//%method{build_hash_table::proc(v::^VM, start:int, end:int)->(ObjectBase, string)}
 		build_hash_table = proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 			ht := make(ObjectHashTable, (end - start) / 2, v.vmem.allocator)
 
@@ -318,17 +317,14 @@ Vm__New__ :: proc(allocator := context.allocator) -> VM {
 			}
 			return ht, ""
 		},
-		//%method{pop_frame::proc(v::^VM)->^Frame}
 		pop_frame = proc(v: ^VM) -> ^Frame {
 			v.frames_idx -= 1
 			return &v.frames[v.frames_idx]
 		},
-		//%method{push_frame::proc(v::^VM, f:Frame)}
 		push_frame = proc(v: ^VM, f: Frame) {
 			v.frames[v.frames_idx] = f
 			v.frames_idx += 1
 		},
-		//%endsection
 	}
 }
 
@@ -433,4 +429,114 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	}
 	return ""
 }
+//%endsection
+//%section: tests
+Test_Data :: union {
+	int,
+	bool,
+	string,
+	[]int,
+	map[string]int,
+}
+Test_Cases :: struct {
+	input:    string,
+	expected: Test_Data,
+}
+run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
+	for test_case, i in tests {
+		p := Parser__New__(test_case.input)
+		defer p->free()
+		program := p->parse()
+		if parser_has_error(p) do return
+
+		compiler := Compiler__New__()
+		defer compiler->free()
+
+		err := compiler->compile_program(program)
+		if err != "" {
+			log.errorf("test [%d] has failed, compiler has error: %s", i, err)
+			continue
+		}
+
+		vm := Vm__New__(compiler->bytecode(), compiler.compiler_state)
+		defer vm->free()
+
+		err = vm->run()
+		if err != "" {
+			log.errorf("test [%d] has failed, vm has error: %s", i, err)
+			continue
+		}
+		last_popped := vm->last_popped()
+		err = test_expected_object(test_case.expected, last_popped)
+		if err != "" {
+			log.errorf(
+				"test [%d] has failed, expected: '%v', got: '%v'",
+				i,
+				test_case.expected,
+				last_popped,
+			)
+			continue
+		}
+	}
+}
+//%endsection
+//%section test helpers
+test_expected_object :: proc(t: ^testing.T, expected: Test_Data, actual: ObjectBase) -> string {
+	err := ""
+	t := reflect.union_variant_typeid(expected)
+	#partial switch expected_value in expected {
+	case int:
+		err = test_integer_object(expected_value, actual)
+	case bool:
+		err = test_boolean_object(expected_value, actual)
+	case string:
+		err = test_string_object(expected_value, actual)
+	case []int:
+		arr, ok := actual.(ObjectArray)
+		if !ok {
+			err = fmt.tprintf("expected array object but got '%v'", ObjectType(actual))
+			break
+		}
+		if len(arr) != len(expected_value) {
+			err = fmt.tprintf(
+				"wrong num of elements, want='%v', got='%v'",
+				len(expected_value),
+				len(arr),
+			)
+			break
+		}
+		for e_elem, i in expected_value {
+			if err = test_integer_object(e_elem, arr[i]); err != "" do break
+		}
+	case map[string]int:
+		ht, ok := actual.(ObjectHashTable)
+		if !ok {
+			err = fmt.tprintf("expected hash table object but got '%v'", ObjectType(actual))
+			break
+		}
+		if len(ht) != len(expected_value) {
+			err = fmt.tprintf(
+				"wrong num of elements, want='%v', got='%v'",
+				len(expected_value),
+				len(ht),
+			)
+			break
+		}
+		for key, value in expected_value {
+			actual_value, key_exists := ht[key]
+			if !key_exists {
+				err = fmt.tprintf("key '%s' does not exist in the hash table", key)
+				break
+			}
+			if err = test_integer_object(value, actual_value); err != "" do break
+		}
+	case nil:
+		if ObjectType(actual) != ObjectNil {
+			err = fmt.tprintf("expected nil but got '%v'", ObjectType(actual))
+			break
+		}
+	}
+	return ""
+}
+//%endsection
 
