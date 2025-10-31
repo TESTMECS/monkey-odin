@@ -408,7 +408,7 @@ eval_array_of_expressions_registered :: proc(
 	^ObjectArray,
 	bool,
 ) {
-	args := Vmem__Alloc__(&e.vmem, ObjectArray)
+	args := make([dynamic]Node, 0, len(expressions), e.vmem.allocator)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
@@ -1053,6 +1053,69 @@ add_two(2)`, 4},
 			log.errorf("test[%d] has failed", i)
 		}
 
+	}
+}
+
+@(test)
+test_eval_builtin_functions :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: union {
+			int,
+			string,
+		},
+	}{{`len("")`, 0}, {`len("four")`, 4}, {`len("hello world")`, 11}}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		switch expected in test_case.expected {
+		case int:
+			if !integer_object_is_valid(evaluated, expected) {
+				log.errorf("test[%d] has failed", i)
+			}
+
+		case string:
+			if !string_object_is_valid(evaluated, expected) {
+				log.errorf("test[%d] has failed", i)
+			}
+		}
+
+	}
+}
+
+@(test)
+test_eval_array_literals :: proc(t: ^testing.T) {
+	input := "[1, 2 * 2, 3 + 3]"
+
+	evaluated, ok := eval_test_is_valid(input)
+	if !ok do return
+
+	arr, is_arr := evaluated.(^ObjectArray)
+	if !is_arr {
+		log.errorf("expected array object but got '%v'", ObjectType(evaluated))
+		return
+	}
+
+	if len(arr) != 3 {
+		log.errorf("expected array length to be 3 but got='%d'", len(arr))
+		return
+	}
+
+	if !integer_object_is_valid(arr[0], 1) {
+		log.errorf("arr[0] does not match")
+	}
+
+	if !integer_object_is_valid(arr[1], 4) {
+		log.errorf("arr[1] does not match")
+	}
+
+	if !integer_object_is_valid(arr[2], 6) {
+		log.errorf("arr[2] does not match")
 	}
 }
 
