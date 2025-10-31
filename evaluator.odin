@@ -10,7 +10,7 @@ Evaluator :: struct {
 	eval: proc(
 		e: ^Evaluator,
 		node: Ast_Program,
-		allocator := context.allocator,
+		allocator: runtime.Allocator,
 	) -> (
 		ObjectBase,
 		bool,
@@ -725,6 +725,7 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 }
 eval_test_is_valid :: proc(input: string, print_errors := true) -> (ObjectBase, bool) {
 	evaluated, _, ok := eval_test_get(input, print_errors)
+	if !ok do return nil, false
 	return evaluated, ok
 }
 integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {
@@ -1018,6 +1019,40 @@ test_eval_function_object :: proc(t: ^testing.T) {
 			strings.to_string(sb),
 		)
 	}
-	// e->free()
+}
+
+@(test)
+test_eval_function_application :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	} {
+		{"let identity = fn(x) { x; }; identity(5);", 5},
+		{"let identity = fn(x) { return x; }; identity(5);", 5},
+		{"let double = fn(x) { x * 2; }; double(5);", 10},
+		{"let add = fn(x, y) { x * y; }; add(5, 5);", 25},
+		{"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20},
+		{"fn (x) { x; }(5)", 5},
+		{`
+let new_adder = fn(x) {
+	fn(y) {x + y};
+};
+
+let add_two = new_adder(2);
+add_two(2)`, 4},
+	}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
+		}
+
+	}
 }
 

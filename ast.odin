@@ -306,13 +306,13 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		}
 
 	case Ast_If:
-		then := make(Ast_Block, 0, cap(data.then))
+		then := make(Ast_Block, 0, len(data.then), allocator)
 		Ast__Copy__(&data.then, &then, allocator)
 
 		orelse: Ast_Block
 		if data.orelse != nil {
-			then = make(Ast_Block, 0, cap(data.orelse))
-			Ast__Copy__(&data.then, &orelse, allocator)
+			then = make(Ast_Block, 0, len(data.orelse), allocator)
+			Ast__Copy__(&data.orelse, &orelse, allocator)
 		}
 
 		return Ast_If {
@@ -322,28 +322,28 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		}
 
 	case Ast_Array:
-		arr_copy := make(Ast_Array, 0, cap(data))
+		arr_copy := make(Ast_Array, 0, len(data), allocator)
 		Ast__Copy__(&data, &arr_copy, allocator)
 		return arr_copy
 
 	case Ast_Hash_Table:
-		hash_copy := make(Ast_Hash_Table, len(data))
+		hash_copy := make(Ast_Hash_Table, len(data), allocator)
 		for key, &value in data {
 			hash_copy[strings.clone(key, allocator)] = ast_copy(&value, allocator)
 		}
 		return hash_copy
 
 	case Ast_Function:
-		parameters := make([dynamic]Ast_Identifier, 0, cap(data.parameters))
+		parameters := make([dynamic]Ast_Identifier, 0, len(data.parameters), allocator)
 		Ast__Copy__(&data.parameters, &parameters, allocator)
 
-		body := make(Ast_Block, 0, cap(data.body), allocator)
+		body := make(Ast_Block, 0, len(data.body), allocator)
 		Ast__Copy__(&data.body, &body, allocator)
 
 		return Ast_Function{parameters = parameters, body = body}
 
 	case Ast_Call:
-		arguments := make([dynamic]Node, 0, cap(data.arguments), allocator)
+		arguments := make([dynamic]Node, 0, len(data.arguments), allocator)
 		Ast__Copy__(&data.arguments, &arguments, allocator)
 
 		return Ast_Call {
