@@ -1239,3 +1239,66 @@ test_eval_array_index_expression :: proc(t: ^testing.T) {
 	}
 }
 
+@(test)
+test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	}{{`{"foo": 5}["foo"]`, 5}, {`let key = "foo"; {"foo": 5}[key]`, 5}}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
+		}
+	}
+}
+
+//TODO: Add expected error msgs
+@(test)
+test_eval_errors :: proc(t: ^testing.T) {
+	inputs := [?]string {
+		"5 + true;",
+		"5 + true; 5;",
+		"-true",
+		"true+false;",
+		`"Hello" - "World"`,
+		"5; true + false; 5",
+		"if 10 > 1 {true + false;}",
+		`if 10 > 1 {
+                if 10 > 1 {
+                    return true + false;
+                }
+
+                return 1;
+            }`,
+		"foobar", // does not exist
+		"let a = 12; let a = true;", // already exists
+		"let f = fn(x) {}; f()", // wrong number of arguments
+		"let f = fn(x,y) {}; f(1)", // wrong number of arguments
+		"let f 2", // parser error also must be caught
+		"len(1)", // wrong arg type for builtin function
+		`len("one", "two")`, // wrong number of arguments for builtin function
+		"[1, 2, 3][3]", // index out of boundary
+		"[1, 2, 3][-1]", // index out of boundary
+		`{"foo": 5}["bar"]`, // key does not exists
+		`{}["bar"]`, // key does not exists
+		`{}[1]`, // key is not hashable
+	}
+
+	for input, i in inputs {
+		_, ok := eval_test_is_valid(input)
+		if ok {
+			log.errorf(
+				"test[%d] has failed, the input supposed to raise an error but it didn't",
+				i,
+			)
+		}
+	}
+}
+
