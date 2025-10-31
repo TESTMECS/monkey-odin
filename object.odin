@@ -23,7 +23,6 @@ ObjectBuilinFunction :: #type proc(
 	ok: bool,
 )
 
-Instructions :: struct {}
 ObjectArray :: distinct [dynamic]ObjectBase
 
 ObjectCompiledFunction :: struct {
