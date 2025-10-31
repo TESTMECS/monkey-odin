@@ -482,7 +482,6 @@ eval_hash_table_literal :: proc(
 	bool,
 ) {
 	ht := make(ObjectHashTable, len(node), e.vmem.allocator)
-	// ht := Vmem__Alloc__(&e.vmem, ObjectHashTable)
 
 	for key_node, value_node in node {
 		key, key_is_valid := eval(e, key_node, current_env)
@@ -545,11 +544,9 @@ eval_index_expression :: proc(
 	if ObjectType(operand) == ^ObjectArray && ObjectType(index) == int {
 		return eval_array_index_expression(e, operand.(^ObjectArray), index.(int))
 	}
-
 	if ObjectType(operand) == ^ObjectHashTable && ObjectType(index) == string {
 		return eval_hash_table_index_expression(e, operand.(^ObjectHashTable), index.(string))
 	}
-
 	return new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false
 }
 //%endsection
@@ -718,6 +715,7 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return nil, Evaluator{}, false
+	fmt.println(program)
 
 	e := Evaluator__New__() // Create the evaluator
 	evaluated, ok := e.eval(&e, program, e.vmem.allocator) // Evaluate the program
@@ -1168,6 +1166,35 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 
 		if !integer_object_is_valid(value, expected_value) {
 			log.errorf("key '%s' has wrong value", expected_key)
+		}
+	}
+}
+
+@(test)
+test_eval_array_index_expression :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	} {
+		{"[1, 2, 3][0]", 1},
+		{"[1, 2, 3][1]", 2},
+		{"[1, 2, 3][2]", 3},
+		{"let i = 0; [1][i]", 1},
+		{"[1, 2, 3][1 + 1];", 3},
+		{"let my_arr = [1, 2, 3]; my_arr[2]", 3},
+		{"let my_arr = [1, 2, 3]; my_arr[0] + my_arr[1] + my_arr[2];", 6},
+		{"let my_arr = [1, 2, 3]; let i = my_arr[0]; my_arr[i]", 2},
+	}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
 		}
 	}
 }

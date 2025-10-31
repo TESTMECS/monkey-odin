@@ -77,6 +77,7 @@ Ast_Index :: struct {
 	operand: ^Node,
 	index:   ^Node,
 }
+
 //%endsection
 //%Note: check for export.
 Is_Ast_Expression :: proc(ast: Node) -> bool {
