@@ -1,4 +1,5 @@
 package monkey
+import "base:runtime"
 import "core:fmt"
 import "core:log"
 import "core:strings"
@@ -26,19 +27,23 @@ Evaluator__New__ :: proc() -> Evaluator {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
 
-	new_env := Env__New__()
+	new_env := Env__New__(nil, v.allocator)
+
 	e := Evaluator {
 		_env = new_env,
 		eval = eval_statements,
 		free = eval_free,
 		vmem = v,
 	}
+
 	return e
 }
+
 eval_free :: proc(e: ^Evaluator) {
 	e.vmem->reset()
 	e._env->free()
 }
+
 @(private = "file")
 new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	sb := &e.vmem.string_builder
@@ -62,11 +67,9 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case Ast_Let:
 		val, ok := eval(e, data.value^, current_env)
 		if !ok do return val, false
-
 		_, ok = current_env->get(data.name)
 		if ok do return ObjectBase(new_error(e, "identifier '%s' is already declared", data.name)), false
-
-		current_env->set(strings.clone(data.name, e.vmem.allocator), ToObjectBase(val))
+		current_env->set(data.name, ToObjectBase(val))
 		return ObjectBase(NULL), true
 
 	// expressions
@@ -92,13 +95,12 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return eval_if_expression(e, data, current_env)
 
 	case Ast_Function:
-		// fn := new(ObjectFunction, e.vmem.allocator)
 		fn := Vmem__Alloc__(&e.vmem, ObjectFunction)
-		//Seg fault is here.
-		fn.parameters = make([dynamic]Ast_Identifier, cap(data.parameters), e.vmem.allocator)
+
+		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.vmem.allocator)
 		Ast__Copy__(&data.parameters, &fn.parameters, e.vmem.allocator) // Copies the parameters
 
-		fn.body = make(Ast_Block, 0, cap(data.body), e.vmem.allocator)
+		fn.body = make(Ast_Block, 0, len(data.body), e.vmem.allocator)
 		Ast__Copy__(&data.body, &fn.body, e.vmem.allocator) // copies the body
 
 		fn.env = current_env
@@ -149,7 +151,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 eval_statements :: proc(
 	e: ^Evaluator,
 	node: Ast_Program,
-	allocator := context.allocator,
+	allocator: runtime.Allocator,
 ) -> (
 	ObjectBase,
 	bool,
@@ -164,7 +166,7 @@ eval_statements :: proc(
 	}
 
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
-		result = ObjectBase(strings.clone(str_obj, e.vmem.allocator))
+		result = ObjectBase(str_obj)
 	}
 	return ToObjectBase(result), true
 }
@@ -425,6 +427,7 @@ extend_function_env :: proc(
 ) -> ^Environment {
 	env := Env__Enclosed__(fn.env, len(fn.parameters), e.vmem.allocator)
 
+	// Leak here fs
 	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
 	}
@@ -715,16 +718,13 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 	evaluated, ok := e.eval(&e, program, e.vmem.allocator) // Evaluate the program
 	if !ok {
 		if print_errors do log.errorf("eval failed: %s", evaluated)
-		e.free(&e)
+		e->free()
 		return nil, Evaluator{}, false
 	}
 	return evaluated, e, true
 }
 eval_test_is_valid :: proc(input: string, print_errors := true) -> (ObjectBase, bool) {
-	evaluated, e, ok := eval_test_get(input, print_errors)
-	if ok {
-		e.free(&e)
-	}
+	evaluated, _, ok := eval_test_get(input, print_errors)
 	return evaluated, ok
 }
 integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {
@@ -803,6 +803,7 @@ test_eval_integer_expression :: proc(t: ^testing.T) {
 			log.errorf("test [%d] has failed", i)
 		}
 	}
+
 }
 @(test)
 test_eval_boolean_expression :: proc(t: ^testing.T) {
@@ -978,11 +979,11 @@ test_eval_let_statements :: proc(t: ^testing.T) {
 test_eval_function_object :: proc(t: ^testing.T) {
 	input := "fn(x) { x + 2 };"
 
-	fmt.println("Eval function")
-	evaluated, ok := eval_test_is_valid(input)
+	evaluated, e, ok := eval_test_get(input)
 	if !ok do return
+	defer e.free(&e)
 
-	fn, is_fn := evaluated.(^ObjectFunction) // seg fault is here
+	fn, is_fn := evaluated.(^ObjectFunction)
 	if !is_fn {
 		log.errorf("object is not function. got='%v'", ObjectType(evaluated))
 		return
@@ -1002,7 +1003,6 @@ test_eval_function_object :: proc(t: ^testing.T) {
 		log.errorf("function's parameter is not 'x', got='%s'", fn.parameters[0])
 		return
 	}
-	fmt.println("Has right parameter")
 
 	expected_body := "{ (x+2) }"
 
@@ -1018,5 +1018,6 @@ test_eval_function_object :: proc(t: ^testing.T) {
 			strings.to_string(sb),
 		)
 	}
+	// e->free()
 }
 

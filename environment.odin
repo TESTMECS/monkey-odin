@@ -1,5 +1,6 @@
 package monkey
-
+import "base:runtime"
+import "core:fmt"
 Environment :: struct {
 	store: map[string]ObjectBase,
 	outer: ^Environment,
@@ -9,16 +10,24 @@ Environment :: struct {
 	free:  proc(env: ^Environment),
 }
 
-Env__New__ :: proc(outer: ^Environment = nil) -> Environment {
-	return {get = environment_get, set = environment_set, free = environment_free, outer = outer}
+Env__New__ :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> Environment {
+	store_mem := make(map[string]ObjectBase, 0, allocator)
+
+	return {
+		get = environment_get,
+		set = environment_set,
+		free = environment_free,
+		outer = outer,
+		store = store_mem,
+	}
 }
 
 Env__Enclosed__ :: proc(
 	outer: ^Environment,
 	reserved: uint,
-	allocator := context.allocator,
+	allocator: runtime.Allocator,
 ) -> ^Environment {
-	env := Env__New__(outer)
+	env := Env__New__(outer, allocator)
 	env.store = make(map[string]ObjectBase, reserved, allocator)
 	return new_clone(env, allocator)
 }
@@ -41,5 +50,4 @@ environment_set :: proc(env: ^Environment, name: string, value: ObjectBase) -> O
 	env.store[name] = value
 	return value
 }
-
 
