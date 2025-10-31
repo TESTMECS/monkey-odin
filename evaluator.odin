@@ -408,7 +408,8 @@ eval_array_of_expressions_registered :: proc(
 	ObjectArray,
 	bool,
 ) {
-	// Can't do this because [dynamic] for ObjectArray
+	// Intestingly, this make call crashes my entire OS LMAO
+	// TODO: Might be interesting to find out why
 	// args := make([dynamic]ObjectBase, 0, len(expressions), e.vmem.allocator)
 	args := make(ObjectArray, 0, len(expressions), e.vmem.allocator)
 
