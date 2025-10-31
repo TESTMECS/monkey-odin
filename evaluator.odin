@@ -17,6 +17,7 @@ Evaluator :: struct {
 	free: proc(e: ^Evaluator),
 	vmem: VArena,
 }
+//%section Evaluator
 Evaluator__New__ :: proc() -> Evaluator {
 	v := VArena__New__()
 	err := v->init()
@@ -38,6 +39,113 @@ eval_free :: proc(e: ^Evaluator) {
 	e.vmem->reset()
 	e._env->free()
 }
+@(private = "file")
+new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
+	sb := &e.vmem.string_builder
+	strings.builder_reset(sb)
+	fmt.sbprintf(sb, str, ..args)
+	err := strings.to_string(sb^)
+	return strings.clone(err, e.vmem.allocator)
+}
+//%endsection
+//%section main eval function
+@(private = "file")
+eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
+	#partial switch &data in node {
+
+	// statements
+	case Ast_Ret:
+		val, ok := eval(e, data.return_value^, current_env)
+		if !ok do return val, false
+		return ObjectReturn(ToObjectBase(val)), true
+
+	case Ast_Let:
+		val, ok := eval(e, data.value^, current_env)
+		if !ok do return val, false
+
+		_, ok = current_env->get(data.name)
+		if ok do return ObjectBase(new_error(e, "identifier '%s' is already declared", data.name)), false
+
+		current_env->set(strings.clone(data.name, e.vmem.allocator), ToObjectBase(val))
+		return ObjectBase(NULL), true
+
+	// expressions
+	case Ast_Identifier:
+		return eval_identifier(e, data, current_env)
+
+	case Ast_Prefix:
+		operand, ok := eval(e, data.operand^, current_env)
+		if !ok do return operand, false
+		return eval_prefix_expression(e, data.op, ToObjectBase(operand))
+
+	case Ast_Infix:
+		left, ok := eval(e, data.left^, current_env)
+		if !ok do return left, false
+		right, ok2 := eval(e, data.right^, current_env)
+		if !ok2 do return right, ok2
+		return eval_infix_expression(e, data.op, ToObjectBase(left), ToObjectBase(right))
+
+	case Ast_Block:
+		return eval_block_statements(e, data, current_env)
+
+	case Ast_If:
+		return eval_if_expression(e, data, current_env)
+
+	case Ast_Function:
+		// fn := new(ObjectFunction, e.vmem.allocator)
+		fn := Vmem__Alloc__(&e.vmem, ObjectFunction)
+		//Seg fault is here.
+		fn.parameters = make([dynamic]Ast_Identifier, cap(data.parameters), e.vmem.allocator)
+		Ast__Copy__(&data.parameters, &fn.parameters, e.vmem.allocator) // Copies the parameters
+
+		fn.body = make(Ast_Block, 0, cap(data.body), e.vmem.allocator)
+		Ast__Copy__(&data.body, &fn.body, e.vmem.allocator) // copies the body
+
+		fn.env = current_env
+		return ObjectBase(fn), true
+
+	case Ast_Call:
+		function, ok := eval(e, data.function^, current_env)
+		if !ok do return function, false
+
+		args, args_success := eval_array_of_expressions_fixed(e, data.arguments, current_env)
+		if !args_success do return args[0], false
+
+		return apply_function(e, ToObjectBase(function), args)
+
+	case Ast_Index:
+		operand, ok := eval(e, data.operand^, current_env)
+		if !ok do return operand, false
+
+		index, index_ok := eval(e, data.index^, current_env)
+		if !index_ok do return index, false
+
+		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index))
+
+	// literals
+	case int:
+		return ObjectBase(data), true
+
+	case bool:
+		return ObjectBase(data), true
+
+	case string:
+		return ObjectBase(strings.clone(data, e.vmem.allocator)), true
+
+	case Ast_Array:
+		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
+		if !ok do return ObjectBase(elements), false
+
+		return ObjectBase(elements), true
+
+	case Ast_Hash_Table:
+		return eval_hash_table_literal(e, data, current_env)
+	}
+
+	return ObjectBase(new_error(e, "unrecognized Node of type '%v'", ast_type(node))), false
+}
+//%endsection
+//%section eval statements
 eval_statements :: proc(
 	e: ^Evaluator,
 	node: Ast_Program,
@@ -56,20 +164,10 @@ eval_statements :: proc(
 	}
 
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
-		result = ObjectBase(strings.clone(str_obj, allocator))
+		result = ObjectBase(strings.clone(str_obj, e.vmem.allocator))
 	}
 	return ToObjectBase(result), true
 }
-
-@(private = "file")
-new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
-	sb := &e.vmem.string_builder
-	strings.builder_reset(sb)
-	fmt.sbprintf(sb, str, ..args)
-	err := strings.to_string(sb^)
-	return strings.clone(err, e.vmem.allocator)
-}
-
 @(private = "file")
 eval_block_statements :: proc(
 	e: ^Evaluator,
@@ -94,7 +192,9 @@ eval_block_statements :: proc(
 	}
 	return result, true
 }
+//%endsection
 
+//%section eval expressions
 @(private = "file")
 eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> ObjectBase {
 	#partial switch data in operand {
@@ -444,7 +544,9 @@ eval_index_expression :: proc(
 
 	return new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false
 }
+//%endsection
 
+//%section eval builtin functions
 @(private = "file")
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
@@ -601,101 +703,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	return nil
 }
-@(private = "file")
-eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
-	#partial switch &data in node {
-
-	// statements
-	case Ast_Ret:
-		val, ok := eval(e, data.return_value^, current_env)
-		if !ok do return val, false
-		return ObjectReturn(ToObjectBase(val)), true
-
-	case Ast_Let:
-		val, ok := eval(e, data.value^, current_env)
-		if !ok do return val, false
-
-		_, ok = current_env->get(data.name)
-		if ok do return ObjectBase(new_error(e, "identifier '%s' is already declared", data.name)), false
-
-		current_env->set(strings.clone(data.name, e.vmem.allocator), ToObjectBase(val))
-		return ObjectBase(NULL), true
-
-	// expressions
-	case Ast_Identifier:
-		return eval_identifier(e, data, current_env)
-
-	case Ast_Prefix:
-		operand, ok := eval(e, data.operand^, current_env)
-		if !ok do return operand, false
-		return eval_prefix_expression(e, data.op, ToObjectBase(operand))
-
-	case Ast_Infix:
-		left, ok := eval(e, data.left^, current_env)
-		if !ok do return left, false
-		right, ok2 := eval(e, data.right^, current_env)
-		if !ok2 do return right, ok2
-		return eval_infix_expression(e, data.op, ToObjectBase(left), ToObjectBase(right))
-
-	case Ast_Block:
-		return eval_block_statements(e, data, current_env)
-
-	case Ast_If:
-		return eval_if_expression(e, data, current_env)
-
-	case Ast_Function:
-		fn := new(ObjectFunction, e.vmem.allocator)
-
-		fn.parameters = make([dynamic]Ast_Identifier, 0, cap(data.parameters), e.vmem.allocator)
-		Ast__Copy__(&data.parameters, &fn.parameters, e.vmem.allocator)
-
-		fn.body = make(Ast_Block, 0, cap(data.body), e.vmem.allocator)
-		Ast__Copy__(&data.body, &fn.body, e.vmem.allocator)
-
-		fn.env = current_env
-
-		return ObjectBase(fn), true
-
-	case Ast_Call:
-		function, ok := eval(e, data.function^, current_env)
-		if !ok do return function, false
-
-		args, args_success := eval_array_of_expressions_fixed(e, data.arguments, current_env)
-		if !args_success do return args[0], false
-
-		return apply_function(e, ToObjectBase(function), args)
-
-	case Ast_Index:
-		operand, ok := eval(e, data.operand^, current_env)
-		if !ok do return operand, false
-
-		index, index_ok := eval(e, data.index^, current_env)
-		if !index_ok do return index, false
-
-		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index))
-
-	// literals
-	case int:
-		return ObjectBase(data), true
-
-	case bool:
-		return ObjectBase(data), true
-
-	case string:
-		return ObjectBase(strings.clone(data, e.vmem.allocator)), true
-
-	case Ast_Array:
-		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
-		if !ok do return ObjectBase(elements), false
-
-		return ObjectBase(elements), true
-
-	case Ast_Hash_Table:
-		return eval_hash_table_literal(e, data, current_env)
-	}
-
-	return ObjectBase(new_error(e, "unrecognized Node of type '%v'", ast_type(node))), false
-}
+//%endsection
 //%section test helpers.
 eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evaluator, bool) {
 	p := Parser__New__(input)
@@ -963,6 +971,52 @@ test_eval_let_statements :: proc(t: ^testing.T) {
 		if !integer_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test[%d] has failed", i)
 		}
+	}
+}
+
+@(test)
+test_eval_function_object :: proc(t: ^testing.T) {
+	input := "fn(x) { x + 2 };"
+
+	fmt.println("Eval function")
+	evaluated, ok := eval_test_is_valid(input)
+	if !ok do return
+
+	fn, is_fn := evaluated.(^ObjectFunction) // seg fault is here
+	if !is_fn {
+		log.errorf("object is not function. got='%v'", ObjectType(evaluated))
+		return
+	}
+
+	if len(fn.parameters) != 1 {
+		log.errorf(
+			"function has wrong number of parameters, got='%d', '%v'",
+			len(fn.parameters),
+			fn.parameters,
+		)
+		return
+	}
+
+
+	if fn.parameters[0].value != "x" {
+		log.errorf("function's parameter is not 'x', got='%s'", fn.parameters[0])
+		return
+	}
+	fmt.println("Has right parameter")
+
+	expected_body := "{ (x+2) }"
+
+	sb := strings.builder_make(context.temp_allocator)
+	defer free_all(context.temp_allocator)
+
+	ast_to_string(fn.body, &sb)
+
+	if strings.to_string(sb) != expected_body {
+		log.errorf(
+			"ast_to_string ris not valid, expected='%s', got='%s'",
+			expected_body,
+			strings.to_string(sb),
+		)
 	}
 }
 
