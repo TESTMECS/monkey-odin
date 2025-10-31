@@ -18,19 +18,20 @@ Evaluator :: struct {
 	vmem: VArena,
 }
 Evaluator__New__ :: proc() -> Evaluator {
-	new_env := Env_New() // this is where store should be allocated.
-	e := Evaluator {
-		_env = new_env,
-		eval = eval_statements,
-		free = eval_free,
-	}
 	v := VArena__New__()
 	err := v->init()
 
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
-	e.vmem = v
+
+	new_env := Env__New__()
+	e := Evaluator {
+		_env = new_env,
+		eval = eval_statements,
+		free = eval_free,
+		vmem = v,
+	}
 	return e
 }
 eval_free :: proc(e: ^Evaluator) {
@@ -89,7 +90,7 @@ eval_block_statements :: proc(
 	}
 
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
-		result = ObjectBase(strings.clone(str_obj, context.temp_allocator))
+		result = ObjectBase(strings.clone(str_obj, e.vmem.allocator))
 	}
 	return result, true
 }
@@ -190,9 +191,7 @@ eval_string_infix_expression :: proc(
 	strings.builder_reset(&e.vmem.string_builder)
 	fmt.sbprintf(&e.vmem.string_builder, "%s%s", left, right)
 
-	result := strings.to_string(e.vmem.string_builder)
-
-	return strings.clone(result, context.temp_allocator), true
+	return strings.to_string(e.vmem.string_builder), true
 }
 
 
@@ -323,7 +322,7 @@ extend_function_env :: proc(
 	e: ^Evaluator,
 	fn: ^ObjectFunction,
 	args: [dynamic]ObjectBase,
-) -> Environment {
+) -> ^Environment {
 	env := Env__Enclosed__(fn.env, len(fn.parameters), e.vmem.allocator)
 
 	for param, idx in fn.parameters {
@@ -354,7 +353,7 @@ apply_function :: proc(
 				false
 		}
 		extended_env := extend_function_env(e, function, args)
-		evaluated, success := eval(e, function.body, &extended_env)
+		evaluated, success := eval(e, function.body, extended_env)
 		extended_env->free()
 		return ToObjectBase(evaluated), success
 
@@ -705,17 +704,19 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 	if parser_has_error(p) do return nil, Evaluator{}, false
 
 	e := Evaluator__New__() // Create the evaluator
-	evaluated, ok := e->eval(program, e.vmem.allocator) // Evaluate the program
+	evaluated, ok := e.eval(&e, program, e.vmem.allocator) // Evaluate the program
 	if !ok {
 		if print_errors do log.errorf("eval failed: %s", evaluated)
-		e->free()
+		e.free(&e)
 		return nil, Evaluator{}, false
 	}
 	return evaluated, e, true
 }
 eval_test_is_valid :: proc(input: string, print_errors := true) -> (ObjectBase, bool) {
 	evaluated, e, ok := eval_test_get(input, print_errors)
-	defer if !ok do e->free()
+	if ok {
+		e.free(&e)
+	}
 	return evaluated, ok
 }
 integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {

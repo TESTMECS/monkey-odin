@@ -8,6 +8,7 @@ VArena :: struct {
 	arena:          virtual.Arena,
 	allocator:      runtime.Allocator,
 	string_builder: strings.Builder,
+	registry:       [dynamic]ObjectBase,
 	registered:     bool,
 	//%methods
 	init:           proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error,
@@ -31,6 +32,12 @@ Vmem__Alloc__ :: proc(m: ^VArena, $T: typeid) -> ^T {
 	}
 	return ptr
 }
+Vmem__Register__ :: proc(m: ^VArena, obj: ObjectBase) {
+	if !m.registered {
+		panic("VmemRegister: allocator is invalid (arena destroyed)")
+	}
+	append(&m.registry, obj)
+}
 //%endsection
 //%desc{{"Initialize the manager"}}
 vmem_init :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
@@ -50,6 +57,8 @@ vmem_init :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocato
 //%desc{{"Reset the entire memory pool (destroys everything allocated inside)"}}
 vmem_reset :: proc(m: ^VArena) {
 	virtual.arena_destroy(&m.arena)
+	delete(m.registry)
+	m.registry = {}
 	m.arena = {}
 	m.allocator = {}
 	m.string_builder = {}
