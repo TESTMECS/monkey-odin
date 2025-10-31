@@ -136,9 +136,9 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
-		if !ok do return ObjectBase(elements), false
+		if !ok do return ObjectBase(&elements), false
 
-		return ObjectBase(elements), true
+		return ObjectBase(&elements), true
 
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
@@ -405,14 +405,16 @@ eval_array_of_expressions_registered :: proc(
 	expressions: Ast_Array,
 	current_env: ^Environment,
 ) -> (
-	^ObjectArray,
+	ObjectArray,
 	bool,
 ) {
-	args := make([dynamic]Node, 0, len(expressions), e.vmem.allocator)
+	// Can't do this because [dynamic] for ObjectArray
+	// args := make([dynamic]ObjectBase, 0, len(expressions), e.vmem.allocator)
+	args := make(ObjectArray, 0, len(expressions), e.vmem.allocator)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
-		append(args, ToObjectBase(evaluated))
+		append(&args, ToObjectBase(evaluated))
 		if !ok do return args, false
 	}
 

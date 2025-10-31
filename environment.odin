@@ -1,6 +1,5 @@
 package monkey
 import "base:runtime"
-import "core:fmt"
 Environment :: struct {
 	store: map[string]ObjectBase,
 	outer: ^Environment,
