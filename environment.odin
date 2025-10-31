@@ -1,6 +1,4 @@
 package monkey
-import "core:fmt"
-import "core:strings"
 //%type{Environment::struct}
 Environment :: struct {
 	store: map[string]ObjectBase,
@@ -12,13 +10,19 @@ Environment :: struct {
 	vmem:  VArena,
 }
 Env_New :: proc(outer: ^Environment = nil) -> Environment {
+	env := Environment{}
 	v := VArena__New__()
 	err := v->init()
 	if err != .None {
 		panic("Failed to initialize environment memory manager")
 	}
-	//Store is still empty
-	return Environment{get = env_get, set = env_set, free = env_free, outer = outer, vmem = v}
+	env.store = make(map[string]ObjectBase, 0, v.allocator)
+	env.get = env_get
+	env.set = env_set
+	env.free = env_free
+	env.outer = outer
+	env.vmem = v
+	return env
 }
 Env__Enclosed__ :: proc(
 	outer: ^Environment,
@@ -27,8 +31,7 @@ Env__Enclosed__ :: proc(
 ) -> Environment {
 	env := Env_New(outer)
 	env.store = make(map[string]ObjectBase, reserved, allocator)
-	env_clone := new_clone(env, allocator)^
-	return env_clone
+	return env
 }
 env_set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase {
 	e.store[name] = value
@@ -37,6 +40,7 @@ env_set :: proc(e: ^Environment, name: string, value: ObjectBase) -> ObjectBase 
 @(private = "file")
 env_free :: proc(e: ^Environment) {
 	e.vmem->reset()
+	delete(e.store)
 }
 @(private = "file")
 env_get :: proc(e: ^Environment, name: string) -> (ObjectBase, bool) {
