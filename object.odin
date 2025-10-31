@@ -39,8 +39,8 @@ ObjectBase :: union {
 	ObjectNil,
 	^ObjectFunction,
 	ObjectBuilinFunction,
-	^ObjectArray,
-	^ObjectHashTable,
+	ObjectArray,
+	ObjectHashTable,
 	ObjectCompiledFunction,
 }
 
@@ -135,14 +135,14 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 		fmt.sbprint(sb, "(function)")
 	case ObjectBuilinFunction:
 		fmt.sbprint(sb, "(builtin)")
-	case ^ObjectArray:
+	case ObjectArray:
 		fmt.sbprint(sb, "[")
 		for item, i in data {
 			ObjectInspect(item, sb)
 			if i < len(data) - 1 do fmt.sbprint(sb, ", ")
 		}
 		fmt.sbprint(sb, "]")
-	case ^ObjectHashTable:
+	case ObjectHashTable:
 		fmt.sbprint(sb, "{ ")
 		i := 0
 		for key, value in data {

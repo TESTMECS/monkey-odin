@@ -137,9 +137,9 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
-		if !ok do return ObjectBase(&elements), false
+		if !ok do return ObjectBase(elements), false
 
-		return ObjectBase(&elements), true
+		return ObjectBase(elements), true
 
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
@@ -316,10 +316,51 @@ eval_infix_expression :: proc(
 
 	switch op {
 	case "==":
-		return left == right, true
-
+		switch ObjectType(left) {
+		case ObjectArray,
+		     ObjectHashTable,
+		     ObjectBuilinFunction,
+		     ObjectCompiledFunction,
+		     ObjectFunction:
+			if ObjectType(right) == ObjectArray do return new_error(e, "cannot compare arrays with '=='"), false
+		case ObjectNil:
+			// always false
+			return false, true
+		case int, string, bool:
+			// make sure to compare bools by value
+			if ObjectType(left) == bool && ObjectType(right) == bool {
+				return left.(bool) == right.(bool), true
+			}
+			if ObjectType(left) == int && ObjectType(right) == int {
+				return left.(int) == right.(int), true
+			}
+			if ObjectType(left) == string && ObjectType(right) == string {
+				return left.(string) == right.(string), true
+			}
+			return false, true
+		}
 	case "!=":
-		return left != right, true
+		switch ObjectType(left) {
+		case ObjectArray,
+		     ObjectHashTable,
+		     ObjectBuilinFunction,
+		     ObjectCompiledFunction,
+		     ObjectFunction:
+			return new_error(e, "cannot compare arrays with '=='"), false
+		case ObjectNil:
+			return true, true
+		case int, string, bool:
+			if ObjectType(left) == bool && ObjectType(right) == bool {
+				return left.(bool) == right.(bool), true
+			}
+			if ObjectType(left) == int && ObjectType(right) == int {
+				return left.(int) == right.(int), true
+			}
+			if ObjectType(left) == string && ObjectType(right) == string {
+				return left.(string) == right.(string), true
+			}
+			return false, true
+		}
 	}
 
 	return new_error(
@@ -493,13 +534,13 @@ eval_hash_table_literal :: proc(
 		key_conv, key_is_string := ToObjectBase(key).(string)
 		ht[key_conv] = ToObjectBase(value)
 	}
-	return ObjectBase(&ht), true
+	return ObjectBase(ht), true
 }
 
 @(private = "file")
 eval_array_index_expression :: proc(
 	e: ^Evaluator,
-	array: ^ObjectArray,
+	array: ObjectArray,
 	index: int,
 ) -> (
 	ObjectBase,
@@ -517,7 +558,7 @@ eval_array_index_expression :: proc(
 @(private = "file")
 eval_hash_table_index_expression :: proc(
 	e: ^Evaluator,
-	ht: ^ObjectHashTable,
+	ht: ObjectHashTable,
 	key: string,
 ) -> (
 	ObjectBase,
@@ -541,11 +582,11 @@ eval_index_expression :: proc(
 	ObjectBase,
 	bool,
 ) {
-	if ObjectType(operand) == ^ObjectArray && ObjectType(index) == int {
-		return eval_array_index_expression(e, operand.(^ObjectArray), index.(int))
+	if ObjectType(operand) == ObjectArray && ObjectType(index) == int {
+		return eval_array_index_expression(e, operand.(ObjectArray), index.(int))
 	}
-	if ObjectType(operand) == ^ObjectHashTable && ObjectType(index) == string {
-		return eval_hash_table_index_expression(e, operand.(^ObjectHashTable), index.(string))
+	if ObjectType(operand) == ObjectHashTable && ObjectType(index) == string {
+		return eval_hash_table_index_expression(e, operand.(ObjectHashTable), index.(string))
 	}
 	return new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false
 }
@@ -570,7 +611,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				case string:
 					return len(arg), true
 
-				case ^ObjectArray:
+				case ObjectArray:
 					return len(arg), true
 				}
 
@@ -593,7 +634,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				arr, ok := args[0].(^ObjectArray)
+				arr, ok := args[0].(ObjectArray)
 				if !ok {
 					return new_error(
 							e,
@@ -619,7 +660,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				arr, ok := args[0].(^ObjectArray)
+				arr, ok := args[0].(ObjectArray)
 				if !ok {
 					return new_error(
 							e,
@@ -645,7 +686,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				arr, ok := args[0].(^ObjectArray)
+				arr, ok := args[0].(ObjectArray)
 				if !ok {
 					return new_error(
 							e,
@@ -659,7 +700,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					new_arr := Vmem__Alloc__(&e.vmem, ObjectArray)
 					inject_at(new_arr, 0, ..arr[1:])
 
-					return new_arr, true
+					return new_arr^, true
 				}
 
 				return NULL, true
@@ -676,7 +717,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				arr, ok := args[0].(^ObjectArray)
+				arr, ok := args[0].(ObjectArray)
 				if !ok {
 					return new_error(
 							e,
@@ -686,7 +727,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				append(arr, args[1])
+				append(&arr, args[1])
 
 				return NULL, true
 			}
@@ -715,7 +756,6 @@ eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evalu
 	defer p->free()
 	program := p->parse()
 	if parser_has_error(p) do return nil, Evaluator{}, false
-	fmt.println(program)
 
 	e := Evaluator__New__() // Create the evaluator
 	evaluated, ok := e.eval(&e, program, e.vmem.allocator) // Evaluate the program
@@ -823,8 +863,8 @@ test_eval_boolean_expression :: proc(t: ^testing.T) {
 		{"1!=1", false},
 		{"true == true", true},
 		{"false == false", true},
-		{"(1<2) == true", true},
-		{"(1<2) == false", false},
+		{"(1 < 2) == true", true},
+		{"(1 < 2) == false", false},
 	}
 
 	for test_case, i in tests {
@@ -1098,7 +1138,7 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 	evaluated, ok := eval_test_is_valid(input)
 	if !ok do return
 
-	arr, is_arr := evaluated.(^ObjectArray)
+	arr, is_arr := evaluated.(ObjectArray)
 	if !is_arr {
 		log.errorf("expected array object but got '%v'", ObjectType(evaluated))
 		return
@@ -1135,7 +1175,7 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 	evaluated, ok := eval_test_is_valid(input)
 	if !ok do return
 
-	ht, is_hash_table := evaluated.(^ObjectHashTable)
+	ht, is_hash_table := evaluated.(ObjectHashTable)
 	if !is_hash_table {
 		log.errorf("expected hash table object but got '%v'", ObjectType(evaluated))
 		return
