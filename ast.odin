@@ -79,8 +79,8 @@ Ast_Index :: struct {
 }
 
 //%endsection
-//%Note: check for export.
-Is_Ast_Expression :: proc(ast: Node) -> bool {
+
+Ast__IsExpression__ :: proc(ast: Node) -> bool {
 	t := ast_type(ast)
 	return t != Node && t != Ast_Let && t != Ast_Ret
 }
