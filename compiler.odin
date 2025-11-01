@@ -42,12 +42,9 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 	}
 }
 free_state :: proc(state: ^Compiler_State) {
-	state.vmem->reset() // scope is freed here.
+	state.vmem->reset() // scope is freed here. scopes, constants and globals are freed here.
 	state.symbol_table->free()
 
-	delete(state.scopes)
-	// delete(state.globals)
-	delete(state.constants)
 	free(state.vmem)
 }
 //%endsection
