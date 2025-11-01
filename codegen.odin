@@ -1,6 +1,7 @@
 #+feature dynamic-literals
 package monkey
 
+import "base:runtime"
 import "core:encoding/endian"
 import "core:fmt"
 import "core:log"
@@ -88,10 +89,18 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 
 	inst_len := 1
 	for w in def.operand_widths {
+		// fmt.printfln("w='%v'", w)
 		inst_len += w
 	}
+	// fmt.printfln("Instruction Length='%v'", inst_len)
 
-	instruction := make([dynamic]byte, 0, inst_len, allocator)
+	//WTF
+	instruction := make([dynamic]byte, inst_len, allocator)
+	resize(&instruction, inst_len)
+	defer delete(instruction)
+	// fmt.printfln("Instruction='%v'", instruction)
+	// fmt.printfln("Opcode='%v'", op)
+	// fmt.printfln("Opcode to byte='%v'", byte(op))
 	instruction[0] = byte(op) // instruction bad index?
 
 	offset := 1
@@ -99,7 +108,8 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 		width := def.operand_widths[i]
 		switch width {
 		case 2:
-			endian.put_u16(instruction[offset:], .Big, u16(o))
+			inst_clone := instruction[offset:]
+			endian.put_u16(inst_clone, .Big, u16(o))
 		case 1:
 			instruction[offset] = byte(o)
 		}

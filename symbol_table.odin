@@ -1,5 +1,7 @@
 package monkey
+import "core:mem"
 import "core:strings"
+
 Symbol_Scope :: enum {
 	Global,
 	Local,
@@ -16,15 +18,11 @@ Symbol_Table :: struct {
 	outer:   ^Symbol_Table,
 	//%methods
 	free:    proc(table: ^Symbol_Table),
-	define:  proc(table: ^Symbol_Table, name: string) -> Symbol,
+	define:  proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol,
 	resolve: proc(table: ^Symbol_Table, name: string) -> (Symbol, bool),
-	vmem:    VArena,
 }
 
-Symbol_Table__New__ :: proc(
-	allocator := context.allocator,
-	outer: ^Symbol_Table = nil,
-) -> Symbol_Table {
+Symbol_Table__New__ :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -> Symbol_Table {
 	return Symbol_Table {
 		store = make(map[string]Symbol, allocator),
 		outer = outer,
@@ -34,8 +32,8 @@ Symbol_Table__New__ :: proc(
 			delete(table.store)
 		},
 		//%desc{{"defines a symbol in the symbol table and returns it"}}
-		define = proc(table: ^Symbol_Table, name: string) -> Symbol {
-			name_copied := strings.clone(name, table.vmem.allocator)
+		define = proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol {
+			name_copied := strings.clone(name, allocator)
 			scope: Symbol_Scope = .Global if table.outer == nil else .Local
 			symbol := Symbol{name_copied, scope, len(table.store)}
 			table.store[name_copied] = symbol
@@ -47,8 +45,6 @@ Symbol_Table__New__ :: proc(
 			if !ok && table.outer != nil do return table.outer->resolve(name)
 			return obj, ok
 		},
-		//%desc{{"returns the VArena used by the symbol table"}}
-		vmem = VArena__New__(),
 	}
 }
 

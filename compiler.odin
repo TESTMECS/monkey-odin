@@ -1,5 +1,9 @@
 package monkey
-
+/*%NOTE{{"Never use the procs in the struct like this again.
+	I really like the c->method() syntax but for testing its buns ->
+`+++ leak       384B @ 0x7872031FD048 [compiler.odin:166:monkey::Compiler__New__$anon-38()]`
+This leak could be anywhere in the functions on the compiler, assert checking and logging is the only way to find it."}}
+*/
 import "core:fmt"
 import "core:log"
 import "core:reflect"
@@ -11,6 +15,7 @@ Compiler_State :: struct {
 	symbol_table: Symbol_Table,
 	constants:    [dynamic]ObjectBase,
 	globals:      []ObjectBase,
+	scopes:       ^[dynamic]Compilation_Scope,
 	free:         proc(state: ^Compiler_State),
 	vmem:         VArena,
 }
@@ -21,14 +26,25 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
+
+	// Scopes init
+	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, v.allocator) // limit is STACK_SIZE
+	main_scope := Compilation_Scope{}
+	main_scope_instructions := make(Instructions, 0, v.allocator)
+	main_scope.instructions = &main_scope_instructions
+	append(&scopes, main_scope)
+
 	return Compiler_State {
 		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
 		symbol_table = Symbol_Table__New__(v.allocator),
+		scopes = &scopes,
 		free = proc(state: ^Compiler_State) {
 			state.vmem->reset()
+			state.symbol_table->free()
+
+			free(state.scopes)
 			delete(state.globals)
 			delete(state.constants)
-			state.symbol_table->free()
 		},
 	}
 }
@@ -52,7 +68,6 @@ Compilation_Scope :: struct {
 
 Compiler :: struct {
 	using compiler_state:         ^Compiler_State,
-	scopes:                       ^[dynamic]Compilation_Scope,
 	scopes_idx:                   int,
 	compile_program:              proc(c: ^Compiler, node: Ast_Program) -> (err: string),
 	compile:                      proc(c: ^Compiler, node: Node) -> (err: string),
@@ -81,7 +96,7 @@ Compiler__New__ :: proc() -> Compiler {
 		compile_program = proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 			err = ""
 			for stmt in program {
-				if err = compile(c, stmt); err != "" do return
+				if err = c->compile(stmt); err != "" do return
 				if Ast__IsExpression__(stmt) {
 					c->emit(.Pop)
 				}
@@ -91,8 +106,11 @@ Compiler__New__ :: proc() -> Compiler {
 		compile = compile,
 		emit = proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 			//%desc{{"emits an instruction to the current scope"}}
+			fmt.printfln("emitting %v", op)
 			ins := make_instructions(c.vmem.allocator, op, ..operands)
+			fmt.printfln("adding instructions=%v", ins)
 			pos := c->add_instructions(ins[:])
+			fmt.printfln("setting last instruction to %v", op)
 			c->set_last_instruction(op, pos)
 			return pos
 		},
@@ -122,6 +140,7 @@ Compiler__New__ :: proc() -> Compiler {
 			return instructions
 		},
 		current_instructions = proc(c: ^Compiler) -> ^Instructions {
+			// Seg fault here.
 			return c.scopes[c.scopes_idx].instructions
 		},
 		set_last_instruction = proc(c: ^Compiler, op: Opcode, pos: int) {
@@ -133,6 +152,7 @@ Compiler__New__ :: proc() -> Compiler {
 		},
 		add_instructions = proc(c: ^Compiler, instructions: []byte) -> int {
 			//%desc{{"adds instructions to the current scope"}}
+			fmt.printfln("adding instructions=%v", instructions)
 			pos := len(c->current_instructions())
 			append(c->current_instructions(), ..instructions)
 			return pos
@@ -144,7 +164,9 @@ Compiler__New__ :: proc() -> Compiler {
 			c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 		},
 		add_constant = proc(c: ^Compiler, obj: ObjectBase) -> int {
+			fmt.printfln("adding constant")
 			append(&c.compiler_state.constants, obj)
+			fmt.printfln("%v", len(c.compiler_state.constants) - 1)
 			return len(c.compiler_state.constants) - 1
 		},
 		remove_last_pop = proc(c: ^Compiler) {
@@ -178,7 +200,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	#partial switch data in ast {
 	case Ast_Let:
 		if err = c->compile(data.value^); err != "" do return
-		symbol := c.symbol_table->define(data.name)
+		symbol := c.symbol_table->define(data.name, c.vmem.allocator)
 		c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 	case Ast_Ret:
 		if err = c->compile(data.return_value^); err != "" do return
@@ -291,7 +313,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Function:
 		c->enter_scope()
 		for param in data.parameters {
-			c.symbol_table->define(param.value)
+			c.symbol_table->define(param.value, c.vmem.allocator)
 		}
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
@@ -318,7 +340,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Call, len(data.arguments))
 	case int:
-		c->emit(.Cnst, c->add_constant(data))
+		c->emit(.Cnst, c->add_constant(data)) // returns 0
 	case bool:
 		c->emit(.True if data else .False)
 	case string:
@@ -465,12 +487,14 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 			log.error(err)
 			continue
 		}
+
 		bytecode := c->bytecode()
 		err = test_instructions(test_case.expected_instructions[:], bytecode.instructions)
 		if err != "" {
 			log.errorf("Instructions for test_case[%d] failed with: %v", i, err)
 			continue
 		}
+
 		err = test_constants(test_case.expected_constants, bytecode.constants)
 		if err != "" {
 			log.errorf("Constants for test_case[%d] failed with: %v", i, err)
