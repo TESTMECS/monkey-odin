@@ -1,9 +1,4 @@
 package monkey
-/*%NOTE{{"Never use the procs in the struct like this again.
-	I really like the c->method() syntax but for testing its buns ->
-`+++ leak       384B @ 0x7872031FD048 [compiler.odin:166:monkey::Compiler__New__$anon-38()]`
-This leak could be anywhere in the functions on the compiler, assert checking and logging is the only way to find it."}}
-*/
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -12,7 +7,7 @@ import "core:slice"
 import "core:strings"
 import "core:testing"
 
-DEBUG :: true
+DEBUG :: false
 
 //%section Compiler_State
 Compiler_State :: struct {
@@ -42,17 +37,18 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
 		symbol_table = Symbol_Table__New__(v.allocator),
 		scopes = scopes,
-		free = proc(state: ^Compiler_State) {
-			state.vmem->reset() // scope is freed here.
-			state.symbol_table->free()
-
-			delete(state.scopes)
-			// delete(state.globals)
-			delete(state.constants)
-			free(state.vmem, context.allocator)
-		},
+		free = free_state,
 		vmem = v,
 	}
+}
+free_state :: proc(state: ^Compiler_State) {
+	state.vmem->reset() // scope is freed here.
+	state.symbol_table->free()
+
+	delete(state.scopes)
+	// delete(state.globals)
+	delete(state.constants)
+	free(state.vmem)
 }
 //%endsection
 //%section compiler typedefs
