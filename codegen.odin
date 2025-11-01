@@ -91,8 +91,8 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 		inst_len += w
 	}
 
-	instruction := make(Instructions, inst_len, inst_len, allocator)
-	instruction[0] = byte(op)
+	instruction := make([dynamic]byte, 0, inst_len, allocator)
+	instruction[0] = byte(op) // instruction bad index?
 
 	offset := 1
 	for o, i in operands {

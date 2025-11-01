@@ -1,8 +1,11 @@
 package monkey
 
 import "core:fmt"
+import "core:log"
+import "core:reflect"
 import "core:slice"
 import "core:strings"
+import "core:testing"
 //%section Compiler_State
 Compiler_State :: struct {
 	symbol_table: Symbol_Table,
@@ -95,7 +98,7 @@ Compiler__New__ :: proc() -> Compiler {
 		},
 		bytecode = proc(c: ^Compiler) -> Bytecode {
 			//%desc{{"returns the bytecode for the current scope"}}
-			return Bytecode {
+			return {
 				instructions = c->current_instructions()[:],
 				constants = c.compiler_state.constants[:],
 			}
@@ -323,6 +326,178 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
 	return
+}
+//%endsection
+//%section: tests
+@(test)
+test_compile_integer_arithmetic :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"1; 2",
+			{1, 2},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Pop),
+				make_instructions(context.allocator, .Cnst, 1),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+		{
+			"-1",
+			{1},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Neg),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+		{
+			"1 + 2",
+			{1, 2},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Cnst, 1),
+				make_instructions(context.allocator, .Add),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+		{
+			"1 - 2",
+			{1, 2},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Cnst, 1),
+				make_instructions(context.allocator, .Sub),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+		{
+			"1 * 2",
+			{1, 2},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Cnst, 1),
+				make_instructions(context.allocator, .Mul),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+		{
+			"1 / 2",
+			{1, 2},
+			{
+				make_instructions(context.allocator, .Cnst, 0),
+				make_instructions(context.allocator, .Cnst, 1),
+				make_instructions(context.allocator, .Div),
+				make_instructions(context.allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+
+//%endsection
+//%section: test helpers
+@(private = "file")
+Compiler_Test_Data :: union {
+	int,
+	string,
+	[]Instructions,
+}
+Compiler_Test_Case :: struct {
+	input:                 string,
+	expected_constants:    []Compiler_Test_Data,
+	expected_instructions: []Instructions,
+}
+test_constants :: proc(expected: []Compiler_Test_Data, actual: []ObjectBase) -> (err: string) {
+	if len(expected) != len(actual) {
+		return fmt.tprintf(
+			"wrong number of constants. wants='%d', got='%d'",
+			len(expected),
+			len(actual),
+		)
+	}
+	err = ""
+	for constant, i in expected {
+		t := reflect.union_variant_typeid(constant)
+		switch constant_value in constant {
+		case int:
+			err = test_integer_object(constant_value, actual[i])
+		case string:
+			err = test_string_object(constant_value, actual[i])
+		case []Instructions:
+			fn, ok := actual[i].(ObjectCompiledFunction)
+			if !ok {
+				err = fmt.tprintf("not a function: '%v'", ObjectType(actual[i]))
+			} else {
+				err = test_instructions(constant_value, fn.instructions[:])
+			}
+		}
+		if err != "" {
+			err = fmt.tprintf("constant '%v' - testing '%v' object failed with: %v", i, t, err)
+			break
+		}
+	}
+	return
+}
+run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
+	for test_case, i in tests {
+		p := Parser__New__(test_case.input)
+		defer p->free()
+
+		program := p->parse()
+		if len(program) == 0 || len(p.errors) != 0 {
+			log.errorf("Parsing encountered errors on test_case[%d]", i)
+			for e in p.errors {
+				log.error(e)
+			}
+			continue
+		}
+
+		c := Compiler__New__()
+		defer c->free()
+
+		err := c->compile_program(program)
+		if err != "" {
+			log.errorf("Compiling encountered errors on test_case[%d]", i)
+			log.error(err)
+			continue
+		}
+		bytecode := c->bytecode()
+		err = test_instructions(test_case.expected_instructions[:], bytecode.instructions)
+		if err != "" {
+			log.errorf("Instructions for test_case[%d] failed with: %v", i, err)
+			continue
+		}
+		err = test_constants(test_case.expected_constants, bytecode.constants)
+		if err != "" {
+			log.errorf("Constants for test_case[%d] failed with: %v", i, err)
+			continue
+		}
+	}
+}
+test_instructions :: proc(expected: []Instructions, actual: []byte) -> (err: string) {
+	concatenated := concat_instructions(expected)
+	if (len(actual) != len(concatenated)) {
+		return fmt.tprintf(
+			"wrong number of instructions. wants='%v', got='%v'",
+			concatenated,
+			actual,
+		)
+	}
+	for ins, i in concatenated {
+		if actual[i] != ins {
+			return fmt.tprintf(
+				"wrong instruction at '%d'. wants='%v', got='%v'",
+				i,
+				concatenated,
+				actual,
+			)
+		}
+	}
+	return ""
 }
 //%endsection
 
