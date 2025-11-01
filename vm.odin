@@ -431,6 +431,30 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 }
 //%endsection
 //%section: tests
+@(test)
+test_vm_integer_arithmetic :: proc(t: ^testing.T) {
+	tests := []Test_Cases {
+		{"1", 1},
+		{"2", 2},
+		{"-5", -5},
+		{"1 + 2", 3},
+		{"3 - 1", 2},
+		{"2 * 2", 4},
+		{"4 / 2", 2},
+		{"5 + 5 + 5 + 5 - 10", 10},
+		{"2 * 2 * 2 * 2 * 2", 32},
+		{"5 * 2 + 10", 20},
+		{"5 + 2 * 10", 25},
+		{"5 * (2 + 10)", 60},
+		{"-50 + 100 + -50", 0},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_vm_test(t, tests)
+}
+//%endsection
+//%section test helpers
 Test_Data :: union {
 	int,
 	bool,
@@ -467,7 +491,7 @@ run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
 			continue
 		}
 		last_popped := vm->last_popped()
-		err = test_expected_object(test_case.expected, last_popped)
+		err = test_expected_object(t, test_case.expected, last_popped)
 		if err != "" {
 			log.errorf(
 				"test [%d] has failed, expected: '%v', got: '%v'",
@@ -479,8 +503,6 @@ run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
 		}
 	}
 }
-//%endsection
-//%section test helpers
 test_expected_object :: proc(t: ^testing.T, expected: Test_Data, actual: ObjectBase) -> string {
 	err := ""
 	t := reflect.union_variant_typeid(expected)
@@ -536,6 +558,44 @@ test_expected_object :: proc(t: ^testing.T, expected: Test_Data, actual: ObjectB
 			break
 		}
 	}
+	return ""
+}
+test_integer_object :: proc(expected: int, actual: ObjectBase) -> (err: string) {
+	result, ok := actual.(int)
+	if !ok {
+		return fmt.tprintf("object is not integer. got='%v'", ObjectType(actual))
+	}
+
+	if result != expected {
+		return fmt.tprintf("object has wrong value. wants='%d', got='%d'", expected, result)
+	}
+
+	return ""
+}
+
+test_boolean_object :: proc(expected: bool, actual: ObjectBase) -> (err: string) {
+	result, ok := actual.(bool)
+	if !ok {
+		return fmt.tprintf("object is not boolean. got='%v'", ObjectType(actual))
+	}
+
+	if result != expected {
+		return fmt.tprintf("object has wrong value. wants='%v', got='%v'", expected, result)
+	}
+
+	return ""
+}
+
+test_string_object :: proc(expected: string, actual: ObjectBase) -> (err: string) {
+	result, ok := actual.(string)
+	if !ok {
+		return fmt.tprintf("object is not string. got='%v'", ObjectType(actual))
+	}
+
+	if result != expected {
+		return fmt.tprintf("object has wrong value. wants='%s', got='%s'", expected, result)
+	}
+
 	return ""
 }
 //%endsection

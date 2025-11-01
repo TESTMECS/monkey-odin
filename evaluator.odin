@@ -23,7 +23,6 @@ Evaluator :: struct {
 Evaluator__New__ :: proc() -> Evaluator {
 	v := VArena__New__()
 	err := v->init()
-
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}

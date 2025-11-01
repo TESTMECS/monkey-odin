@@ -88,7 +88,7 @@ Compiler__New__ :: proc() -> Compiler {
 		compile = compile,
 		emit = proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 			//%desc{{"emits an instruction to the current scope"}}
-			ins := make_instructions(op, ..operands)
+			ins := make_instructions(c.vmem.allocator, op, ..operands)
 			pos := c->add_instructions(ins[:])
 			c->set_last_instruction(op, pos)
 			return pos
@@ -137,7 +137,7 @@ Compiler__New__ :: proc() -> Compiler {
 		replace_last_pop_with_return = proc(c: ^Compiler) {
 			//%desc{{"replaces the last pop instruction with a return instruction"}}
 			last_pop := c.scopes[c.scopes_idx].last_instruction.pos
-			c->replace_instructions(last_pop, make_instructions(.Ret_V)[:])
+			c->replace_instructions(last_pop, make_instructions(c.vmem.allocator, .Ret_V)[:])
 			c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 		},
 		add_constant = proc(c: ^Compiler, obj: ObjectBase) -> int {
@@ -163,7 +163,7 @@ Compiler__New__ :: proc() -> Compiler {
 		change_operand = proc(c: ^Compiler, pos: int, new_operand: int) {
 			//%desc{{"changes the operand of the instruction at the given position"}}
 			op := Opcode(c->current_instructions()[pos])
-			new_instructions := make_instructions(op, new_operand)
+			new_instructions := make_instructions(c.vmem.allocator, op, new_operand)
 			c->replace_instructions(pos, new_instructions[:])
 		},
 	}
