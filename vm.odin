@@ -53,7 +53,8 @@ Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
-	return VM {
+	vm := VM {
+		compiler_state = compiler_state,
 		stack = make([]ObjectBase, STACK_SIZE, v.allocator),
 		frames = make([]Frame, MAX_FRAMES, v.allocator),
 		frames_idx = 0,
@@ -326,6 +327,9 @@ Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
 			v.frames_idx += 1
 		},
 	}
+	main_frame := frame(bytecode.instructions[:], 0)
+	vm.push_frame(&vm, main_frame)
+	return vm
 }
 
 run_vm :: proc(v: ^VM) -> (err: string) {
