@@ -94,8 +94,17 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 			inst_len += w
 		}
 	}
-	instruction := make(Instructions, 0, context.temp_allocator)
-	resize(&instruction, inst_len)
+	instruction, err := make(Instructions, 0, context.temp_allocator)
+	if err != nil {
+		log.errorf("making instruction failed with: %v", err)
+		return {}
+	}
+
+	errr := resize(&instruction, inst_len)
+	if errr != nil {
+		log.errorf("resizing instruction failed with: %v", err)
+		return {}
+	}
 	instruction[0] = byte(op)
 
 	offset := 1

@@ -12,7 +12,7 @@ import "core:slice"
 import "core:strings"
 import "core:testing"
 
-DEBUG :: false
+DEBUG :: true
 
 //%section Compiler_State
 Compiler_State :: struct {
@@ -21,7 +21,7 @@ Compiler_State :: struct {
 	globals:      []ObjectBase,
 	scopes:       [dynamic]Compilation_Scope,
 	free:         proc(state: ^Compiler_State),
-	vmem:         VArena,
+	vmem:         ^VArena, // ALLOCATE ON THE HEAP so it doesn't get bye bye
 }
 Compiler_State__New__ :: proc() -> Compiler_State {
 	v := VArena__New__()
@@ -49,7 +49,7 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 			// delete(state.globals)
 			delete(state.constants)
 		},
-		vmem = v,
+		vmem = &v,
 	}
 }
 //%endsection
@@ -209,6 +209,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Array:
+		if DEBUG do log.infof("compiling array literal")
 		for el in data {
 			if err = c->compile(el); err != "" do return
 		}
@@ -273,6 +274,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 }
 //%section: compiler methods.
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
+	if DEBUG do log.infof("compiling program")
 	err = ""
 	for stmt in program {
 		if err = c->compile(stmt); err != "" do return
@@ -316,6 +318,7 @@ leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	return instructions
 }
 current_instructions :: proc(c: ^Compiler) -> ^Instructions {
+	if DEBUG do log.infof("current_instructions %v", c.scopes[c.scopes_idx])
 	return &c.scopes[c.scopes_idx].instructions
 }
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
@@ -327,9 +330,15 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 }
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	//%desc{{"adds instructions to the current scope"}}
-	if DEBUG do log.infof("adding instructions to scope %v", c.scopes_idx)
+	if DEBUG do log.infof("adding instructions to scope %v", c.scopes[0])
 	pos := len(c->current_instructions())
-	append(c->current_instructions(), ..instructions)
+	if DEBUG do log.infof("scopes len %v, %v, %v", len(c.scopes), c.scopes[0], instructions)
+	n, err := append(c->current_instructions(), ..instructions)
+	if DEBUG do log.infof("%d", n)
+	if err != nil {
+		log.errorf("appending instructions to scope %v failed with: %v", c.scopes[0], err)
+	}
+	if DEBUG do log.infof("added instructions to scope %v", c.scopes[0])
 	return pos
 }
 replace_last_pop_with_return :: proc(c: ^Compiler) {
@@ -340,6 +349,7 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 	unimplemented("replace_last_pop_with_return")
 }
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
+	if DEBUG do log.infof("adding constant %v", obj)
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
@@ -521,6 +531,172 @@ test_compile_boolean_expressions :: proc(t: ^testing.T) {
 				make_instructions(context.temp_allocator, .True),
 				make_instructions(context.temp_allocator, .False),
 				make_instructions(context.temp_allocator, .Neq),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+@(test)
+test_compile_if_expression :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"if true { 10 }; 3333;",
+			{10, 3333},
+			{
+				// 0000
+				make_instructions(context.temp_allocator, .True),
+				// 0001
+				make_instructions(context.temp_allocator, .Jmp_If_Not, 10),
+				// 0004
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				// 0007
+				make_instructions(context.temp_allocator, .Jmp, 11),
+				// 0010
+				make_instructions(context.temp_allocator, .Nil),
+				// 0011
+				make_instructions(context.temp_allocator, .Pop),
+				// 0012
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				// 0015
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"if true { 10 } else { 20 }; 3333;",
+			{10, 20, 3333},
+			{
+				// 0000
+				make_instructions(context.temp_allocator, .True),
+				// 0001
+				make_instructions(context.temp_allocator, .Jmp_If_Not, 10),
+				// 0004
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				// 0007
+				make_instructions(context.temp_allocator, .Jmp, 13),
+				// 0010
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				// 0013
+				make_instructions(context.temp_allocator, .Pop),
+				// 0014
+				make_instructions(context.temp_allocator, .Cnst, 2),
+				// 0017
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+@(test)
+test_compile_global_let_statements :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"let one = 1; let two = 2;",
+			{1, 2},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Set_G, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Set_G, 1),
+			},
+		},
+		{
+			"let one = 1; one;",
+			{1},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Set_G, 0),
+				make_instructions(context.temp_allocator, .Get_G, 0),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"let one = 1; let two = one; two;",
+			{1},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Set_G, 0),
+				make_instructions(context.temp_allocator, .Get_G, 0),
+				make_instructions(context.temp_allocator, .Set_G, 1),
+				make_instructions(context.temp_allocator, .Get_G, 1),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+@(test)
+test_compile_string_expressions :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			`"monkey"`,
+			{"monkey"},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			`"mon" + "key"`,
+			{"mon", "key"},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Add),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+@(test)
+test_compile_array_literals :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"[]",
+			{},
+			{
+				make_instructions(context.temp_allocator, .Arr, 0),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"[1, 2, 3]",
+			{1, 2, 3},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Cnst, 2),
+				make_instructions(context.temp_allocator, .Arr, 3),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"[1 + 2, 3 - 4, 5 * 6]",
+			{1, 2, 3, 4, 5, 6},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Add),
+				make_instructions(context.temp_allocator, .Cnst, 2),
+				make_instructions(context.temp_allocator, .Cnst, 3),
+				make_instructions(context.temp_allocator, .Sub),
+				make_instructions(context.temp_allocator, .Cnst, 4),
+				make_instructions(context.temp_allocator, .Cnst, 5),
+				make_instructions(context.temp_allocator, .Mul),
+				make_instructions(context.temp_allocator, .Arr, 3),
 				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
