@@ -24,7 +24,8 @@ Compiler_State :: struct {
 	vmem:         ^VArena, // ALLOCATE ON THE HEAP so it doesn't get bye bye
 }
 Compiler_State__New__ :: proc() -> Compiler_State {
-	v := VArena__New__()
+	v := new(VArena, context.allocator)
+	v^ = VArena__New__()
 	err := v->init()
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
@@ -48,8 +49,9 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 			delete(state.scopes)
 			// delete(state.globals)
 			delete(state.constants)
+			free(state.vmem, context.allocator)
 		},
-		vmem = &v,
+		vmem = v,
 	}
 }
 //%endsection
@@ -324,9 +326,11 @@ current_instructions :: proc(c: ^Compiler) -> ^Instructions {
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	//%desc{{"sets the last instruction for the current scope"}}
 	prev := c.scopes[c.scopes_idx].last_instruction
-	last := Emitted_Instruction{op, pos}
+	last := new(Emitted_Instruction, c.vmem.allocator)
+	last.op_code = op
+	last.pos = pos
 	c.scopes[c.scopes_idx].previous_instruction = prev
-	c.scopes[c.scopes_idx].last_instruction = &last
+	c.scopes[c.scopes_idx].last_instruction = last
 }
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	//%desc{{"adds instructions to the current scope"}}

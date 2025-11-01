@@ -94,7 +94,7 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 			inst_len += w
 		}
 	}
-	instruction, err := make(Instructions, 0, context.temp_allocator)
+	instruction, err := make(Instructions, 0, allocator)
 	if err != nil {
 		log.errorf("making instruction failed with: %v", err)
 		return {}
