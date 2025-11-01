@@ -87,21 +87,16 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 	def, ok := lookup(op)
 	if !ok do return {}
 
-	inst_len := 1
-	for w in def.operand_widths {
-		// fmt.printfln("w='%v'", w)
-		inst_len += w
-	}
-	// fmt.printfln("Instruction Length='%v'", inst_len)
 
-	//WTF
-	instruction := make([dynamic]byte, inst_len, allocator)
+	inst_len := 1
+	if len(def.operand_widths) > 0 {
+		for w in def.operand_widths {
+			inst_len += w
+		}
+	}
+	instruction := make(Instructions, 0, context.temp_allocator)
 	resize(&instruction, inst_len)
-	defer delete(instruction)
-	// fmt.printfln("Instruction='%v'", instruction)
-	// fmt.printfln("Opcode='%v'", op)
-	// fmt.printfln("Opcode to byte='%v'", byte(op))
-	instruction[0] = byte(op) // instruction bad index?
+	instruction[0] = byte(op)
 
 	offset := 1
 	for o, i in operands {

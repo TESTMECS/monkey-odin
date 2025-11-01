@@ -10,25 +10,25 @@ import "core:reflect"
 import "core:slice"
 import "core:strings"
 import "core:testing"
+DEBUG :: true
 //%section Compiler_State
 Compiler_State :: struct {
 	symbol_table: Symbol_Table,
 	constants:    [dynamic]ObjectBase,
 	globals:      []ObjectBase,
-	scopes:       ^[dynamic]Compilation_Scope,
+	scopes:       [dynamic]Compilation_Scope,
 	free:         proc(state: ^Compiler_State),
 	vmem:         VArena,
 }
 Compiler_State__New__ :: proc() -> Compiler_State {
 	v := VArena__New__()
 	err := v->init()
-
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
 
-	// Scopes init
-	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, v.allocator) // limit is STACK_SIZE
+	// Scopes init, limit is STACK_SIZE
+	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, v.allocator)
 	main_scope := Compilation_Scope{}
 	main_scope_instructions := make(Instructions, 0, v.allocator)
 	main_scope.instructions = &main_scope_instructions
@@ -37,15 +37,16 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 	return Compiler_State {
 		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
 		symbol_table = Symbol_Table__New__(v.allocator),
-		scopes = &scopes,
+		scopes = scopes,
 		free = proc(state: ^Compiler_State) {
-			state.vmem->reset()
+			state.vmem->reset() // scope is freed here.
 			state.symbol_table->free()
 
-			free(state.scopes)
+			delete(state.scopes)
 			delete(state.globals)
 			delete(state.constants)
 		},
+		vmem = v,
 	}
 }
 //%endsection
@@ -67,7 +68,7 @@ Compilation_Scope :: struct {
 }
 
 Compiler :: struct {
-	using compiler_state:         ^Compiler_State,
+	using compiler_state:         Compiler_State,
 	scopes_idx:                   int,
 	compile_program:              proc(c: ^Compiler, node: Ast_Program) -> (err: string),
 	compile:                      proc(c: ^Compiler, node: Node) -> (err: string),
@@ -88,9 +89,8 @@ Compiler :: struct {
 //%endsection
 //%section Public Functions
 Compiler__New__ :: proc() -> Compiler {
-	state := Compiler_State__New__()
 	return Compiler {
-		compiler_state = &state,
+		compiler_state = Compiler_State__New__(),
 		scopes_idx = 0,
 		//%methods
 		compile_program = proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
@@ -106,11 +106,10 @@ Compiler__New__ :: proc() -> Compiler {
 		compile = compile,
 		emit = proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 			//%desc{{"emits an instruction to the current scope"}}
-			fmt.printfln("emitting %v", op)
+			if DEBUG do log.infof("emitting %v", op)
+			// Try to pop but scope is empty
 			ins := make_instructions(c.vmem.allocator, op, ..operands)
-			fmt.printfln("adding instructions=%v", ins)
 			pos := c->add_instructions(ins[:])
-			fmt.printfln("setting last instruction to %v", op)
 			c->set_last_instruction(op, pos)
 			return pos
 		},
@@ -123,10 +122,11 @@ Compiler__New__ :: proc() -> Compiler {
 		},
 		enter_scope = proc(c: ^Compiler) {
 			//%desc{{"enters a new scope"}}
+			if DEBUG do log.infof("entering scope %v", c.scopes_idx)
 			scope := Compilation_Scope{}
-			instr := make(Instructions, STACK_SIZE, c.compiler_state.vmem.allocator)
+			instr := make(Instructions, 0, c.compiler_state.vmem.allocator)
 			scope.instructions = &instr
-			append(c.scopes, scope)
+			append(&c.scopes, scope)
 			c.scopes_idx = len(c.scopes) - 1
 			// symbol_clone := new_clone(c.symbol_table, c.compiler_state.vmem.allocator)
 			// c.symbol_table = Symbol_Table__New__(outer = symbol_clone)
@@ -134,7 +134,7 @@ Compiler__New__ :: proc() -> Compiler {
 		leave_scope = proc(c: ^Compiler) -> ^Instructions {
 			//%desc{{"leaves the current scope and returns the instructions"}}
 			instructions := c->current_instructions()
-			pop(c.scopes)
+			pop(&c.scopes)
 			c.scopes_idx = len(c.scopes) - 1
 			c.symbol_table = c.symbol_table.outer^
 			return instructions
@@ -152,7 +152,6 @@ Compiler__New__ :: proc() -> Compiler {
 		},
 		add_instructions = proc(c: ^Compiler, instructions: []byte) -> int {
 			//%desc{{"adds instructions to the current scope"}}
-			fmt.printfln("adding instructions=%v", instructions)
 			pos := len(c->current_instructions())
 			append(c->current_instructions(), ..instructions)
 			return pos
@@ -164,9 +163,7 @@ Compiler__New__ :: proc() -> Compiler {
 			c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 		},
 		add_constant = proc(c: ^Compiler, obj: ObjectBase) -> int {
-			fmt.printfln("adding constant")
 			append(&c.compiler_state.constants, obj)
-			fmt.printfln("%v", len(c.compiler_state.constants) - 1)
 			return len(c.compiler_state.constants) - 1
 		},
 		remove_last_pop = proc(c: ^Compiler) {

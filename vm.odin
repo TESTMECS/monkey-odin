@@ -482,7 +482,7 @@ run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
 			continue
 		}
 
-		vm := Vm__New__(compiler->bytecode(), compiler.compiler_state)
+		vm := Vm__New__(compiler->bytecode(), &compiler.compiler_state)
 		defer vm->free()
 
 		err = vm->run()
