@@ -6,6 +6,7 @@ This leak could be anywhere in the functions on the compiler, assert checking an
 */
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:reflect"
 import "core:slice"
 import "core:strings"
@@ -435,7 +436,100 @@ test_compile_integer_arithmetic :: proc(t: ^testing.T) {
 
 	run_compiler_tests(t, tests[:])
 }
+@(test)
+test_compile_boolean_expressions :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"true",
+			{},
+			{
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"false",
+			{},
+			{
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"!true",
+			{},
+			{
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .Not),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"1 > 2",
+			{1, 2},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Gt),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"1 < 2",
+			{2, 1},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Gt),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"1 == 2",
+			{1, 2},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Eq),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"1 != 2",
+			{1, 2},
+			{
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Neq),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"true == false",
+			{},
+			{
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Eq),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"true != false",
+			{},
+			{
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Neq),
+				make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
 
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
 //%endsection
 //%section: test helpers
 @(private = "file")
@@ -449,7 +543,13 @@ Compiler_Test_Case :: struct {
 	expected_constants:    []Compiler_Test_Data,
 	expected_instructions: []Instructions,
 }
-test_constants :: proc(expected: []Compiler_Test_Data, actual: []ObjectBase) -> (err: string) {
+test_constants :: proc(
+	expected: []Compiler_Test_Data,
+	actual: []ObjectBase,
+	alloc: mem.Allocator,
+) -> (
+	err: string,
+) {
 	if len(expected) != len(actual) {
 		return fmt.tprintf(
 			"wrong number of constants. wants='%d', got='%d'",
@@ -470,7 +570,7 @@ test_constants :: proc(expected: []Compiler_Test_Data, actual: []ObjectBase) -> 
 			if !ok {
 				err = fmt.tprintf("not a function: '%v'", ObjectType(actual[i]))
 			} else {
-				err = test_instructions(constant_value, fn.instructions[:])
+				err = test_instructions(constant_value, fn.instructions[:], alloc)
 			}
 		}
 		if err != "" {
@@ -505,20 +605,30 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 		}
 
 		bytecode := c->bytecode()
-		err = test_instructions(test_case.expected_instructions[:], bytecode.instructions)
+		err = test_instructions(
+			test_case.expected_instructions[:],
+			bytecode.instructions,
+			context.allocator,
+		)
 		if err != "" {
 			log.errorf("Instructions for test_case[%d] failed with: %v", i, err)
 			continue
 		}
 
-		err = test_constants(test_case.expected_constants, bytecode.constants)
+		err = test_constants(test_case.expected_constants, bytecode.constants, context.allocator)
 		if err != "" {
 			log.errorf("Constants for test_case[%d] failed with: %v", i, err)
 			continue
 		}
 	}
 }
-test_instructions :: proc(expected: []Instructions, actual: []byte) -> (err: string) {
+test_instructions :: proc(
+	expected: []Instructions,
+	actual: []byte,
+	alloc: mem.Allocator,
+) -> (
+	err: string,
+) {
 	concatenated := concat_instructions(expected)
 	if (len(actual) != len(concatenated)) {
 		return fmt.tprintf(
