@@ -9,12 +9,12 @@ Literal :: union {
 	bool,
 }
 
-parser_has_error :: m.parser_has_error 
+parser_has_error :: m.parser_has_error
 
 integer_literal_is_valid :: proc(il: ^m.Node, expected_value: int) -> bool {
 	val, ok := il.(int)
 	if !ok {
-		log.errorf("il is not 'int', got='%v'", m.ast_type(il))
+		log.errorf("il is not 'int', got='%v'", m.Ast__Type__(il))
 		return false
 	}
 	if val != expected_value {
@@ -27,7 +27,7 @@ integer_literal_is_valid :: proc(il: ^m.Node, expected_value: int) -> bool {
 identifier_is_valid :: proc(expr: ^m.Node, expected_value: string) -> bool {
 	ident, ok := expr.(m.Ast_Identifier)
 	if !ok {
-		log.errorf("expression is not Ast_Identifier, got='%v'", m.ast_type(expr))
+		log.errorf("expression is not Ast_Identifier, got='%v'", m.Ast__Type__(expr))
 		return false
 	}
 
@@ -42,7 +42,7 @@ identifier_is_valid :: proc(expr: ^m.Node, expected_value: string) -> bool {
 boolean_is_valid :: proc(b: ^m.Node, expected_value: bool) -> bool {
 	blit, ok := b.(bool)
 	if !ok {
-		log.errorf("expression is not boolean, got='%v'", m.ast_type(b))
+		log.errorf("expression is not boolean, got='%v'", m.Ast__Type__(b))
 		return false
 	}
 	if blit != expected_value {
@@ -75,7 +75,7 @@ infix_expression_is_valid :: proc(
 ) -> bool {
 	infix, ok := expression.(m.Ast_Infix)
 	if !ok {
-		log.errorf("expression is not 'Ast_Infix', got'%v'", m.ast_type(expression))
+		log.errorf("expression is not 'Ast_Infix', got'%v'", m.Ast__Type__(expression))
 		return false
 	}
 
@@ -99,7 +99,7 @@ infix_expression_is_valid :: proc(
 stmt_is_let :: proc(s: m.Node, name: string, expected_value: Literal) -> bool {
 	let_stmt, ok := s.(m.Ast_Let)
 	if !ok {
-		log.errorf("s is not a let statement. got='%v'", m.ast_type(s))
+		log.errorf("s is not a let statement. got='%v'", m.Ast__Type__(s))
 		return false
 	}
 	if let_stmt.name != name {
@@ -135,7 +135,7 @@ prefix_test_case_is_ok :: proc(
 		log.errorf(
 			"test [%d]: program[0] is not 'Node_Prefix_Expression', got='%v'",
 			test_number,
-			m.ast_type(program[0]),
+			m.Ast__Type__(program[0]),
 		)
 		return false
 	}
@@ -176,3 +176,4 @@ infix_test_case_is_valid :: proc(
 
 	return infix_expression_is_valid(&program[0], left_value, operator, right_value)
 }
+

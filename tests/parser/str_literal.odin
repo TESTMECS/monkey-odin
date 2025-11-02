@@ -1,7 +1,7 @@
 package parser_tests
 import m "../.."
-import "core:testing"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_parse_string_literal :: proc(t: ^testing.T) {
@@ -20,7 +20,7 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 
 	literal, str_ok := program[0].(string)
 	if !str_ok {
-		log.errorf("expression is not string, got='%v'", m.ast_type(program[0]))
+		log.errorf("expression is not string, got='%v'", m.Ast__Type__(program[0]))
 		return
 	}
 
@@ -28,3 +28,4 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 		log.errorf("string is not 'hello world', got='%s'", literal)
 	}
 }
+

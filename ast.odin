@@ -23,8 +23,26 @@ Node :: union {
 	Ast_Call,
 	Ast_Index,
 }
-
+// @Ast=>>begin
 Ast_Program :: distinct [dynamic]Node
+
+Ast_Block :: distinct [dynamic]Node
+
+Ast_Array :: distinct [dynamic]Node
+
+Ast_Call :: struct {
+	function:  ^Node,
+	arguments: [dynamic]Node,
+}
+Ast_Hash_Table :: struct {
+	pairs: [dynamic]kvpair,
+	table: map[string]Node,
+}
+
+Ast_Function :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
+}
 
 Ast_Let :: struct {
 	name:  string,
@@ -34,8 +52,6 @@ Ast_Let :: struct {
 Ast_Ret :: struct {
 	return_value: ^Node,
 }
-
-Ast_Block :: distinct [dynamic]Node
 
 Ast_Identifier :: struct {
 	value: string,
@@ -58,75 +74,46 @@ Ast_If :: struct {
 	orelse:    Ast_Block,
 }
 
-Ast_Array :: distinct [dynamic]Node
-
 kvpair :: struct {
 	key:   Node,
 	value: Node,
 }
 
-Ast_Hash_Table :: struct {
-	pairs: [dynamic]kvpair,
-	table: map[string]Node,
-}
-
-Ast_Function :: struct {
-	parameters: [dynamic]Ast_Identifier,
-	body:       Ast_Block,
-}
-
-Ast_Call :: struct {
-	function:  ^Node,
-	arguments: [dynamic]Node,
-}
-
 Ast_Index :: struct {
 	operand: ^Node,
 	index:   ^Node,
-}
+} // end <<@Ast
 
-//%endsection
-
-Ast__IsExpression__ :: proc(ast: Node) -> bool {
-	t := ast_type(ast)
+Ast_IsExpr :: proc(ast: Node) -> bool {
+	t := Ast__Type__(ast)
 	return t != Node && t != Ast_Let && t != Ast_Ret
 }
 
-//%group{proc(ast::Node::union)}
-ast_type :: proc {
+Ast__Type__ :: proc {
 	Ast_Type_Value,
 	ast_type_pointer,
 }
-//%groupmember
+
 Ast_Type_Value :: reflect.union_variant_typeid
 
-//%groupmember
 @(private = "file")
 ast_type_pointer :: proc(ast: ^Node) -> typeid {
 	return reflect.union_variant_typeid(ast^)
 }
 
-//%group{{%Node::enum::string}}
 ast_to_string :: proc {
 	ast_to_string_pointer,
 	ast_to_string_value,
 }
 
-//%groupmember
 @(private = "file")
 ast_to_string_value :: proc(ast: Node, sb: ^strings.Builder) {
 	ast := ast
 	ast_to_string_pointer(&ast, sb)
 }
 
-//%groupmember
 @(private = "file")
 ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
-	//%type{%Node::enum}
-	/*%pattern::{
-			switch iter.ast.next {
-				case lit: fmt.sbprint("data")
-				default: parse ++ fmt.sbprintf("stmt symbols including ';'")}}*/
 	#partial switch data in ast {
 	case bool, int, string:
 		fmt.sbprint(sb, data)
@@ -204,8 +191,6 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			ast_to_string(pair.value, sb)
 			if i < len(data.pairs) - 1 do fmt.sbprint(sb, ", ")
 		}
-
-
 		fmt.sbprint(sb, " }")
 
 	case Ast_Index:
@@ -238,7 +223,13 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 		fmt.sbprint(sb, ")")
 	}
 }
-//%groupmember
+
+ast_copy_array :: proc(ast: ^Ast_Array, dst: ^Ast_Array, allocator: mem.Allocator) {
+	for &stmt in ast {
+		append(dst, ast_copy(&stmt, allocator))
+	}
+}
+
 @(private = "file")
 ast_copy_idents :: proc(
 	ast: ^[dynamic]Ast_Identifier,
@@ -249,39 +240,34 @@ ast_copy_idents :: proc(
 		append(dst, Ast_Identifier{value = strings.clone(stmt.value, allocator)})
 	}
 }
-//%groupmember
+
 @(private = "file")
 ast_copy_block :: proc(ast: ^Ast_Block, dst: ^Ast_Block, allocator: mem.Allocator) {
 	for &stmt in ast {
 		append(dst, ast_copy(&stmt, allocator))
 	}
 }
-//%groupmember
+
 @(private = "file")
 ast_copy_nodes :: proc(ast: ^[dynamic]Node, dst: ^[dynamic]Node, allocator: mem.Allocator) {
 	for &stmt in ast {
 		append(dst, ast_copy(&stmt, allocator))
 	}
 }
-//%groupmember
-ast_copy_array :: proc(ast: ^Ast_Array, dst: ^Ast_Array, allocator: mem.Allocator) {
-	for &stmt in ast {
-		append(dst, ast_copy(&stmt, allocator))
-	}
+// @AstCopy=>>begin
+new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T {
+	ptr := new(T, allocator)
+	ptr^ = value
+	return ptr
 }
-/*%group{
-%AstCopy::proc(%ast::*Ast_Array,
-%dst::*Ast_Array,
-allocator::mem.Allocator
-)}
-*/
+
 Ast__Copy__ :: proc {
 	ast_copy_idents,
 	ast_copy_block,
 	ast_copy_nodes,
 	ast_copy_array,
 }
-//%note:"allocation optimizations"
+
 ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 	#partial switch &data in ast {
 	case int, bool:
@@ -385,10 +371,5 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 	}
 	unimplemented()
 }
-
-new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T {
-	ptr := new(T, allocator)
-	ptr^ = value
-	return ptr
-}
+// @AstCopy=>>end
 

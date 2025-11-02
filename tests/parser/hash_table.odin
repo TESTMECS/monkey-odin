@@ -2,10 +2,10 @@
 package parser_tests
 
 import m "../.."
-import "core:testing"
 import "core:fmt"
-import "core:strings"
 import "core:log"
+import "core:strings"
+import "core:testing"
 
 @(test)
 test_hash_table :: proc(t: ^testing.T) {
@@ -24,7 +24,7 @@ test_hash_table :: proc(t: ^testing.T) {
 
 	stmt, ok := program[0].(m.Ast_Hash_Table)
 	if !ok {
-		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", m.ast_type(program[0]))
+		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", m.Ast__Type__(program[0]))
 		return
 	} else if len(stmt.table) != 3 {
 		log.errorf("length of the hash table is not 3, got'%d'", len(stmt.table))

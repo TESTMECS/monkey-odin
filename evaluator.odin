@@ -144,7 +144,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return eval_hash_table_literal(e, data, current_env)
 	}
 
-	return ObjectBase(new_error(e, "unrecognized Node of type '%v'", ast_type(node))), false
+	return ObjectBase(new_error(e, "unrecognized Node of type '%v'", Ast__Type__(node))), false
 }
 //%endsection
 //%section eval statements
@@ -307,9 +307,9 @@ eval_infix_expression :: proc(
 	ObjectBase,
 	bool,
 ) {
-	if ast_type(left) == int && ast_type(right) == int {
+	if Ast__Type__(left) == int && Ast__Type__(right) == int {
 		return eval_integer_infix_expression(e, op, left.(int), right.(int))
-	} else if ast_type(left) == string && ast_type(right) == string {
+	} else if Ast__Type__(left) == string && Ast__Type__(right) == string {
 		return eval_string_infix_expression(e, op, left.(string), right.(string))
 	}
 

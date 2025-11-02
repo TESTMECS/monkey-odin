@@ -1,7 +1,7 @@
 package parser_tests
 import m "../.."
-import "core:testing"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_parsing_return_statement :: proc(t: ^testing.T) {
@@ -10,6 +10,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	return 10;
 	return 100;
 	`
+
 
 	p := m.Parser__New__(input)
 	defer p->free()
@@ -30,7 +31,12 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 		stmt := program[i]
 		_, ok := stmt.(m.Ast_Ret)
 		if !ok {
-			log.errorf("test [%d]: stmt is not a return statement. got='%v'", i, m.ast_type(stmt))
+			log.errorf(
+				"test [%d]: stmt is not a return statement. got='%v'",
+				i,
+				m.Ast__Type__(stmt),
+			)
 		}
 	}
 }
+

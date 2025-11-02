@@ -1,8 +1,8 @@
 package parser_tests
 
 import m "../.."
-import "core:testing"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_array :: proc(t: ^testing.T) {
@@ -20,7 +20,7 @@ test_array :: proc(t: ^testing.T) {
 
 	stmt, ok := program[0].(m.Ast_Array) // check array
 	if !ok {
-		log.errorf("program[0] is not Ast_Array, got='%v'", m.ast_type(program[0]))
+		log.errorf("program[0] is not Ast_Array, got='%v'", m.Ast__Type__(program[0]))
 		return
 	}
 
@@ -33,3 +33,4 @@ test_array :: proc(t: ^testing.T) {
 	infix_expression_is_valid(&stmt[1], 2, "*", 2)
 	infix_expression_is_valid(&stmt[2], 3, "+", 3)
 }
+

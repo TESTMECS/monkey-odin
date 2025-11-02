@@ -1,9 +1,8 @@
 #+feature dynamic-literals
 package monkey
-// TODO: remove context.allocators and see if that works
-// fix parse_hash_table_literal
-// better vmem api.
-
+/* TODO: 1.remove context.allocators and see if that works.
+2.fix parse_hash_table_literal
+3.better vmem api. */
 import "core:fmt"
 import "core:log"
 import "core:strconv"
@@ -51,7 +50,6 @@ parse_program :: proc(p: ^Parser) -> Ast_Program {
 	next_token(p)
 	next_token(p)
 
-	//%mem_alloc
 	program := make(Ast_Program, 0, 16, context.temp_allocator)
 	defer delete(program)
 
@@ -98,9 +96,7 @@ expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
 next_token :: proc(p: ^Parser) {
 	p.cur_token = p.peek_token
 	p.peek_token = p.l->next_token()
-}
-// Parse_Helpers=>>end
-
+} //end <<Parse_Helpers
 // Precedence=>>begin
 Precedence :: enum {
 	Lowest, // 0
@@ -134,9 +130,9 @@ peek_precedence :: proc(p: ^Parser) -> Precedence {
 cur_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.cur_token.type]
 }
-// Precedence=>>end
+//end <<Precedence
 
-// Expressions typedefs=>>begin
+// Expressions_types=>>begin
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
@@ -168,7 +164,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren   = parse_call_expression,
 	.Left_Bracket = parse_index_expression,
 }
-// Expressions typedefs=>>end
+// end <<Expressions_types
 
 // Literals=>>begin
 parse_identifier :: proc(p: ^Parser) -> Node {
@@ -219,7 +215,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 			fmt.sbprintf(
 				&msg,
 				"expected hash key to be a string literal, got '%s' instead.",
-				ast_type(key_expr),
+				Ast__Type__(key_expr),
 			)
 			append(&p.errors, strings.to_string(msg))
 			return nil
@@ -262,7 +258,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	}
 
 	return result
-} // Literals=>>end
+} // end << Literals
 // Expressions=>>begin
 parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	op := string(p.cur_token.text_slice)
@@ -283,15 +279,11 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 
 	right := parse_expression(p, prec)
 	if right == nil do return nil
-	
+
 	new_right := new_clone(right, context.temp_allocator)
 	new_left := new_clone(left, context.temp_allocator)
 
-	return Ast_Infix {
-		op = op,
-		left = new_left,
-		right = new_right, 
-	}
+	return Ast_Infix{op = op, left = new_left, right = new_right}
 }
 
 parse_grouped_expression :: proc(p: ^Parser) -> Node {
@@ -428,6 +420,7 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 
 	return left_expr
 }
+// end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
@@ -478,6 +471,5 @@ parse_statement :: proc(p: ^Parser) -> Node {
 		return parse_return_statement(p)
 	}
 	return parse_expression_statement(p)
-}
-// Statements=>>end
+} // end <<Statements
 

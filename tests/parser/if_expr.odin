@@ -1,14 +1,15 @@
 package parser_tests
 
 import m "../.."
-import "core:testing"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_parse_if_expression :: proc(t: ^testing.T) {
 	input := `
 	if true { 10 } else { 20 }
 	`
+
 
 	p := m.Parser__New__(input)
 	defer p->free()
@@ -23,12 +24,12 @@ test_parse_if_expression :: proc(t: ^testing.T) {
 
 	stmt, ok := program[0].(m.Ast_If)
 	if !ok {
-		log.errorf("program[0] is not Ast_If, got='%v'", m.ast_type(program[0]))
+		log.errorf("program[0] is not Ast_If, got='%v'", m.Ast__Type__(program[0]))
 		return
 	}
 	// stmt.condition
 	if !literal_value_is_valid(stmt.condition, true) {
-		log.errorf("stmt.condition is not 'true', got='%v'", m.ast_type(stmt.condition))
+		log.errorf("stmt.condition is not 'true', got='%v'", m.Ast__Type__(stmt.condition))
 		return
 	}
 
@@ -38,7 +39,7 @@ test_parse_if_expression :: proc(t: ^testing.T) {
 		return
 	}
 	if !literal_value_is_valid(&stmt.then[0], 10) {
-		log.errorf("stmt.then[0] is not '10', got='%v'", m.ast_type(stmt.then[0]))
+		log.errorf("stmt.then[0] is not '10', got='%v'", m.Ast__Type__(stmt.then[0]))
 		return
 	}
 
@@ -53,7 +54,8 @@ test_parse_if_expression :: proc(t: ^testing.T) {
 	}
 
 	if !literal_value_is_valid(&stmt.orelse[0], 20) {
-		log.errorf("stmt.orelse[0] is not '20', got='%v'", m.ast_type(stmt.orelse[0]))
+		log.errorf("stmt.orelse[0] is not '20', got='%v'", m.Ast__Type__(stmt.orelse[0]))
 		return
 	}
 }
+
