@@ -4,8 +4,7 @@ import "core:fmt"
 import "core:mem"
 import "core:reflect"
 import "core:strings"
-//%type{Node::union}
-//%section{{"Ast structs"}}
+
 Node :: union {
 	int,
 	bool,

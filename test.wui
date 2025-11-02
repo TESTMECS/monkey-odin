@@ -40,7 +40,7 @@ code = >>add(1, <<x>>)
 % x > 0 { #write("Positive") } else { #write("Negative") }
 
 $ Program entry
-fn main() -> int {
+main::fn() -> int {
     #write("Hello!")
 
     % *debug {

@@ -1,5 +1,5 @@
 #+feature dynamic-literals
-package tests
+package parser_tests
 
 import m "../.."
 import "core:testing"

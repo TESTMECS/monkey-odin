@@ -200,13 +200,7 @@ read_u8 :: proc(ins: []byte) -> u8 {
 }
 //%endsection
 //%section: tests
-concat_instructions :: proc(s: []Instructions) -> Instructions {
-	out := make(Instructions, 0, context.temp_allocator)
-	for ins_slice in s {
-		append(&out, ..ins_slice[:])
-	}
-	return out
-}
+
 @(test)
 test_code_make :: proc(t: ^testing.T) {
 	tests := [?]struct {

@@ -1,5 +1,8 @@
 #+feature dynamic-literals
 package monkey
+// TODO: remove context.allocators and see if that works
+// fix parse_hash_table_literal
+// better vmem api.
 
 import "core:fmt"
 import "core:log"
@@ -7,22 +10,23 @@ import "core:strconv"
 import "core:strings"
 import "core:testing"
 
-
 Parser :: struct {
 	l:          Lexer,
 	cur_token:  Token,
 	peek_token: Token,
 	errors:     [dynamic]string,
 	vmem:       ^VArena,
-	//%desc{{"methods"}}
 	parse:      proc(p: ^Parser) -> Ast_Program,
 	free:       proc(p: ^Parser),
 }
 
 Parser__New__ :: proc(input: string) -> Parser {
+
 	arena_ptr := new(VArena, context.allocator)
 	arena_ptr^ = VArena__New__()
+
 	err := arena_ptr->init()
+
 	if err != .None {
 		panic("Arena Allocation Failed: Parser_new")
 	}
@@ -32,7 +36,7 @@ Parser__New__ :: proc(input: string) -> Parser {
 		vmem   = arena_ptr,
 		errors = make([dynamic]string, 0, arena_ptr.allocator),
 		l      = Lexer_New(input),
-		parse  = Parse_Program,
+		parse  = parse_program,
 		free   = free_parser,
 	}
 	return p
@@ -43,6 +47,61 @@ free_parser :: proc(p: ^Parser) {
 	free(p.vmem, context.allocator)
 }
 
+parse_program :: proc(p: ^Parser) -> Ast_Program {
+	next_token(p)
+	next_token(p)
+
+	//%mem_alloc
+	program := make(Ast_Program, 0, 16, context.temp_allocator)
+	defer delete(program)
+
+	for p.cur_token.type != .EOF {
+		if stmt := parse_statement(p); stmt != nil {
+			append(&program, stmt)
+		}
+		next_token(p)
+	}
+	return program
+}
+// Parse_Helpers=>>begin
+peek_error :: proc(p: ^Parser, t: Token_Type) {
+	msg := strings.builder_make(context.temp_allocator)
+	defer strings.builder_destroy(&msg)
+	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
+	append(&p.errors, strings.to_string(msg))
+}
+
+no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
+	msg := strings.builder_make(context.temp_allocator)
+	defer strings.builder_destroy(&msg)
+	fmt.sbprintf(&msg, "unexpected token '%v'", t)
+	append(&p.errors, strings.to_string(msg))
+}
+
+current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
+	return p.cur_token.type == t
+}
+
+peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
+	return p.peek_token.type == t
+}
+
+expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
+	if peek_token_is(p, t) {
+		next_token(p)
+		return true
+	}
+	peek_error(p, t)
+	return false
+}
+
+next_token :: proc(p: ^Parser) {
+	p.cur_token = p.peek_token
+	p.peek_token = p.l->next_token()
+}
+// Parse_Helpers=>>end
+
+// Precedence=>>begin
 Precedence :: enum {
 	Lowest, // 0
 	Equals,
@@ -69,22 +128,18 @@ GetPrecedence := #partial [Token_Type]Precedence {
 }
 
 peek_precedence :: proc(p: ^Parser) -> Precedence {
-	//desc=>>"peek_precedence returns the <<Precedence::enum>> for the <<Parser::peek_token::Token>>."
 	return GetPrecedence[p.peek_token.type]
 }
 
 cur_precedence :: proc(p: ^Parser) -> Precedence {
-	//desc=>>"return the <<Precedence::enum>> for <<Parser::cur_token::Token>>."
 	return GetPrecedence[p.cur_token.type]
 }
-//<<endsection>>
+// Precedence=>>end
 
-
+// Expressions typedefs=>>begin
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 
-
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-
 
 prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.Identifier   = parse_identifier,
@@ -101,7 +156,6 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.If           = parse_if_expression,
 }
 
-
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Plus         = parse_infix_expression,
 	.Minus        = parse_infix_expression,
@@ -114,42 +168,9 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren   = parse_call_expression,
 	.Left_Bracket = parse_index_expression,
 }
+// Expressions typedefs=>>end
 
-
-current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
-	return p.cur_token.type == t
-}
-
-//<<section <<peek>> >>
-
-peek_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := strings.builder_make(context.temp_allocator)
-	defer strings.builder_destroy(&msg)
-	fmt.sbprintf(&msg, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
-	append(&p.errors, strings.to_string(msg))
-}
-
-
-peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
-	return p.peek_token.type == t
-}
-
-
-expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
-	if peek_token_is(p, t) {
-		next_token(p)
-		return true
-	}
-	peek_error(p, t)
-	return false
-}
-//<<endsection>>
-
-next_token :: proc(p: ^Parser) {
-	p.cur_token = p.peek_token
-	p.peek_token = p.l->next_token()
-}
-
+// Literals=>>begin
 parse_identifier :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{string(p.cur_token.text_slice)}
 }
@@ -181,20 +202,16 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 }
 
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	// Create our ordered + lookup structure
 	result := Ast_Hash_Table {
 		pairs = make([dynamic]kvpair, 0, context.temp_allocator),
 		table = make(map[string]Node, p.vmem.allocator),
 	}
 
-	// Advance past '{'
 	next_token(p)
 
 	for !current_token_is(p, .Right_Brace) {
-		// --- Parse key ---
 		key_expr := parse_expression(p, .Lowest)
 
-		// For simplicity, restrict keys to string literals for now
 		key_str_node, ok := key_expr.(string)
 		if !ok {
 			msg := strings.builder_make(context.temp_allocator)
@@ -213,10 +230,8 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		if !expect_peek(p, .Colon) do return nil
 		next_token(p)
 
-		// --- Parse value ---
 		value_expr := parse_expression(p, .Lowest)
 
-		// Check for duplicate keys
 		if key_str in result.table {
 			msg := strings.builder_make(context.temp_allocator)
 			defer strings.builder_destroy(&msg)
@@ -228,13 +243,11 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 			key   = key_expr,
 			value = value_expr,
 		}
-		// --- Store in both structures ---
 		// TODO: Store stringified key in the kvpair for "foo" and foo to be different.
 		// Cache identifiers as well.
 		append(&result.pairs, new_pair)
 		result.table[key_str] = value_expr
 
-		// --- Handle commas ---
 		if peek_token_is(p, .Comma) {
 			next_token(p)
 			next_token(p)
@@ -244,73 +257,50 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	}
 
 	if current_token_is(p, .Right_Brace) {
-		// ok
 	} else {
 		if !expect_peek(p, .Right_Brace) do return nil
 	}
 
 	return result
-}
-
-parse_let_statement :: proc(p: ^Parser) -> Node {
-	if !expect_peek(p, .Identifier) do return nil
-	name := string(p.cur_token.text_slice)
-	if !expect_peek(p, .Assign) do return nil
-	next_token(p)
-	value := parse_expression(p, .Lowest)
-	if value == nil do return nil
-	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Let{name = name, value = new_clone(value, context.temp_allocator)}
-}
-
-parse_return_statement :: proc(p: ^Parser) -> Node {
-	next_token(p)
-	return_value := parse_expression(p, .Lowest)
-	if return_value == nil do return nil
-	if peek_token_is(p, .Semicolon) do next_token(p)
-	return Ast_Ret{return_value = new_clone(return_value, context.temp_allocator)}
-}
-
+} // Literals=>>end
+// Expressions=>>begin
 parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	op := string(p.cur_token.text_slice)
+
 	next_token(p)
+
 	operand := parse_expression(p, .Prefix)
 	if operand == nil do return nil
+
 	return Ast_Prefix{op = op, operand = new_clone(operand, context.temp_allocator)}
 }
 
 parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	op := string(p.cur_token.text_slice)
 	prec := cur_precedence(p)
+
 	next_token(p)
+
 	right := parse_expression(p, prec)
 	if right == nil do return nil
+	
+	new_right := new_clone(right, context.temp_allocator)
+	new_left := new_clone(left, context.temp_allocator)
+
 	return Ast_Infix {
 		op = op,
-		left = new_clone(left, context.temp_allocator),
-		right = new_clone(right, context.temp_allocator),
+		left = new_left,
+		right = new_right, 
 	}
 }
 
 parse_grouped_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	expr := parse_expression(p, .Lowest)
+
 	if !expect_peek(p, .Right_Paren) do return nil
 	return expr
 }
-
-parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	block := make(Ast_Block, 0, 16, context.temp_allocator)
-	defer delete(block)
-	next_token(p)
-	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
-		stmt := parse_statement(p)
-		if stmt != nil do append(&block, stmt)
-		next_token(p)
-	}
-	return block
-}
-
 
 parse_if_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
@@ -335,8 +325,19 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 		orelse = orelse,
 	}
 }
-//%endsection
-//%section functions
+
+parse_function_literal :: proc(p: ^Parser) -> Node {
+	if !expect_peek(p, .Left_Paren) do return nil
+
+	parameters := parse_function_parameters(p)
+
+	if !expect_peek(p, .Left_Brace) do return nil
+
+	body := parse_block_statement(p)
+
+	return Ast_Function{body = body, parameters = parameters}
+}
+
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, context.temp_allocator)
 	defer delete(identifiers)
@@ -360,21 +361,8 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 
 	return identifiers
 }
-parse_function_literal :: proc(p: ^Parser) -> Node {
-	if !expect_peek(p, .Left_Paren) do return nil
 
-	parameters := parse_function_parameters(p)
-
-	if !expect_peek(p, .Left_Brace) do return nil
-
-	body := parse_block_statement(p)
-
-	return Ast_Function{body = body, parameters = parameters}
-}
-//%endsection
-//%section expression
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
-	//%memerr
 	args := make([dynamic]Node, 0, 16, context.temp_allocator)
 	defer delete(args)
 
@@ -401,6 +389,7 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 
 	return args, true
 }
+
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
@@ -414,15 +403,12 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 
 	if !expect_peek(p, .Right_Bracket) do return nil
 
-	o := new_clone(operand, context.temp_allocator)
-	return Ast_Index{operand = o, index = new_clone(index, context.temp_allocator)}
+	new_op := new_clone(operand, context.temp_allocator)
+	new_index := new_clone(index, context.temp_allocator)
+
+	return Ast_Index{operand = new_op, index = new_index}
 }
-no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
-	msg := strings.builder_make(context.temp_allocator)
-	defer strings.builder_destroy(&msg)
-	fmt.sbprintf(&msg, "unexpected token '%v'", t)
-	append(&p.errors, strings.to_string(msg))
-}
+
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
 
@@ -442,13 +428,48 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 
 	return left_expr
 }
+// Statements=>>begin
+parse_let_statement :: proc(p: ^Parser) -> Node {
+	if !expect_peek(p, .Identifier) do return nil
+	name := string(p.cur_token.text_slice)
+
+	if !expect_peek(p, .Assign) do return nil
+	next_token(p)
+
+	value := parse_expression(p, .Lowest)
+	if value == nil do return nil
+
+	if peek_token_is(p, .Semicolon) do next_token(p)
+	return Ast_Let{name = name, value = new_clone(value, context.temp_allocator)}
+}
+
+parse_return_statement :: proc(p: ^Parser) -> Node {
+	next_token(p)
+	return_value := parse_expression(p, .Lowest)
+
+	if return_value == nil do return nil
+	if peek_token_is(p, .Semicolon) do next_token(p)
+
+	return Ast_Ret{return_value = new_clone(return_value, context.temp_allocator)}
+}
+parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
+	block := make(Ast_Block, 0, 16, context.temp_allocator)
+	defer delete(block)
+
+	next_token(p)
+
+	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
+		stmt := parse_statement(p)
+		if stmt != nil do append(&block, stmt)
+		next_token(p)
+	}
+	return block
+}
 parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return expr
 }
-//%endsection
-//%section statement
 parse_statement :: proc(p: ^Parser) -> Node {
 	#partial switch p.cur_token.type {
 	case .Let:
@@ -458,20 +479,5 @@ parse_statement :: proc(p: ^Parser) -> Node {
 	}
 	return parse_expression_statement(p)
 }
-//%desc{{"calls init on the lexer with the input."}}
-Parse_Program :: proc(p: ^Parser) -> Ast_Program {
-	next_token(p)
-	next_token(p)
+// Statements=>>end
 
-	//%mem_alloc
-	program := make(Ast_Program, 0, 16, context.temp_allocator)
-	defer delete(program)
-
-	for p.cur_token.type != .EOF {
-		if stmt := parse_statement(p); stmt != nil {
-			append(&program, stmt)
-		}
-		next_token(p)
-	}
-	return program
-}
