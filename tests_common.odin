@@ -5,6 +5,14 @@ import "core:log"
 import "core:reflect"
 import "core:testing"
 
+Test_Data :: union {
+	int,
+	bool,
+	string,
+	[]int,
+	map[string]int,
+}
+
 parser_has_error :: proc(p: Parser) -> bool {
 	if len(p.errors) == 0 do return false
 

@@ -1,10 +1,7 @@
 package monkey
 
 import "core:fmt"
-import "core:log"
-import "core:reflect"
 import "core:strings"
-import "core:testing"
 
 STACK_SIZE :: 2048
 
@@ -15,14 +12,13 @@ MAX_FRAMES :: 1024
 DEBUG_VM :: false
 
 VM :: struct {
-	compiler_state:         ^Compiler_State, // maybe using?
+	compiler_state:         ^Compiler_State,
 	constants:              []ObjectBase,
 	frames:                 []Frame,
 	frames_idx:             int,
 	stack:                  []ObjectBase,
 	sp:                     int, //Top of stack is sp-1
 	vmem:                   VArena,
-	//%methods
 	free_vm:                proc(v: ^VM),
 	run_vm:                 proc(v: ^VM) -> (err: string),
 	stack_top:              proc(v: ^VM) -> ObjectBase,
@@ -31,7 +27,6 @@ VM :: struct {
 	push_vm:                proc(v: ^VM, obj: ObjectBase) -> (err: string),
 	pop_vm:                 proc(v: ^VM) -> ObjectBase,
 	last_popped:            proc(v: ^VM) -> ObjectBase,
-	//%method{%desc{{"exec functions"}}}
 	exec_binary_op:         proc(v: ^VM, op: Opcode) -> (err: string),
 	exec_binary_int_op:     proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string),
 	exec_binary_string_op:  proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string),
@@ -189,18 +184,20 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	}
 	return ""
 }
+
 free_vm :: proc(v: ^VM) {
 	v.vmem->reset() // stack and frames, and constants, are freed here
 }
+
 stack_top :: proc(v: ^VM) -> ObjectBase {
 	if v.sp == 0 do return nil
 	return v.stack[v.sp - 1]
 }
-last_popped_stack_elem :: proc(v: ^VM) -> ObjectBase {
-	unimplemented()}
+
 current_frame :: proc(v: ^VM) -> ^Frame {
 	return &v.frames[v.frames_idx - 1]
 }
+
 push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 	if v.sp >= STACK_SIZE {
 		sb := &v.vmem.string_builder
@@ -222,6 +219,7 @@ pop_vm :: proc(v: ^VM) -> ObjectBase {
 last_popped :: proc(v: ^VM) -> ObjectBase {
 	return v.stack[v.sp]
 }
+
 exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right := v->pop_vm()
 	left := v->pop_vm()
@@ -242,6 +240,7 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	)
 	return strings.to_string(sb^)
 }
+
 exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 	result: int
 
@@ -262,6 +261,7 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 	}
 	return v->push_vm(result)
 }
+
 exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
 	result: string
 
@@ -280,6 +280,7 @@ exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -
 	return v->push_vm(result)
 
 }
+
 exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right := v->pop_vm()
 	left := v->pop_vm()
@@ -323,6 +324,7 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	fmt.sbprintf(sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
 	return strings.to_string(sb^)
 }
+
 exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 	result: bool
 	#partial switch op {
@@ -340,6 +342,7 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 	}
 	return v->push_vm(result)
 }
+
 exec_not_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	#partial switch operand in o {
@@ -352,6 +355,7 @@ exec_not_op :: proc(v: ^VM) -> (err: string) {
 	}
 	unreachable()
 }
+
 exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	operand, ok := o.(int)
@@ -363,6 +367,7 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	}
 	return v->push_vm(-operand)
 }
+
 exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	if ObjectType(operand) == ObjectArray && ObjectType(index) == int {
 		return v->exec_arr_idx(operand.(ObjectArray), index.(int))
@@ -375,16 +380,19 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	fmt.sbprintf(sb, "index operator does not support: '%v'", ObjectType(operand))
 	return strings.to_string(sb^)
 }
+
 exec_arr_idx :: proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string) {
 	max := len(arr) - 1
 	if index < 0 || index > max do return v->push_vm(NULL)
 	return v->push_vm(arr[index])
 }
+
 exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 	value, key_exists := ht[key]
 	if !key_exists do return v->push_vm(NULL)
 	return v->push_vm(value)
 }
+
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	fn, ok := v.stack[v.sp - 1 - int(num_args)].(ObjectCompiledFunction)
 	if !ok {
@@ -409,6 +417,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	v.sp = frame.base_pointer + fn.num_locals
 	return ""
 }
+
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 	elements := make(ObjectArray, end - start, v.vmem.allocator)
 
@@ -417,6 +426,7 @@ build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 	}
 	return elements
 }
+
 build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 	ht := make(ObjectHashTable, (end - start) / 2, v.vmem.allocator)
 
@@ -435,92 +445,14 @@ build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 	}
 	return ht, ""
 }
+
 pop_frame :: proc(v: ^VM) -> ^Frame {
 	v.frames_idx -= 1
 	return &v.frames[v.frames_idx]
 }
+
 push_frame :: proc(v: ^VM, f: Frame) {
 	v.frames[v.frames_idx] = f
 	v.frames_idx += 1
 }
-//%endsection
-//%section: tests
-@(test)
-test_vm_integer_arithmetic :: proc(t: ^testing.T) {
-	tests := []Test_Cases {
-		{"1", 1},
-		{"2", 2},
-		{"-5", -5},
-		{"1 + 2", 3},
-		{"3 - 1", 2},
-		{"2 * 2", 4},
-		{"4 / 2", 2},
-		{"5 + 5 + 5 + 5 - 10", 10},
-		{"2 * 2 * 2 * 2 * 2", 32},
-		{"5 * 2 + 10", 20},
-		{"5 + 2 * 10", 25},
-		{"5 * (2 + 10)", 60},
-		{"-50 + 100 + -50", 0},
-	}
-
-	defer free_all(context.temp_allocator)
-
-	run_vm_test(t, tests)
-}
-//%endsection
-//%section test helpers
-Test_Data :: union {
-	int,
-	bool,
-	string,
-	[]int,
-	map[string]int,
-}
-Test_Cases :: struct {
-	input:    string,
-	expected: Test_Data,
-}
-run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
-	for test_case, i in tests {
-		p := Parser__New__(test_case.input)
-		defer p->free()
-
-		program := p->parse()
-		if parser_has_error(p) do return
-
-		compiler := Compiler__New__()
-		defer compiler->free()
-
-		err := compiler->compile_program(program)
-		if err != "" {
-			log.errorf("test [%d] has failed, compiler has error: %s", i, err)
-			continue
-		}
-
-		vm := Vm__New__(compiler->bytecode(), &compiler.compiler_state)
-		defer vm->free_vm()
-
-		err = vm->run_vm()
-		if err != "" {
-			log.errorf("test [%d] has failed, vm has error: %s", i, err)
-			continue
-		}
-
-		last_popped := vm->last_popped()
-		err = test_expected_object(t, test_case.expected, last_popped)
-
-		if err != "" {
-			log.errorf(
-				"test [%d] has failed, expected: '%v', got: '%v'",
-				i,
-				test_case.expected,
-				last_popped,
-			)
-			continue
-		}
-	}
-}
-
-
-//%endsection
 

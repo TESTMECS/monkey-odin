@@ -86,7 +86,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case Ast_If:
 		return eval_if_expression(e, data, current_env)
 	case Ast_Function:
-		fn := Vmem__Alloc__(&e.vmem, ObjectFunction)
+		fn := Vmem_Alloc(&e.vmem, ObjectFunction)
 
 		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.vmem.allocator)
 		Ast__Copy__(&data.parameters, &fn.parameters, e.vmem.allocator) // Copies the parameters
