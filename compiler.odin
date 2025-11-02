@@ -25,10 +25,10 @@ Compiler_State_New :: proc() -> Compiler_State {
 	varena := virtual.arena_allocator(v)
 
 	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena) // $vm::STACK_SIZE
-	main_scope := Compilation_Scope{}
+	main_scope: Compilation_Scope
 	main_scope_instructions := make(Instructions, 0, varena)
 	main_scope.instructions = main_scope_instructions
-	append(&scopes, main_scope)
+	append(&scopes, main_scope) // append main scope
 
 	return Compiler_State {
 		constants = make([dynamic]ObjectBase, 0, varena),
@@ -103,6 +103,13 @@ Compiler__New__ :: proc() -> Compiler {
 	}
 }
 
+compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
+	strings.builder_reset(&c.sb)
+	fmt.sbprintf(&c.sb, "compiler error: %s", msg, args)
+	err = strings.to_string(c.sb)
+	return
+}
+
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	varena := virtual.arena_allocator(c.vmem)
@@ -115,14 +122,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)
 	case Ast_Identifier:
-		symbol, ok := c.symbol_table->resolve(data.value)
-		if !ok {
-			strings.builder_reset(&c.sb)
-			fmt.sbprintf(&c.sb, "identifier '%s' is not declared", data.value)
-			err = strings.to_string(c.sb)
+		if symbol, ok := c.symbol_table->resolve(data.value); !ok {
+			err = compiler_error(c, "identifier '%s' is not declared", data.value)
 			return
+		} else {
+			c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 		}
-		c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 	case Ast_Infix:
 		if data.op == "<" {
 			if err = c->compile(data.right^); err != "" do return
@@ -148,9 +153,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "!=":
 			c->emit(.Neq)
 		case:
-			strings.builder_reset(&c.sb)
-			fmt.sbprintf(&c.sb, "unknown infix operator '%s'", data.op)
-			err = strings.to_string(c.sb)
+			err = compiler_error(c, "unknown infix operator '%s'", data.op)
+			return
 		}
 	case Ast_Prefix:
 		if err = c->compile(data.operand^); err != "" do return
@@ -160,9 +164,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "-":
 			c->emit(.Neg)
 		case:
-			strings.builder_reset(&c.sb)
-			fmt.sbprintf(&c.sb, "unknown prefix operator '%s'", data.op)
-			err = strings.to_string(c.sb)
+			err = compiler_error(c, "unknown prefix operator '%s'", data.op)
+			return
 		}
 	case Ast_If:
 		if err = c->compile(data.condition^); err != "" do return
@@ -183,6 +186,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			if err = c->compile(data.orelse); err != "" do return
 			if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		}
+
 		after_orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Block:
@@ -193,31 +197,20 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Array:
-		// if DEBUG do log.infof("compiling array literal")
 		for el in data {
 			if err = c->compile(el); err != "" do return
 		}
 		c->emit(.Arr, len(data))
 	case Ast_Hash_Table:
-		if DEBUG do log.infof("compiling hash table literal")
-
-		// Compile in the same order the user wrote in source
 		for pair in data.pairs {
-			if DEBUG do log.infof("compiling key")
 			if err = c->compile(pair.key); err != "" do return
-
-			if DEBUG do log.infof("compiling value")
 			if err = c->compile(pair.value); err != "" do return
 		}
-
-		// Emit hash-table construction instruction.
-		// Each pair contributes 2 items (key + value)
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
 		if err = c->compile(data.operand^); err != "" do return
 		if err = c->compile(data.index^); err != "" do return
 		c->emit(.Idx)
-	//%NOTE: gonna need to fix this.
 	case Ast_Function:
 		c->enter_scope()
 		for param in data.parameters {
@@ -227,9 +220,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
 		if !c->last_instruction_is(.Ret_V) do c->emit(.Ret_V)
 		num_locals := len(c.symbol_table.store)
-
 		instructions := c->leave_scope()
-		// Probably wrong.
+
 		instr := make(Instructions, len(instructions), varena)
 
 		compiled_fn := ObjectCompiledFunction {
@@ -237,9 +229,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			num_locals     = num_locals,
 			num_parameters = len(data.parameters),
 		}
+
 		if len(instructions) > 0 {
 			inject_at(compiled_fn.instructions, 0, ..instructions[:])
 		}
+
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
 		if err = c->compile(data.function^); err != "" do return
@@ -259,7 +253,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 } // end <<Compiler
 // Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
-	if DEBUG do log.infof("compiling program")
 	err = ""
 	for stmt in program {
 		if err = c->compile(stmt); err != "" do return
@@ -272,7 +265,6 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 	varena := virtual.arena_allocator(c.vmem)
-	if DEBUG do log.infof("emitting %v", op)
 	ins := make_instructions(varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
@@ -285,7 +277,6 @@ bytecode :: proc(c: ^Compiler) -> Bytecode {
 
 enter_scope :: proc(c: ^Compiler) {
 	varena := virtual.arena_allocator(c.vmem)
-	if DEBUG do log.infof("entering scope %v", c.scopes_idx)
 	scope := Compilation_Scope{}
 	instr := make(Instructions, 0, varena)
 	scope.instructions = instr
@@ -318,15 +309,11 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 }
 
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
-	// if DEBUG do log.infof("adding instructions to scope %v", c.scopes[0])
 	pos := len(c->current_instructions())
-	// if DEBUG do log.infof("scopes len %v, %v, %v", len(c.scopes), c.scopes[0], instructions)
 	n, err := append(c->current_instructions(), ..instructions)
-	// if DEBUG do log.infof("%d", n)
 	if err != nil {
 		log.errorf("appending instructions to scope %v failed with: %v", c.scopes[0], err)
 	}
-	// if DEBUG do log.infof("added instructions to scope %v", c.scopes[0])
 	return pos
 }
 
@@ -339,7 +326,6 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 }
 
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
-	// if DEBUG do log.infof("adding constant %v", obj)
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }

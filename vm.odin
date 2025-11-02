@@ -57,7 +57,7 @@ VM :: struct {
 	push_frame:             proc(v: ^VM, f: Frame),
 }
 
-Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
+Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
 	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
 	arena_err := virtual.arena_init_growing(v)
 	ensure(arena_err == nil)

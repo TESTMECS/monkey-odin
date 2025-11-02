@@ -9,7 +9,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "len":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'len' function error: wrong number of arguments, wants='1', got='%d'",
 							len(args),
@@ -25,7 +25,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					return len(arg), true
 				}
 
-				return new_error(
+				return eval_new_error(
 						e,
 						"'len' function error: not supported for argument of type '%v'",
 						ObjectType(args[0]),
@@ -36,7 +36,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "first":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'first' function error: wrong number of arguments, wants='1', got='%d'",
 							len(args),
@@ -46,7 +46,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				arr, ok := args[0].(ObjectArray)
 				if !ok {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'first' function error: not supported for argument of type '%v'",
 							ObjectType(args[0]),
@@ -62,7 +62,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "last":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'last' function error: wrong number of arguments, wants='1', got='%d'",
 							len(args),
@@ -72,7 +72,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				arr, ok := args[0].(ObjectArray)
 				if !ok {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'last' function error: not supported for argument of type '%v'",
 							ObjectType(args[0]),
@@ -88,7 +88,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "rest":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'rest' function error: wrong number of arguments, wants='1', got='%d'",
 							len(args),
@@ -98,7 +98,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				arr, ok := args[0].(ObjectArray)
 				if !ok {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'rest' function error: not supported for argument of type '%v'",
 							ObjectType(args[0]),
@@ -120,7 +120,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "push":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 2 {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'push' function error: wrong number of arguments, wants='2', got='%d'",
 							len(args),
@@ -130,7 +130,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				arr, ok := args[0].(ObjectArray)
 				if !ok {
-					return new_error(
+					return eval_new_error(
 							e,
 							"'push' function error: not supported for argument of type '%v'",
 							ObjectType(args[0]),

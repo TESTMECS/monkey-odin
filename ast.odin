@@ -338,7 +338,6 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 			}
 		}
 
-		// Copy lookup table (so semantic checks still work)
 		for key, &value in data.table {
 			key_clone := strings.clone(key, allocator)
 			hash_copy.table[key_clone] = ast_copy(&value, allocator)
