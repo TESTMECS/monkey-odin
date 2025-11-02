@@ -325,7 +325,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	// Advance past '{'
 	next_token(p)
 
-	for !peek_token_is(p, .Right_Brace) {
+	for !current_token_is(p, .Right_Brace) {
 		// --- Parse key ---
 		key_expr := parse_expression(p, .Lowest)
 
@@ -369,15 +369,20 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		append(&result.pairs, new_pair)
 		result.table[key_str] = value_expr
 
-		// --- Handle commas ---
-		if peek_token_is(p, .Comma) {
-			next_token(p)
-		} else {
-			break
-		}
+  // --- Handle commas ---
+  if peek_token_is(p, .Comma) {
+    next_token(p)
+    next_token(p)
+  } else {
+    break
+  }
 	}
 
-	if !expect_peek(p, .Right_Brace) do return nil
+	if current_token_is(p, .Right_Brace) {
+		// ok
+	} else {
+		if !expect_peek(p, .Right_Brace) do return nil
+	}
 
 	return result
 }

@@ -190,8 +190,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	return ""
 }
 free_vm :: proc(v: ^VM) {
-	v.vmem->reset() // stack and frames are freed here
-	delete(v.constants)
+	v.vmem->reset() // stack and frames, and constants, are freed here
 }
 stack_top :: proc(v: ^VM) -> ObjectBase {
 	if v.sp == 0 do return nil
