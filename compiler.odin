@@ -6,7 +6,7 @@ import "core:strings"
 
 DEBUG :: false
 
-// @Compiler_State=>>begin
+// compiler-state=>>begin
 Compiler_State :: struct {
 	vmem:         ^VArena,
 	symbol_table: Symbol_Table,
@@ -17,7 +17,7 @@ Compiler_State :: struct {
 }
 
 Compiler_State__New__ :: proc() -> Compiler_State {
-	v := new(VArena, context.allocator) // @free_arena_ptr
+	v := new(VArena, context.allocator) // @free-arena-ptr
 	v^ = VArena__New__()
 	err := v->init()
 	if err != nil {
@@ -43,9 +43,9 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 free_state :: proc(state: ^Compiler_State) {
 	state.vmem->reset()
 	state.symbol_table->free()
-	free(state.vmem, context.allocator) // @free_arena_ptr
-} //end <<@Compiler_State
-// @Compiler=>>begin
+	free(state.vmem, context.allocator) // @free-arena-ptr
+} //end <<Compiler_State
+// Compiler=>>begin
 Emitted_Instruction :: struct {
 	op_code: Opcode,
 	pos:     int,
@@ -259,8 +259,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
 	return
-} // end <<@Compiler
-// @Compiler_helpers=>>begin
+} // end <<Compiler
+// Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 	if DEBUG do log.infof("compiling program")
 	err = ""
@@ -364,5 +364,5 @@ change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.vmem.allocator, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
-} //end <<@Compiler_helpers
+} //end <<Compiler_helpers
 
