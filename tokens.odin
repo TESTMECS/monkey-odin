@@ -34,18 +34,15 @@ Token_Type :: enum {
 	Return,
 }
 
-// Token is a type and a slice of bytes for the text representation
 Token :: struct {
 	type:       Token_Type,
 	text_slice: []u8,
 }
 
-// GetToken returns the token type from some byte slice with a start and total length.
 GetToken :: proc(type: Token_Type, input: []u8, start: int, length: int) -> Token {
 	return {type, input[start:start + length]}
 }
 
-// UpdateKwType updates the token.type field in the token struct.
 UpdateKwType :: proc(tok: ^Token) {
 	switch (string(tok.text_slice)) {
 	case "fn":

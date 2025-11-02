@@ -12,13 +12,15 @@ VArena :: struct {
 	reset:          proc(m: ^VArena),
 }
 
+
 @(require_results)
-VArena__New__ :: proc() -> VArena {
+VArena_New :: proc() -> VArena {
 	return VArena{init = vmem_init, reset = vmem_reset}
 }
 
 @(require_results)
-Vmem_Alloc :: proc(m: ^VArena, $T: typeid) -> ^T {
+VArena_Alloc :: proc(m: ^VArena, $T: typeid) -> ^T {
+	// Allocate a new object of type T on the arena
 	ptr, err := virtual.new(&m.arena, T)
 	if err != nil {
 		panic("VArena Alloc failed")
@@ -26,17 +28,13 @@ Vmem_Alloc :: proc(m: ^VArena, $T: typeid) -> ^T {
 	return ptr
 }
 
-
 vmem_init :: proc(m: ^VArena, reserved: uint = 1 * mem.Megabyte) -> mem.Allocator_Error {
 	err := virtual.arena_init_growing(&m.arena, reserved)
 	if err != .None {
 		return err
 	}
-
 	m.allocator = virtual.arena_allocator(&m.arena)
-
 	m.string_builder = strings.builder_make(m.allocator)
-
 	return .None
 }
 

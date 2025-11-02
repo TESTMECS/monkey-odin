@@ -106,7 +106,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				}
 
 				if len(arr) > 0 {
-					new_arr := Vmem_Alloc(&e.vmem, ObjectArray)
+					new_arr := VArena_Alloc(&e.vmem, ObjectArray)
 					inject_at(new_arr, 0, ..arr[1:])
 
 					return new_arr^, true

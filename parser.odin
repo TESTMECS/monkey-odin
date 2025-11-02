@@ -22,7 +22,7 @@ Parser :: struct {
 Parser__New__ :: proc(input: string) -> Parser {
 
 	arena_ptr := new(VArena, context.allocator)
-	arena_ptr^ = VArena__New__()
+	arena_ptr^ = VArena_New()
 
 	err := arena_ptr->init()
 

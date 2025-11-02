@@ -3,6 +3,16 @@ package monkey
 import "core:fmt"
 import "core:strings"
 
+Frame :: struct {
+	instructions: []byte,
+	ip:           int,
+	base_pointer: int,
+}
+
+frame :: proc(instructions: []byte, base_pointer: int) -> Frame {
+	return Frame{instructions, -1, base_pointer}
+}
+
 STACK_SIZE :: 2048
 
 GLOBALS_SIZE :: 65536
@@ -10,6 +20,7 @@ GLOBALS_SIZE :: 65536
 MAX_FRAMES :: 1024
 
 DEBUG_VM :: false
+
 
 VM :: struct {
 	compiler_state:         ^Compiler_State,
@@ -45,7 +56,7 @@ VM :: struct {
 }
 
 Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
-	v := VArena__New__()
+	v := VArena_New()
 	err := v->init()
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
@@ -105,7 +116,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Arr:
 			num_elems := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
-
 			arr := v->build_array(v.sp - num_elems, v.sp)
 			v.sp = v.sp - num_elems
 			if err = v->push_vm(arr); err != "" do return
@@ -420,6 +430,10 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 	elements := make(ObjectArray, end - start, v.vmem.allocator)
+	err := VArena_Alloc(&v.vmem, ObjectArray)
+	if err != nil {
+		return nil
+	}
 
 	for i := start; i < end; i += 1 {
 		append(&elements, v.stack[i])
