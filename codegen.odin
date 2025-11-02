@@ -9,7 +9,6 @@ import "core:mem"
 import "core:strings"
 import "core:testing"
 
-//%section typedefs
 Instructions :: [dynamic]byte
 
 Opcode :: enum byte {
@@ -74,9 +73,7 @@ Definition__Map__ := [Opcode]Definition {
 	.Get_L      = {"OpGetLocal", {1}},
 	.Set_L      = {"OpSetLocal", {1}},
 }
-//%endsection
 
-//%section methods
 lookup :: proc(op: Opcode) -> (Definition, bool) {
 	def := Definition__Map__[Opcode(op)]
 	if def.name == "" do return Definition{}, false
@@ -198,8 +195,6 @@ read_u16 :: proc(ins: []byte) -> u16 {
 read_u8 :: proc(ins: []byte) -> u8 {
 	return u8(ins[0])
 }
-//%endsection
-//%section: tests
 
 @(test)
 test_code_make :: proc(t: ^testing.T) {
@@ -244,6 +239,7 @@ test_code_make :: proc(t: ^testing.T) {
 		}
 	}
 }
+
 @(test)
 test_instructions_string :: proc(t: ^testing.T) {
 	instructions := [?]Instructions {
@@ -275,6 +271,7 @@ test_instructions_string :: proc(t: ^testing.T) {
 		testing.fail(t)
 	}
 }
+
 @(test)
 test_read_operands :: proc(t: ^testing.T) {
 	tests := []struct {
@@ -318,5 +315,4 @@ test_read_operands :: proc(t: ^testing.T) {
 		}
 	}
 }
-//%endsection
 

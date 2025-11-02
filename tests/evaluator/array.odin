@@ -1,0 +1,66 @@
+package evaluator_tests
+
+import m "../.."
+import "core:log"
+import "core:testing"
+
+@(test)
+test_eval_array_literals :: proc(t: ^testing.T) {
+	input := "[1, 2 * 2, 3 + 3]"
+
+	evaluated, ok := eval_test_is_valid(input)
+	if !ok do return
+
+	arr, is_arr := evaluated.(m.ObjectArray)
+	if !is_arr {
+		log.errorf("expected array object but got '%v'", m.ObjectType(evaluated))
+		return
+	}
+
+	if len(arr) != 3 {
+		log.errorf("expected array length to be 3 but got='%d'", len(arr))
+		return
+	}
+
+	if !m.integer_object_is_valid(arr[0], 1) {
+		log.errorf("arr[0] does not match")
+	}
+
+	if !m.integer_object_is_valid(arr[1], 4) {
+		log.errorf("arr[1] does not match")
+	}
+
+	if !m.integer_object_is_valid(arr[2], 6) {
+		log.errorf("arr[2] does not match")
+	}
+}
+
+@(test)
+test_eval_array_index_expression :: proc(t: ^testing.T) {
+	tests := [?]struct {
+		input:    string,
+		expected: int,
+	} {
+		{"[1, 2, 3][0]", 1},
+		{"[1, 2, 3][1]", 2},
+		{"[1, 2, 3][2]", 3},
+		{"let i = 0; [1][i]", 1},
+		{"[1, 2, 3][1 + 1];", 3},
+		{"let my_arr = [1, 2, 3]; my_arr[2]", 3},
+		{"let my_arr = [1, 2, 3]; my_arr[0] + my_arr[1] + my_arr[2];", 6},
+		{"let my_arr = [1, 2, 3]; let i = my_arr[0]; my_arr[i]", 2},
+	}
+
+	for test_case, i in tests {
+		evaluated, ok := eval_test_is_valid(test_case.input)
+		if !ok {
+			log.errorf("test[%d] has failed", i)
+			continue
+		}
+
+		if !m.integer_object_is_valid(evaluated, test_case.expected) {
+			log.errorf("test[%d] has failed", i)
+		}
+	}
+}
+

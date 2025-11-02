@@ -7,7 +7,7 @@ import "core:os"
 import "core:strings"
 
 main :: proc() {
-	evaluator := Evaluator__New__()
+	evaluator := Evaluator_New()
 	defer evaluator->free()
 
 	buf: [2048]byte

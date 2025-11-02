@@ -1,15 +1,15 @@
 package monkey
 import "base:runtime"
+
 Environment :: struct {
 	store: map[string]ObjectBase,
 	outer: ^Environment,
-	// methods
 	get:   proc(env: ^Environment, name: string) -> (ObjectBase, bool),
 	set:   proc(env: ^Environment, name: string, value: ObjectBase) -> ObjectBase,
 	free:  proc(env: ^Environment),
 }
 
-Env__New__ :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> Environment {
+Env_New :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> Environment {
 	store_mem := make(map[string]ObjectBase, 0, allocator)
 
 	return {
@@ -21,12 +21,12 @@ Env__New__ :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> E
 	}
 }
 
-Env__Enclosed__ :: proc(
+Env_Enclosed :: proc(
 	outer: ^Environment,
 	reserved: uint,
 	allocator: runtime.Allocator,
 ) -> ^Environment {
-	env := Env__New__(outer, allocator)
+	env := Env_New(outer, allocator)
 	env.store = make(map[string]ObjectBase, reserved, allocator)
 	return new_clone(env, allocator)
 }

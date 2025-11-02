@@ -5,7 +5,8 @@ import "core:fmt"
 import "core:log"
 import "core:strings"
 import "core:testing"
-//%note:"fixme: Allocator"
+
+// Evaluator=>>begin
 Evaluator :: struct {
 	_env: Environment,
 	eval: proc(
@@ -19,15 +20,15 @@ Evaluator :: struct {
 	free: proc(e: ^Evaluator),
 	vmem: VArena,
 }
-//%section Evaluator
-Evaluator__New__ :: proc() -> Evaluator {
+
+Evaluator_New :: proc() -> Evaluator {
 	v := VArena__New__()
 	err := v->init()
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")
 	}
 
-	new_env := Env__New__(nil, v.allocator)
+	new_env := Env_New(nil, v.allocator)
 
 	e := Evaluator {
 		_env = new_env,
@@ -51,19 +52,16 @@ new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	fmt.sbprintf(sb, str, ..args)
 	err := strings.to_string(sb^)
 	return strings.clone(err, e.vmem.allocator)
-}
-//%endsection
-//%section main eval function
+} // end <<Evaluator
+
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
 	#partial switch &data in node {
-
-	// statements
+	// statements=>>begin
 	case Ast_Ret:
 		val, ok := eval(e, data.return_value^, current_env)
 		if !ok do return val, false
 		return ObjectReturn(ToObjectBase(val)), true
-
 	case Ast_Let:
 		val, ok := eval(e, data.value^, current_env)
 		if !ok do return val, false
@@ -71,29 +69,24 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		if ok do return ObjectBase(new_error(e, "identifier '%s' is already declared", data.name)), false
 		current_env->set(data.name, ToObjectBase(val))
 		return ObjectBase(NULL), true
-
-	// expressions
+	// end <<statements
+	// expressions=>>begin
 	case Ast_Identifier:
 		return eval_identifier(e, data, current_env)
-
 	case Ast_Prefix:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
 		return eval_prefix_expression(e, data.op, ToObjectBase(operand))
-
 	case Ast_Infix:
 		left, ok := eval(e, data.left^, current_env)
 		if !ok do return left, false
 		right, ok2 := eval(e, data.right^, current_env)
 		if !ok2 do return right, ok2
 		return eval_infix_expression(e, data.op, ToObjectBase(left), ToObjectBase(right))
-
 	case Ast_Block:
 		return eval_block_statements(e, data, current_env)
-
 	case Ast_If:
 		return eval_if_expression(e, data, current_env)
-
 	case Ast_Function:
 		fn := Vmem__Alloc__(&e.vmem, ObjectFunction)
 
@@ -105,7 +98,6 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 		fn.env = current_env
 		return ObjectBase(fn), true
-
 	case Ast_Call:
 		function, ok := eval(e, data.function^, current_env)
 		if !ok do return function, false
@@ -114,7 +106,6 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		if !args_success do return args[0], false
 
 		return apply_function(e, ToObjectBase(function), args)
-
 	case Ast_Index:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
@@ -123,8 +114,8 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		if !index_ok do return index, false
 
 		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index))
-
-	// literals
+	// end <<expressions
+	// literals=>>begin
 	case int:
 		return ObjectBase(data), true
 
@@ -143,11 +134,11 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
 	}
+	// end <<literals
 
 	return ObjectBase(new_error(e, "unrecognized Node of type '%v'", Ast__Type__(node))), false
 }
-//%endsection
-//%section eval statements
+
 eval_statements :: proc(
 	e: ^Evaluator,
 	node: Ast_Program,
@@ -469,9 +460,8 @@ extend_function_env :: proc(
 	fn: ^ObjectFunction,
 	args: [dynamic]ObjectBase,
 ) -> ^Environment {
-	env := Env__Enclosed__(fn.env, len(fn.parameters), e.vmem.allocator)
+	env := Env_Enclosed(fn.env, len(fn.parameters), e.vmem.allocator)
 
-	// Leak here fs
 	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
 	}
@@ -764,556 +754,4 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	return nil
 }
-//%endsection
-//%section test helpers.
-eval_test_get :: proc(input: string, print_errors := true) -> (ObjectBase, Evaluator, bool) {
-	p := Parser__New__(input)
-	defer p->free()
-	program := p->parse()
-	if parser_has_error(p) do return nil, Evaluator{}, false
-
-	e := Evaluator__New__() // Create the evaluator
-	evaluated, ok := e.eval(&e, program, e.vmem.allocator) // Evaluate the program
-	if !ok {
-		if print_errors do log.errorf("eval failed: %s", evaluated)
-		e->free()
-		return nil, Evaluator{}, false
-	}
-	return evaluated, e, true
-}
-eval_test_is_valid :: proc(input: string, print_errors := true) -> (ObjectBase, bool) {
-	evaluated, _, ok := eval_test_get(input, print_errors)
-	if !ok do return nil, false
-	return evaluated, ok
-}
-integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {
-	result, ok := obj.(int)
-	if !ok {
-		log.errorf("object is not integer, got='%v'", ObjectType(obj))
-		return false
-	}
-
-	if result != expected {
-		log.errorf("object has wrong value. got='%d', expected='%d'", result, expected)
-		return false
-	}
-
-	return true
-}
-boolean_object_is_valid :: proc(obj: ObjectBase, expected: bool) -> bool {
-	result, ok := obj.(bool)
-	if !ok {
-		log.errorf("object is not boolean, got='%v'", ObjectType(obj))
-		return false
-	}
-
-	if result != expected {
-		log.errorf("object has wrong value. got='%d', expected='%d'", result, expected)
-		return false
-	}
-
-	return true
-}
-
-string_object_is_valid :: proc(obj: ObjectBase, expected: string) -> bool {
-	result, ok := obj.(string)
-	if !ok {
-		log.errorf("object is not string, got='%v'", ObjectType(obj))
-		return false
-	}
-
-	if result != expected {
-		log.errorf("object has wrong value. got='%s', expected='%s'", result, expected)
-		return false
-	}
-
-	return true
-}
-//%endsection
-//%section Main Evaluator Tests
-@(test)
-test_eval_integer_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	} {
-		{"5", 5},
-		{"10", 10},
-		{"-5", -5},
-		{"-10", -10},
-		{"5 + 5 + 5 + 5 - 10", 10},
-		{"2 * 2 * 2 * 2 * 2", 32},
-		{"-50 + 100 + -50", 0},
-		{"5 * 2 + 10", 20},
-		{"5 + 2 * 10", 25},
-		{"20 + 2 * -10", 0},
-		{"50 / 2 * 2 + 10", 60},
-		{"2 * (5 + 10)", 30},
-		{"3 * 3 * 3 + 10", 37},
-		{"3 * (3 * 3) + 10", 37},
-		{"(5 + 10 * 2 + 15 / 3) * 2 + -10", 50},
-		{"(5 + 10 * 2 + 15 / 3) * 2 + -10", 50},
-	}
-	for test, i in tests {
-		evaluated, ok := eval_test_is_valid(test.input)
-		if !ok do return
-
-		if !integer_object_is_valid(evaluated, test.expected) {
-			log.errorf("test [%d] has failed", i)
-		}
-	}
-
-}
-@(test)
-test_eval_boolean_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: bool,
-	} {
-		{"true", true},
-		{"false", false},
-		{"1<2", true},
-		{"1>2", false},
-		{"1==1", true},
-		{"1!=1", false},
-		{"true == true", true},
-		{"false == false", true},
-		{"(1 < 2) == true", true},
-		{"(1 < 2) == false", false},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test [%d] has failed", i)
-			continue
-		}
-		if !boolean_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test [%d] has failed", i)
-		}
-	}
-}
-@(test)
-test_eval_string_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: string,
-	}{{`"Hello World"`, "Hello World"}, {`"Hello" + " " + "World"`, "Hello World"}}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test [%d] has failed", i)
-			continue
-		}
-		if !string_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test [%d] has failed", i)
-		}
-	}
-}
-@(test)
-test_eval_bang_operator :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: bool,
-	} {
-		{"!true", false},
-		{"!false", true},
-		{"!1", false},
-		{"!!true", true},
-		{"!!false", false},
-		{"!!1", true},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test [%d] has failed", i)
-			continue
-		}
-		if !boolean_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test [%d] has failed", i)
-		}
-	}
-}
-@(test)
-test_eval_if_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: ObjectBase,
-	} {
-		{"if (true) { 10 }", 10},
-		{"if (false) { 10 }", NULL},
-		{"if (1) { 10 }", 10},
-		{"if (1 < 2) { 10 }", 10},
-		{"if (1 > 2) { 10 }", NULL},
-		{"if (1 < 2) { 10 } else { 20 }", 10},
-		{"if (1 > 2) { 10 } else { 20 }", 20},
-	}
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test [%d] has failed", i)
-			continue
-		}
-		#partial switch expected in test_case.expected {
-		case int:
-			if !integer_object_is_valid(evaluated, expected) {
-				log.errorf("test [%d] has failed", i)
-			}
-		case ObjectNil:
-			if ObjectType(evaluated) != ObjectNil {
-				log.errorf(
-					"test [%d] has failed, Object is not nil, got='%v' instead.",
-					i,
-					ObjectType(evaluated),
-				)
-			}
-		}
-	}
-}
-
-@(test)
-test_eval_return_statement :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	} {
-		{"return 10;", 10},
-		{"return 10; 9;", 10},
-		{"return 2 * 5; 9;", 10},
-		{"9; return 2 * 5; 9;", 10},
-		{
-			`
-    if 10 > 1 {
-        if 10 > 1 {
-            return 10;
-        }
-
-        return 1;
-    }`,
-			10,
-		},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		if !integer_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test[%d] has failed", i)
-		}
-	}
-}
-
-@(test)
-test_eval_let_statements :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	} {
-		{"let a = 5; a;", 5},
-		{"let a = 5 * 5; a;", 25},
-		{"let a = 5; let b = a; b;", 5},
-		{"let a = 5; let b = a; let c = a + b + 5; c;", 15},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		if !integer_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test[%d] has failed", i)
-		}
-	}
-}
-
-@(test)
-test_eval_function_object :: proc(t: ^testing.T) {
-	input := "fn(x) { x + 2 };"
-
-	evaluated, e, ok := eval_test_get(input)
-	if !ok do return
-	defer e.free(&e)
-
-	fn, is_fn := evaluated.(^ObjectFunction)
-	if !is_fn {
-		log.errorf("object is not function. got='%v'", ObjectType(evaluated))
-		return
-	}
-
-	if len(fn.parameters) != 1 {
-		log.errorf(
-			"function has wrong number of parameters, got='%d', '%v'",
-			len(fn.parameters),
-			fn.parameters,
-		)
-		return
-	}
-
-
-	if fn.parameters[0].value != "x" {
-		log.errorf("function's parameter is not 'x', got='%s'", fn.parameters[0])
-		return
-	}
-
-	expected_body := "{ (x+2) }"
-
-	sb := strings.builder_make(context.temp_allocator)
-	defer free_all(context.temp_allocator)
-
-	ast_to_string(fn.body, &sb)
-
-	if strings.to_string(sb) != expected_body {
-		log.errorf(
-			"ast_to_string ris not valid, expected='%s', got='%s'",
-			expected_body,
-			strings.to_string(sb),
-		)
-	}
-}
-
-@(test)
-test_eval_function_application :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	} {
-		{"let identity = fn(x) { x; }; identity(5);", 5},
-		{"let identity = fn(x) { return x; }; identity(5);", 5},
-		{"let double = fn(x) { x * 2; }; double(5);", 10},
-		{"let add = fn(x, y) { x * y; }; add(5, 5);", 25},
-		{"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20},
-		{"fn (x) { x; }(5)", 5},
-		{`
-let new_adder = fn(x) {
-	fn(y) {x + y};
-};
-
-let add_two = new_adder(2);
-add_two(2)`, 4},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		if !integer_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test[%d] has failed", i)
-		}
-
-	}
-}
-
-@(test)
-test_eval_builtin_functions :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: union {
-			int,
-			string,
-		},
-	}{{`len("")`, 0}, {`len("four")`, 4}, {`len("hello world")`, 11}}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		switch expected in test_case.expected {
-		case int:
-			if !integer_object_is_valid(evaluated, expected) {
-				log.errorf("test[%d] has failed", i)
-			}
-
-		case string:
-			if !string_object_is_valid(evaluated, expected) {
-				log.errorf("test[%d] has failed", i)
-			}
-		}
-
-	}
-}
-
-@(test)
-test_eval_array_literals :: proc(t: ^testing.T) {
-	input := "[1, 2 * 2, 3 + 3]"
-
-	evaluated, ok := eval_test_is_valid(input)
-	if !ok do return
-
-	arr, is_arr := evaluated.(ObjectArray)
-	if !is_arr {
-		log.errorf("expected array object but got '%v'", ObjectType(evaluated))
-		return
-	}
-
-	if len(arr) != 3 {
-		log.errorf("expected array length to be 3 but got='%d'", len(arr))
-		return
-	}
-
-	if !integer_object_is_valid(arr[0], 1) {
-		log.errorf("arr[0] does not match")
-	}
-
-	if !integer_object_is_valid(arr[1], 4) {
-		log.errorf("arr[1] does not match")
-	}
-
-	if !integer_object_is_valid(arr[2], 6) {
-		log.errorf("arr[2] does not match")
-	}
-}
-
-@(test)
-test_eval_hash_literals :: proc(t: ^testing.T) {
-	input := `
-    {
-        "one": 10 - 9,
-        "two": 1 + 1,
-        "three": 6 / 2,
-    }`
-
-
-	evaluated, ok := eval_test_is_valid(input)
-	if !ok do return
-
-	ht, is_hash_table := evaluated.(ObjectHashTable)
-	if !is_hash_table {
-		log.errorf("expected hash table object but got '%v'", ObjectType(evaluated))
-		return
-	}
-
-	expected := map[string]int {
-		"one"   = 1,
-		"two"   = 2,
-		"three" = 3,
-	}
-	defer delete(expected)
-
-	if len(ht) != len(expected) {
-		log.errorf(
-			"Hash table has wrong number of pairs, expected='%d', got='%d'",
-			len(expected),
-			len(ht),
-		)
-		return
-	}
-
-	for expected_key, expected_value in expected {
-		value, key_exists := ht[expected_key]
-		if !key_exists {
-			log.errorf("key '%v' expected but does not exist", expected_key)
-			continue
-		}
-
-		if !integer_object_is_valid(value, expected_value) {
-			log.errorf("key '%s' has wrong value", expected_key)
-		}
-	}
-}
-
-@(test)
-test_eval_array_index_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	} {
-		{"[1, 2, 3][0]", 1},
-		{"[1, 2, 3][1]", 2},
-		{"[1, 2, 3][2]", 3},
-		{"let i = 0; [1][i]", 1},
-		{"[1, 2, 3][1 + 1];", 3},
-		{"let my_arr = [1, 2, 3]; my_arr[2]", 3},
-		{"let my_arr = [1, 2, 3]; my_arr[0] + my_arr[1] + my_arr[2];", 6},
-		{"let my_arr = [1, 2, 3]; let i = my_arr[0]; my_arr[i]", 2},
-	}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		if !integer_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test[%d] has failed", i)
-		}
-	}
-}
-
-@(test)
-test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
-	tests := [?]struct {
-		input:    string,
-		expected: int,
-	}{{`{"foo": 5}["foo"]`, 5}, {`let key = "foo"; {"foo": 5}[key]`, 5}}
-
-	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
-		if !ok {
-			log.errorf("test[%d] has failed", i)
-			continue
-		}
-
-		if !integer_object_is_valid(evaluated, test_case.expected) {
-			log.errorf("test[%d] has failed", i)
-		}
-	}
-}
-
-// NOTE: works !!
-// @(test)
-// test_eval_errors :: proc(t: ^testing.T) {
-// 	inputs := [?]string {
-// 		"5 + true;",
-// 		"5 + true; 5;",
-// 		"-true",
-// 		"true+false;",
-// 		`"Hello" - "World"`,
-// 		"5; true + false; 5",
-// 		"if 10 > 1 {true + false;}",
-// 		`if 10 > 1 {
-//                 if 10 > 1 {
-//                     return true + false;
-//                 }
-//
-//                 return 1;
-//             }`,
-// 		"foobar", // does not exist
-// 		"let a = 12; let a = true;", // already exists
-// 		"let f = fn(x) {}; f()", // wrong number of arguments
-// 		"let f = fn(x,y) {}; f(1)", // wrong number of arguments
-// 		"let f 2", // parser error also must be caught
-// 		"len(1)", // wrong arg type for builtin function
-// 		`len("one", "two")`, // wrong number of arguments for builtin function
-// 		"[1, 2, 3][3]", // index out of boundary
-// 		"[1, 2, 3][-1]", // index out of boundary
-// 		`{"foo": 5}["bar"]`, // key does not exists
-// 		`{}["bar"]`, // key does not exists
-// 		`{}[1]`, // key is not hashable
-// 	}
-//
-// 	for input, i in inputs {
-// 		_, ok := eval_test_is_valid(input)
-// 		if ok {
-// 			log.errorf(
-// 				"test[%d] has failed, the input supposed to raise an error but it didn't",
-// 				i,
-// 			)
-// 		}
-// 	}
-// }
 

@@ -121,3 +121,47 @@ test_expected_object :: proc(t: ^testing.T, expected: Test_Data, actual: ObjectB
 	return ""
 }
 
+integer_object_is_valid :: proc(obj: ObjectBase, expected: int) -> bool {
+	result, ok := obj.(int)
+	if !ok {
+		log.errorf("object is not integer, got='%v'", ObjectType(obj))
+		return false
+	}
+
+	if result != expected {
+		log.errorf("object has wrong value. got='%d', expected='%d'", result, expected)
+		return false
+	}
+
+	return true
+}
+boolean_object_is_valid :: proc(obj: ObjectBase, expected: bool) -> bool {
+	result, ok := obj.(bool)
+	if !ok {
+		log.errorf("object is not boolean, got='%v'", ObjectType(obj))
+		return false
+	}
+
+	if result != expected {
+		log.errorf("object has wrong value. got='%d', expected='%d'", result, expected)
+		return false
+	}
+
+	return true
+}
+
+string_object_is_valid :: proc(obj: ObjectBase, expected: string) -> bool {
+	result, ok := obj.(string)
+	if !ok {
+		log.errorf("object is not string, got='%v'", ObjectType(obj))
+		return false
+	}
+
+	if result != expected {
+		log.errorf("object has wrong value. got='%s', expected='%s'", result, expected)
+		return false
+	}
+
+	return true
+}
+
