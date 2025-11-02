@@ -8,7 +8,8 @@ import "core:testing"
 test_eval_array_literals :: proc(t: ^testing.T) {
 	input := "[1, 2 * 2, 3 + 3]"
 
-	evaluated, ok := eval_test_is_valid(input)
+	evaluated, e, ok := eval_test_is_valid(input)
+	defer e->free()
 	if !ok do return
 
 	arr, is_arr := evaluated.(m.ObjectArray)
@@ -52,7 +53,8 @@ test_eval_array_index_expression :: proc(t: ^testing.T) {
 	}
 
 	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
+		evaluated, e, ok := eval_test_is_valid(test_case.input)
+		defer e->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

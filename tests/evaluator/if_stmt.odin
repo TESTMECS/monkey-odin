@@ -19,7 +19,8 @@ test_eval_if_expression :: proc(t: ^testing.T) {
 		{"if (1 > 2) { 10 } else { 20 }", 20},
 	}
 	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
+		evaluated, e, ok := eval_test_is_valid(test_case.input)
+		defer e->free()
 		if !ok {
 			log.errorf("test [%d] has failed", i)
 			continue

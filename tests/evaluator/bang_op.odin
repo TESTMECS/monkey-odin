@@ -18,7 +18,8 @@ test_eval_bang_operator :: proc(t: ^testing.T) {
 	}
 
 	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
+		evaluated, e, ok := eval_test_is_valid(test_case.input)
+		defer e->free()
 		if !ok {
 			log.errorf("test [%d] has failed", i)
 			continue

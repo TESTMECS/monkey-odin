@@ -17,8 +17,7 @@ Compiler_State :: struct {
 }
 
 Compiler_State__New__ :: proc() -> Compiler_State {
-	v := new(VArena, context.allocator) // @free-arena-ptr
-	v^ = VArena_New()
+	v := VArena_New(context.allocator)
 	err := v->init()
 	if err != nil {
 		panic("Arena Allocation Failed: Evaluator_new")

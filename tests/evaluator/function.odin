@@ -10,8 +10,8 @@ test_eval_function_object :: proc(t: ^testing.T) {
 	input := "fn(x) { x + 2 };"
 
 	evaluated, e, ok := eval_test_get(input)
+	defer e->free()
 	if !ok do return
-	defer e.free(&e)
 
 	fn, is_fn := evaluated.(^m.ObjectFunction)
 	if !is_fn {
@@ -72,7 +72,8 @@ add_two(2)`, 4},
 	}
 
 	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
+		evaluated, e, ok := eval_test_is_valid(test_case.input)
+		defer e->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue
@@ -96,7 +97,8 @@ test_eval_builtin_functions :: proc(t: ^testing.T) {
 	}{{`len("")`, 0}, {`len("four")`, 4}, {`len("hello world")`, 11}}
 
 	for test_case, i in tests {
-		evaluated, ok := eval_test_is_valid(test_case.input)
+		evaluated, e, ok := eval_test_is_valid(test_case.input)
+		defer e->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

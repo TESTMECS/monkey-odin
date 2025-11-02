@@ -7,6 +7,7 @@ import "core:strings"
 NULL :: ObjectNil{}
 
 ObjectNil :: struct {}
+
 ObjectFunction :: struct {
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,

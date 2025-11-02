@@ -3,12 +3,14 @@ package monkey
 import "core:bufio"
 import "core:fmt"
 import "core:io"
+import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 
 main :: proc() {
 	evaluator := Evaluator_New()
 	defer evaluator->free()
+	varena := virtual.arena_allocator(evaluator.vmem)
 
 	buf: [2048]byte
 	reader: bufio.Reader
@@ -30,11 +32,12 @@ main :: proc() {
 			continue
 		}
 
-		result, ok := evaluator.eval(&evaluator, program, evaluator.vmem.allocator)
+		result, ok := evaluator.eval(&evaluator, program, varena)
 		p->free()
 		if !ok {
 			fmt.println("Error:", result)
 		} else {
+			// Print the result
 			sb := strings.builder_make(context.temp_allocator)
 			defer strings.builder_destroy(&sb)
 			obj := Object(result)

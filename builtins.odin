@@ -1,6 +1,7 @@
 package monkey
 
 import "core:fmt"
+import "core:mem/virtual"
 import "core:strings"
 
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
@@ -106,7 +107,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				}
 
 				if len(arr) > 0 {
-					new_arr := VArena_Alloc(&e.vmem, ObjectArray)
+					varena := virtual.arena_allocator(e.vmem)
+					new_arr := new(ObjectArray, varena)
 					inject_at(new_arr, 0, ..arr[1:])
 
 					return new_arr^, true
@@ -143,14 +145,14 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "puts":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
-				strings.builder_reset(&e.vmem.string_builder)
+				strings.builder_reset(&e.sb)
 
 				for arg in args {
-					ObjectInspect(arg, &e.vmem.string_builder)
-					fmt.sbprintln(&e.vmem.string_builder)
+					ObjectInspect(arg, &e.sb)
+					fmt.sbprintln(&e.sb)
 				}
 
-				fmt.print(strings.to_string(e.vmem.string_builder))
+				fmt.print(strings.to_string(e.sb))
 
 				return NULL, true
 			}

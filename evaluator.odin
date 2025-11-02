@@ -3,12 +3,15 @@ package monkey
 import "base:runtime"
 import "core:fmt"
 import "core:log"
+import "core:mem/virtual"
 import "core:strings"
 
 // Evaluator=>>begin
 Evaluator :: struct {
 	_env: Environment,
-	vmem: VArena,
+	vmem: ^virtual.Arena,
+	sb:   strings.Builder,
+	//eval method
 	eval: proc(
 		e: ^Evaluator,
 		node: Ast_Program,
@@ -21,13 +24,12 @@ Evaluator :: struct {
 }
 
 Evaluator_New :: proc() -> Evaluator {
-	v := VArena_New()
-	err := v->init()
-	if err != nil {
-		panic("Arena Allocation Failed: Evaluator_new")
-	}
+	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
+	arena_err := virtual.arena_init_growing(v)
+	ensure(arena_err == nil)
+	varena := virtual.arena_allocator(v)
 
-	new_env := Env_New(nil, v.allocator)
+	new_env := Env_New(nil, varena)
 
 	e := Evaluator {
 		_env = new_env,
@@ -40,16 +42,18 @@ Evaluator_New :: proc() -> Evaluator {
 }
 
 eval_free :: proc(e: ^Evaluator) {
-	e.vmem->reset()
-	e._env->free()
+	virtual.arena_destroy(e.vmem)
+	free(e.vmem, context.allocator)
 }
 
 new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
-	sb := &e.vmem.string_builder
-	strings.builder_reset(sb)
-	fmt.sbprintf(sb, str, ..args)
-	err := strings.to_string(sb^)
-	return strings.clone(err, e.vmem.allocator)
+	varena := virtual.arena_allocator(e.vmem)
+
+	strings.builder_reset(&e.sb)
+	fmt.sbprintf(&e.sb, str, ..args)
+	err := strings.to_string(e.sb)
+	str_clone := strings.clone(err, varena)
+	return str_clone
 } // end <<Evaluator
 
 @(private = "file")
@@ -71,31 +75,38 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	// expressions=>>begin
 	case Ast_Identifier:
 		return eval_identifier(e, data, current_env)
+
 	case Ast_Prefix:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
 		return eval_prefix_expression(e, data.op, ToObjectBase(operand))
+
 	case Ast_Infix:
 		left, ok := eval(e, data.left^, current_env)
 		if !ok do return left, false
 		right, ok2 := eval(e, data.right^, current_env)
 		if !ok2 do return right, ok2
 		return eval_infix_expression(e, data.op, ToObjectBase(left), ToObjectBase(right))
+
 	case Ast_Block:
 		return eval_block_statements(e, data, current_env)
+
 	case Ast_If:
 		return eval_if_expression(e, data, current_env)
+
 	case Ast_Function:
-		fn := VArena_Alloc(&e.vmem, ObjectFunction)
+		varena := virtual.arena_allocator(e.vmem)
+		fn := new(ObjectFunction, varena) //$ heavy allocation
 
-		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.vmem.allocator)
-		Ast__Copy__(&data.parameters, &fn.parameters, e.vmem.allocator) // Copies the parameters
+		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), varena)
+		Ast__Copy__(&data.parameters, &fn.parameters, varena)
 
-		fn.body = make(Ast_Block, 0, len(data.body), e.vmem.allocator)
-		Ast__Copy__(&data.body, &fn.body, e.vmem.allocator) // copies the body
+		fn.body = make(Ast_Block, 0, len(data.body), varena)
+		Ast__Copy__(&data.body, &fn.body, varena)
 
 		fn.env = current_env
 		return ObjectBase(fn), true
+
 	case Ast_Call:
 		function, ok := eval(e, data.function^, current_env)
 		if !ok do return function, false
@@ -104,6 +115,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		if !args_success do return args[0], false
 
 		return apply_function(e, ToObjectBase(function), args)
+
 	case Ast_Index:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
@@ -121,12 +133,12 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return ObjectBase(data), true
 
 	case string:
-		return ObjectBase(strings.clone(data, e.vmem.allocator)), true
+		varena := virtual.arena_allocator(e.vmem)
+		return ObjectBase(strings.clone(data, varena)), true
 
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
 		if !ok do return ObjectBase(elements), false
-
 		return ObjectBase(elements), true
 
 	case Ast_Hash_Table:
@@ -168,6 +180,8 @@ eval_block_statements :: proc(
 	Object,
 	bool,
 ) {
+	varena := virtual.arena_allocator(e.vmem)
+
 	result: Object
 	ok: bool
 
@@ -179,8 +193,9 @@ eval_block_statements :: proc(
 	}
 
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
-		result = ObjectBase(strings.clone(str_obj, e.vmem.allocator))
+		result = ObjectBase(strings.clone(str_obj, varena))
 	}
+
 	return result, true
 } // end <<statements
 // expressions=>>begin
@@ -276,10 +291,10 @@ eval_string_infix_expression :: proc(
 ) {
 	if op != "+" do return new_error(e, "unknown string infix operator '%s'", op), false
 
-	strings.builder_reset(&e.vmem.string_builder)
-	fmt.sbprintf(&e.vmem.string_builder, "%s%s", left, right)
+	strings.builder_reset(&e.sb)
+	fmt.sbprintf(&e.sb, "%s%s", left, right)
 
-	return strings.to_string(e.vmem.string_builder), true
+	return strings.to_string(e.sb), true
 }
 
 @(private = "file")
@@ -412,7 +427,9 @@ eval_array_of_expressions_fixed :: proc(
 	[dynamic]ObjectBase,
 	bool,
 ) {
-	args := make([dynamic]ObjectBase, 0, len(expressions), e.vmem.allocator)
+	varena := virtual.arena_allocator(e.vmem)
+
+	args := make([dynamic]ObjectBase, 0, len(expressions), varena)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
@@ -433,7 +450,8 @@ eval_array_of_expressions_registered :: proc(
 	ObjectArray,
 	bool,
 ) {
-	args := make(ObjectArray, 0, len(expressions), e.vmem.allocator)
+	varena := virtual.arena_allocator(e.vmem)
+	args := make(ObjectArray, 0, len(expressions), varena)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
@@ -450,7 +468,8 @@ extend_function_env :: proc(
 	fn: ^ObjectFunction,
 	args: [dynamic]ObjectBase,
 ) -> ^Environment {
-	env := Env_Enclosed(fn.env, len(fn.parameters), e.vmem.allocator)
+	varena := virtual.arena_allocator(e.vmem)
+	env := Env_Enclosed(fn.env, len(fn.parameters), varena)
 
 	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
@@ -501,7 +520,8 @@ eval_hash_table_literal :: proc(
 	Object,
 	bool,
 ) {
-	ht := make(ObjectHashTable, len(node.pairs), e.vmem.allocator)
+	varena := virtual.arena_allocator(e.vmem)
+	ht := make(ObjectHashTable, len(node.pairs), varena)
 
 	for pair in node.pairs {
 		key_obj, key_ok := eval(e, pair.key, current_env)

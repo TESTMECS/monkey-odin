@@ -1,6 +1,7 @@
 package monkey
 
 import "core:fmt"
+import "core:mem/virtual"
 import "core:strings"
 
 Frame :: struct {
@@ -29,7 +30,8 @@ VM :: struct {
 	frames_idx:             int,
 	stack:                  []ObjectBase,
 	sp:                     int, //Top of stack is sp-1
-	vmem:                   VArena,
+	vmem:                   ^virtual.Arena,
+	sb:                     strings.Builder,
 	free_vm:                proc(v: ^VM),
 	run_vm:                 proc(v: ^VM) -> (err: string),
 	stack_top:              proc(v: ^VM) -> ObjectBase,
@@ -56,18 +58,19 @@ VM :: struct {
 }
 
 Vm__New__ :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
-	v := VArena_New()
-	err := v->init()
-	if err != nil {
-		panic("Arena Allocation Failed: Evaluator_new")
-	}
+	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
+	arena_err := virtual.arena_init_growing(v)
+	ensure(arena_err == nil)
+	varena := virtual.arena_allocator(v)
+
 	vm := VM {
 		compiler_state        = compiler_state,
-		stack                 = make([]ObjectBase, STACK_SIZE, v.allocator),
-		frames                = make([]Frame, MAX_FRAMES, v.allocator),
+		stack                 = make([]ObjectBase, STACK_SIZE, varena),
+		frames                = make([]Frame, MAX_FRAMES, varena),
 		frames_idx            = 0,
 		constants             = bytecode.constants,
 		vmem                  = v,
+		sb                    = strings.builder_make(varena),
 		free_vm               = free_vm,
 		run_vm                = run_vm,
 		current_frame         = current_frame,
@@ -196,7 +199,8 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 }
 
 free_vm :: proc(v: ^VM) {
-	v.vmem->reset() // stack and frames, and constants, are freed here
+	virtual.arena_destroy(v.vmem) // deallocates everything in the arena
+	free(v.vmem, context.allocator) // deallocates the pointer to it.
 }
 
 stack_top :: proc(v: ^VM) -> ObjectBase {
@@ -210,10 +214,9 @@ current_frame :: proc(v: ^VM) -> ^Frame {
 
 push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 	if v.sp >= STACK_SIZE {
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "stack overflow")
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "stack overflow")
+		return strings.to_string(v.sb)
 	}
 	v.stack[v.sp] = obj
 	v.sp += 1
@@ -239,16 +242,15 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	} else if ObjectType(right) == string && ObjectType(left) == string {
 		return v->exec_binary_string_op(op, left.(string), right.(string))
 	}
-	sb := &v.vmem.string_builder
-	strings.builder_reset(sb)
+	strings.builder_reset(&v.sb)
 	fmt.sbprintf(
-		sb,
+		&v.sb,
 		"unknown operator: '%s' for types '%v' and '%v'",
 		op,
 		ObjectType(left),
 		ObjectType(right),
 	)
-	return strings.to_string(sb^)
+	return strings.to_string(v.sb)
 }
 
 exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
@@ -264,31 +266,28 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 	case .Div:
 		result = left / right
 	case:
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "unknown integer infix operator '%s'", op)
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown integer infix operator '%s'", op)
+		return strings.to_string(v.sb)
 	}
 	return v->push_vm(result)
 }
 
 exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
+	varena := virtual.arena_allocator(v.vmem)
 	result: string
 
 	#partial switch op {
 	case .Add:
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "%s%s", left, right)
-		result = strings.clone(strings.to_string(sb^), v.vmem.allocator)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "%s%s", left, right)
+		result = strings.clone(strings.to_string(v.sb), varena)
 	case:
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "unknown string infix operator '%s'", op)
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown string infix operator '%s'", op)
+		return strings.to_string(v.sb)
 	}
 	return v->push_vm(result)
-
 }
 
 exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
@@ -329,10 +328,9 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 			if left.(bool) != right.(bool) do return v->push_vm(true)
 		}
 	}
-	sb := &v.vmem.string_builder
-	strings.builder_reset(sb)
-	fmt.sbprintf(sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
-	return strings.to_string(sb^)
+	strings.builder_reset(&v.sb)
+	fmt.sbprintf(&v.sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
+	return strings.to_string(v.sb)
 }
 
 exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
@@ -345,10 +343,9 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 	case .Gt:
 		result = left > right
 	case:
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "unknown integer infix operator '%s'", op)
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown integer infix operator '%s'", op)
+		return strings.to_string(v.sb)
 	}
 	return v->push_vm(result)
 }
@@ -370,10 +367,9 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	operand, ok := o.(int)
 	if !ok {
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "unknown operator: '-' on type '%v'", ObjectType(o))
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown operator: '-' on type '%v'", ObjectType(o))
+		return strings.to_string(v.sb)
 	}
 	return v->push_vm(-operand)
 }
@@ -385,10 +381,9 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 		return v->exec_ht_idx(operand.(ObjectHashTable), index.(string))
 	}
 
-	sb := &v.vmem.string_builder
-	strings.builder_reset(sb)
-	fmt.sbprintf(sb, "index operator does not support: '%v'", ObjectType(operand))
-	return strings.to_string(sb^)
+	strings.builder_reset(&v.sb)
+	fmt.sbprintf(&v.sb, "index operator does not support: '%v'", ObjectType(operand))
+	return strings.to_string(v.sb)
 }
 
 exec_arr_idx :: proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string) {
@@ -405,23 +400,24 @@ exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	fn, ok := v.stack[v.sp - 1 - int(num_args)].(ObjectCompiledFunction)
+
 	if !ok {
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
-		fmt.sbprintf(sb, "not a function: '%v'", ObjectType(v.stack[v.sp - 1 - int(num_args)]))
-		return strings.to_string(sb^)
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "not a function: '%v'", ObjectType(v.stack[v.sp - 1 - int(num_args)]))
+		return strings.to_string(v.sb)
 	}
+
 	if num_args != fn.num_parameters {
-		sb := &v.vmem.string_builder
-		strings.builder_reset(sb)
+		strings.builder_reset(&v.sb)
 		fmt.sbprintf(
-			sb,
+			&v.sb,
 			"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
 			fn.num_parameters,
 			num_args,
 		)
-		return strings.to_string(sb^)
+		return strings.to_string(v.sb)
 	}
+
 	frame := frame(fn.instructions[:], v.sp - num_args)
 	v->push_frame(frame)
 	v.sp = frame.base_pointer + fn.num_locals
@@ -429,11 +425,8 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 }
 
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
-	elements := make(ObjectArray, end - start, v.vmem.allocator)
-	err := VArena_Alloc(&v.vmem, ObjectArray)
-	if err != nil {
-		return nil
-	}
+	varena := virtual.arena_allocator(v.vmem)
+	elements := make(ObjectArray, end - start, varena)
 
 	for i := start; i < end; i += 1 {
 		append(&elements, v.stack[i])
@@ -442,7 +435,8 @@ build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 }
 
 build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
-	ht := make(ObjectHashTable, (end - start) / 2, v.vmem.allocator)
+	varena := virtual.arena_allocator(v.vmem)
+	ht := make(ObjectHashTable, (end - start) / 2, varena)
 
 	for i := start; i < end; i += 2 {
 		key := v.stack[i]
@@ -450,12 +444,11 @@ build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 
 		key_str, key_is_string := key.(string)
 		if !key_is_string {
-			sb := &v.vmem.string_builder
-			strings.builder_reset(sb)
-			fmt.sbprintf(sb, "key '%v' is not a string", key)
-			return nil, strings.to_string(sb^)
+			strings.builder_reset(&v.sb)
+			fmt.sbprintf(&v.sb, "key '%v' is not a string", key)
+			return nil, strings.to_string(v.sb)
 		}
-		ht[strings.clone(key_str, v.vmem.allocator)] = value
+		ht[strings.clone(key_str, varena)] = value
 	}
 	return ht, ""
 }

@@ -14,8 +14,11 @@ VArena :: struct {
 
 
 @(require_results)
-VArena_New :: proc() -> VArena {
-	return VArena{init = vmem_init, reset = vmem_reset}
+VArena_New :: proc(allocator := context.allocator) -> ^VArena {
+	v := new(VArena, allocator)
+	v.init = vmem_init
+	v.reset = vmem_reset
+	return v
 }
 
 @(require_results)
