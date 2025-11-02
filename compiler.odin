@@ -45,7 +45,7 @@ free_state :: proc(state: ^Compiler_State) {
 	state.vmem->reset() // scope is freed here. scopes, constants and globals are freed here.
 	state.symbol_table->free()
 
-	free(state.vmem)
+	free(state.vmem, context.allocator)
 }
 //%endsection
 //%section compiler typedefs

@@ -238,7 +238,7 @@ macro enum_switch(x, pairs) {
 
 enum_switch(color, >>case "red" { #write("Stop") } case "green" { #write("Go") }<<)
 
-p ::!Vec2 = @Vec2{{ x :3, y :4 }}
+p ::!Vec2 = @Vec2{{ x | 3, y | 4 }}
 
 % !p.x {
     case 0 { #write("origin") }
