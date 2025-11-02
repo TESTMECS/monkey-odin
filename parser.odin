@@ -14,23 +14,33 @@ Parser :: struct {
 	cur_token:  Token,
 	peek_token: Token,
 	errors:     [dynamic]string,
+	vmem:       ^VArena,
 	//%desc{{"methods"}}
 	parse:      proc(p: ^Parser) -> Ast_Program,
 	free:       proc(p: ^Parser),
 }
 //%desc{{"Creates a new Lexer"}}
 Parser__New__ :: proc(input: string) -> Parser {
+	arena_ptr := new(VArena, context.allocator)
+	arena_ptr^ = VArena__New__()
+	err := arena_ptr->init()
+	if err != .None {
+		panic("Arena Allocation Failed: Parser_new")
+	}
+
+
 	p := Parser {
-		l     = Lexer_New(input),
-		parse = Parse_Program,
-		free  = Parser_Free,
+		vmem   = arena_ptr,
+		errors = make([dynamic]string, 0, arena_ptr.allocator),
+		l      = Lexer_New(input),
+		parse  = Parse_Program,
+		free   = Parser_Free,
 	}
 	return p
 }
 //%desc{{"clears %Parser::errors::[dyn]string"}}
 Parser_Free :: proc(p: ^Parser) {
-	delete(p.errors)
-	p.errors = {}
+	p.vmem->reset()
 }
 //%section::Precedence
 //%desc{{"Lowest is 0, max is ab 6-7"}}
@@ -279,7 +289,6 @@ test_hash_table :: proc(t: ^testing.T) {
 	defer p->free()
 
 	program := p->parse()
-
 	if parser_has_error(p) do return
 
 	if len(program) != 1 {
@@ -369,13 +378,13 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		append(&result.pairs, new_pair)
 		result.table[key_str] = value_expr
 
-  // --- Handle commas ---
-  if peek_token_is(p, .Comma) {
-    next_token(p)
-    next_token(p)
-  } else {
-    break
-  }
+		// --- Handle commas ---
+		if peek_token_is(p, .Comma) {
+			next_token(p)
+			next_token(p)
+		} else {
+			break
+		}
 	}
 
 	if current_token_is(p, .Right_Brace) {

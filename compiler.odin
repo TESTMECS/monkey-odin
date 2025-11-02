@@ -6,7 +6,7 @@ import "core:reflect"
 import "core:strings"
 import "core:testing"
 
-DEBUG :: true
+DEBUG :: false
 
 //%section Compiler_State
 Compiler_State :: struct {
