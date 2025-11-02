@@ -41,6 +41,7 @@ Parser__New__ :: proc(input: string) -> Parser {
 //%desc{{"clears %Parser::errors::[dyn]string"}}
 Parser_Free :: proc(p: ^Parser) {
 	p.vmem->reset()
+	free(p.vmem, context.allocator)
 }
 //%section::Precedence
 //%desc{{"Lowest is 0, max is ab 6-7"}}
@@ -328,7 +329,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 	// Create our ordered + lookup structure
 	result := Ast_Hash_Table {
 		pairs = make([dynamic]kvpair, 0, context.temp_allocator),
-		table = make(map[string]Node),
+		table = make(map[string]Node, p.vmem.allocator),
 	}
 
 	// Advance past '{'
