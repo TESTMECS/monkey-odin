@@ -21,7 +21,7 @@ Symbol_Table :: struct {
 	resolve: proc(table: ^Symbol_Table, name: string) -> (Symbol, bool),
 }
 
-__New__Symbol_Table :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -> Symbol_Table {
+Symbol_Table_New :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -> Symbol_Table {
 	return Symbol_Table {
 		store = make(map[string]Symbol, allocator),
 		outer = outer,

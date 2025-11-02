@@ -2,37 +2,38 @@ package monkey
 
 import "core:fmt"
 import "core:log"
+import "core:mem/virtual"
 import "core:strings"
 
 DEBUG :: false
 
 // compiler-state=>>begin
 Compiler_State :: struct {
-	vmem:         ^VArena,
+	vmem:         ^virtual.Arena,
 	symbol_table: Symbol_Table,
 	globals:      []ObjectBase,
 	constants:    [dynamic]ObjectBase,
 	scopes:       [dynamic]Compilation_Scope,
+	sb:           strings.Builder,
 	free:         proc(state: ^Compiler_State),
 }
 
-Compiler_State__New__ :: proc() -> Compiler_State {
-	v := VArena_New(context.allocator)
-	err := v->init()
-	if err != nil {
-		panic("Arena Allocation Failed: Evaluator_new")
-	}
+Compiler_State_New :: proc() -> Compiler_State {
+	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
+	arena_err := virtual.arena_init_growing(v)
+	ensure(arena_err == nil)
+	varena := virtual.arena_allocator(v)
 
-	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, v.allocator) // $vm::STACK_SIZE
+	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena) // $vm::STACK_SIZE
 	main_scope := Compilation_Scope{}
-	main_scope_instructions := make(Instructions, 0, v.allocator)
+	main_scope_instructions := make(Instructions, 0, varena)
 	main_scope.instructions = main_scope_instructions
 	append(&scopes, main_scope)
 
 	return Compiler_State {
-		constants = make([dynamic]ObjectBase, 0, v.allocator),
-		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
-		symbol_table = __New__Symbol_Table(v.allocator),
+		constants = make([dynamic]ObjectBase, 0, varena),
+		globals = make([]ObjectBase, GLOBALS_SIZE, varena),
+		symbol_table = Symbol_Table_New(varena),
 		scopes = scopes,
 		free = free_state,
 		vmem = v,
@@ -40,8 +41,7 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 }
 
 free_state :: proc(state: ^Compiler_State) {
-	state.vmem->reset()
-	state.symbol_table->free()
+	virtual.arena_destroy(state.vmem)
 	free(state.vmem, context.allocator) // @free-arena-ptr
 } //end <<Compiler_State
 // Compiler=>>begin
@@ -83,7 +83,7 @@ Compiler :: struct {
 
 Compiler__New__ :: proc() -> Compiler {
 	return Compiler {
-		compiler_state = Compiler_State__New__(),
+		compiler_state = Compiler_State_New(),
 		scopes_idx = 0,
 		compile_program = compile_program,
 		compile = compile,
@@ -105,10 +105,11 @@ Compiler__New__ :: proc() -> Compiler {
 
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
+	varena := virtual.arena_allocator(c.vmem)
 	#partial switch data in ast {
 	case Ast_Let:
 		if err = c->compile(data.value^); err != "" do return
-		symbol := c.symbol_table->define(data.name, c.vmem.allocator)
+		symbol := c.symbol_table->define(data.name, varena)
 		c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 	case Ast_Ret:
 		if err = c->compile(data.return_value^); err != "" do return
@@ -116,10 +117,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Identifier:
 		symbol, ok := c.symbol_table->resolve(data.value)
 		if !ok {
-			sb := &c.compiler_state.vmem.string_builder
-			strings.builder_reset(sb)
-			fmt.sbprintf(sb, "identifier '%s' is not declared", data.value)
-			err = strings.to_string(sb^)
+			strings.builder_reset(&c.sb)
+			fmt.sbprintf(&c.sb, "identifier '%s' is not declared", data.value)
+			err = strings.to_string(c.sb)
 			return
 		}
 		c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
@@ -148,10 +148,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "!=":
 			c->emit(.Neq)
 		case:
-			sb := &c.compiler_state.vmem.string_builder
-			strings.builder_reset(sb)
-			fmt.sbprintf(sb, "unknown infix operator '%s'", data.op)
-			err = strings.to_string(sb^)
+			strings.builder_reset(&c.sb)
+			fmt.sbprintf(&c.sb, "unknown infix operator '%s'", data.op)
+			err = strings.to_string(c.sb)
 		}
 	case Ast_Prefix:
 		if err = c->compile(data.operand^); err != "" do return
@@ -161,10 +160,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "-":
 			c->emit(.Neg)
 		case:
-			sb := &c.compiler_state.vmem.string_builder
-			strings.builder_reset(sb)
-			fmt.sbprintf(sb, "unknown prefix operator '%s'", data.op)
-			err = strings.to_string(sb^)
+			strings.builder_reset(&c.sb)
+			fmt.sbprintf(&c.sb, "unknown prefix operator '%s'", data.op)
+			err = strings.to_string(c.sb)
 		}
 	case Ast_If:
 		if err = c->compile(data.condition^); err != "" do return
@@ -223,7 +221,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Function:
 		c->enter_scope()
 		for param in data.parameters {
-			c.symbol_table->define(param.value, c.vmem.allocator)
+			c.symbol_table->define(param.value, varena)
 		}
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
@@ -232,7 +230,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 		instructions := c->leave_scope()
 		// Probably wrong.
-		instr := make(Instructions, len(instructions), c.compiler_state.vmem.allocator)
+		instr := make(Instructions, len(instructions), varena)
 
 		compiled_fn := ObjectCompiledFunction {
 			instructions   = &instr,
@@ -254,7 +252,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case bool:
 		c->emit(.True if data else .False)
 	case string:
-		str_clone, _ := strings.clone(data, c.compiler_state.vmem.allocator)
+		str_clone, _ := strings.clone(data, varena)
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
 	return
@@ -273,8 +271,9 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 }
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
+	varena := virtual.arena_allocator(c.vmem)
 	if DEBUG do log.infof("emitting %v", op)
-	ins := make_instructions(c.vmem.allocator, op, ..operands)
+	ins := make_instructions(varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
 	return pos
@@ -285,14 +284,15 @@ bytecode :: proc(c: ^Compiler) -> Bytecode {
 }
 
 enter_scope :: proc(c: ^Compiler) {
+	varena := virtual.arena_allocator(c.vmem)
 	if DEBUG do log.infof("entering scope %v", c.scopes_idx)
 	scope := Compilation_Scope{}
-	instr := make(Instructions, 0, c.compiler_state.vmem.allocator)
+	instr := make(Instructions, 0, varena)
 	scope.instructions = instr
 	append(&c.scopes, scope)
 	c.scopes_idx = len(c.scopes) - 1
-	symbol_clone := new_clone(c.symbol_table, c.vmem.allocator)
-	c.symbol_table = __New__Symbol_Table(c.vmem.allocator, outer = symbol_clone)
+	symbol_clone := new_clone(c.symbol_table, varena) // Clone
+	c.symbol_table = Symbol_Table_New(varena, outer = symbol_clone)
 }
 
 leave_scope :: proc(c: ^Compiler) -> ^Instructions {
@@ -308,8 +308,9 @@ current_instructions :: proc(c: ^Compiler) -> ^Instructions {
 }
 
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
+	varena := virtual.arena_allocator(c.vmem)
 	prev := c.scopes[c.scopes_idx].last_instruction
-	last := new(Emitted_Instruction, c.vmem.allocator)
+	last := new(Emitted_Instruction, varena)
 	last.op_code = op
 	last.pos = pos
 	c.scopes[c.scopes_idx].previous_instruction = prev
@@ -330,8 +331,9 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 }
 
 replace_last_pop_with_return :: proc(c: ^Compiler) {
+	varena := virtual.arena_allocator(c.vmem)
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
-	c->replace_instructions(last_pop, make_instructions(c.vmem.allocator, .Ret_V)[:])
+	c->replace_instructions(last_pop, make_instructions(varena, .Ret_V)[:])
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 	unimplemented("replace_last_pop_with_return")
 }
@@ -360,8 +362,9 @@ replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte) {
 }
 
 change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
+	varena := virtual.arena_allocator(c.vmem)
 	op := Opcode(c->current_instructions()[pos])
-	new_instructions := make_instructions(c.vmem.allocator, op, new_operand)
+	new_instructions := make_instructions(varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
 } //end <<Compiler_helpers
 
