@@ -292,8 +292,8 @@ test_hash_table :: proc(t: ^testing.T) {
 		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", ast_type(program[0]))
 		return
 	}
-	if len(stmt) != 3 {
-		log.errorf("length of the hash table is not 3, got'%d'", len(stmt))
+	if len(stmt.table) != 3 {
+		log.errorf("length of the hash table is not 3, got'%d'", len(stmt.table))
 		return
 	}
 	expected := map[string]int {
@@ -304,7 +304,7 @@ test_hash_table :: proc(t: ^testing.T) {
 	defer delete(expected)
 
 	for key, ev in expected {
-		value, key_exists := stmt[key]
+		value, key_exists := stmt.table[key]
 		if !key_exists {
 			log.errorf("key '%s' does not exist in the hash table", key)
 			continue
@@ -313,32 +313,72 @@ test_hash_table :: proc(t: ^testing.T) {
 	}
 
 }
+
 @(private = "file")
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	result := make(Ast_Hash_Table, context.temp_allocator)
-	defer delete(result)
+	// Create our ordered + lookup structure
+	result := Ast_Hash_Table {
+		pairs = make([dynamic]kvpair, 0, context.temp_allocator),
+		table = make(map[string]Node),
+	}
+
+	// Advance past '{'
+	next_token(p)
+
 	for !peek_token_is(p, .Right_Brace) {
-		next_token(p)
+		// --- Parse key ---
 		key_expr := parse_expression(p, .Lowest)
-		key, ok := key_expr.(string)
+
+		// For simplicity, restrict keys to string literals for now
+		key_str_node, ok := key_expr.(string)
 		if !ok {
 			msg := strings.builder_make(context.temp_allocator)
 			defer strings.builder_destroy(&msg)
 			fmt.sbprintf(
 				&msg,
-				"expected key to be 'string', got '%s' instead.",
+				"expected hash key to be a string literal, got '%s' instead.",
 				ast_type(key_expr),
 			)
 			append(&p.errors, strings.to_string(msg))
 			return nil
 		}
+
+		key_str := key_str_node
+
 		if !expect_peek(p, .Colon) do return nil
 		next_token(p)
-		value := parse_expression(p, .Lowest)
-		result[key] = value
-		if !peek_token_is(p, .Right_Brace) && !expect_peek(p, .Comma) do return nil
+
+		// --- Parse value ---
+		value_expr := parse_expression(p, .Lowest)
+
+		// Check for duplicate keys
+		if key_str in result.table {
+			msg := strings.builder_make(context.temp_allocator)
+			defer strings.builder_destroy(&msg)
+			fmt.sbprintf(&msg, "duplicate key '%s' in hash literal", key_str)
+			append(&p.errors, strings.to_string(msg))
+			return nil
+		}
+		new_pair := kvpair {
+			key   = key_expr,
+			value = value_expr,
+		}
+		// --- Store in both structures ---
+		// TODO: Store stringified key in the kvpair for "foo" and foo to be different.
+		// Cache identifiers as well.
+		append(&result.pairs, new_pair)
+		result.table[key_str] = value_expr
+
+		// --- Handle commas ---
+		if peek_token_is(p, .Comma) {
+			next_token(p)
+		} else {
+			break
+		}
 	}
+
 	if !expect_peek(p, .Right_Brace) do return nil
+
 	return result
 }
 //%endsection

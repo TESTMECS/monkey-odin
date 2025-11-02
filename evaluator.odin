@@ -521,18 +521,34 @@ eval_hash_table_literal :: proc(
 	Object,
 	bool,
 ) {
-	ht := make(ObjectHashTable, len(node), e.vmem.allocator)
+	ht := make(ObjectHashTable, len(node.pairs), e.vmem.allocator)
 
-	for key_node, value_node in node {
-		key, key_is_valid := eval(e, key_node, current_env)
-		if !key_is_valid do return key, false
+	for pair in node.pairs {
+		// Evaluate key
+		key_obj, key_ok := eval(e, pair.key, current_env)
+		if !key_ok do return key_obj, false
 
-		value, value_is_valid := eval(e, value_node, current_env)
-		if !value_is_valid do return value, false
+		// Evaluate value
+		val_obj, val_ok := eval(e, pair.value, current_env)
+		if !val_ok do return val_obj, false
 
-		key_conv, key_is_string := ToObjectBase(key).(string)
-		ht[key_conv] = ToObjectBase(value)
+		// Convert evaluated key to something hashable (string, int, etc.)
+		key_base := ToObjectBase(key_obj)
+		val_base := ToObjectBase(val_obj)
+
+		// For simplicity, enforce that keys are strings
+		key_str, key_is_string := key_base.(string)
+		if !key_is_string {
+			log.errorf(
+				"hash literal key must evaluate to a string, got: %v",
+				typeid_of(type_of(key_base)),
+			)
+			return key_base, false
+		}
+
+		ht[key_str] = val_base
 	}
+
 	return ObjectBase(ht), true
 }
 

@@ -61,7 +61,15 @@ Ast_If :: struct {
 
 Ast_Array :: distinct [dynamic]Node
 
-Ast_Hash_Table :: distinct map[string]Node
+kvpair :: struct {
+	key:   Node,
+	value: Node,
+}
+
+Ast_Hash_Table :: struct {
+	pairs: [dynamic]kvpair,
+	table: map[string]Node,
+}
 
 Ast_Function :: struct {
 	parameters: [dynamic]Ast_Identifier,
@@ -191,12 +199,14 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 	case Ast_Hash_Table:
 		fmt.sbprint(sb, "{ ")
 		i := 0
-		for key, value in data {
-			fmt.sbprintf(sb, "%s:", key)
-			ast_to_string(value, sb)
-			if i < len(data) - 1 do fmt.sbprint(sb, ", ")
-			i += 1
+		for pair, i in data.pairs {
+			ast_to_string(pair.key, sb)
+			fmt.sbprint(sb, ": ")
+			ast_to_string(pair.value, sb)
+			if i < len(data.pairs) - 1 do fmt.sbprint(sb, ", ")
 		}
+
+
 		fmt.sbprint(sb, " }")
 
 	case Ast_Index:
@@ -328,12 +338,28 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		return arr_copy
 
 	case Ast_Hash_Table:
-		hash_copy := make(Ast_Hash_Table, len(data), allocator)
-		for key, &value in data {
-			hash_copy[strings.clone(key, allocator)] = ast_copy(&value, allocator)
+		hash_copy := Ast_Hash_Table {
+			pairs = make([dynamic]kvpair, 0, len(data.pairs), allocator),
+			table = make(map[string]Node),
 		}
-		return hash_copy
 
+		n := len(data.pairs)
+		for ; n > 0; n -= 1 {
+			if n > 0 {
+				e: kvpair = pop(&data.pairs)
+				ast_copy(&e.key, allocator)
+				ast_copy(&e.value, allocator)
+				append(&hash_copy.pairs, e)
+			}
+		}
+
+		// Copy lookup table (so semantic checks still work)
+		for key, &value in data.table {
+			key_clone := strings.clone(key, allocator)
+			hash_copy.table[key_clone] = ast_copy(&value, allocator)
+		}
+
+		return hash_copy
 	case Ast_Function:
 		parameters := make([dynamic]Ast_Identifier, 0, len(data.parameters), allocator)
 		Ast__Copy__(&data.parameters, &parameters, allocator)

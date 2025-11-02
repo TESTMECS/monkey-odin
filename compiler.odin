@@ -3,11 +3,10 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:reflect"
-import "core:slice"
 import "core:strings"
 import "core:testing"
 
-DEBUG :: false
+DEBUG :: true
 
 //%section Compiler_State
 Compiler_State :: struct {
@@ -34,6 +33,7 @@ Compiler_State__New__ :: proc() -> Compiler_State {
 	append(&scopes, main_scope)
 
 	return Compiler_State {
+		constants = make([dynamic]ObjectBase, 0, v.allocator),
 		globals = make([]ObjectBase, GLOBALS_SIZE, v.allocator),
 		symbol_table = Symbol_Table__New__(v.allocator),
 		scopes = scopes,
@@ -204,25 +204,26 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Array:
-		if DEBUG do log.infof("compiling array literal")
+		// if DEBUG do log.infof("compiling array literal")
 		for el in data {
 			if err = c->compile(el); err != "" do return
 		}
 		c->emit(.Arr, len(data))
 	case Ast_Hash_Table:
-		keys := make([]string, len(data), c.compiler_state.vmem.allocator)
-		i := 0
-		for key in data {
-			keys[i] = key
-			i += 1
-		}
-		slice.reverse_sort(keys)
+		if DEBUG do log.infof("compiling hash table literal")
 
-		for k in keys {
-			if err = c->compile(k); err != "" do return
-			if err = c->compile(data[k]); err != "" do return
+		// Compile in the same order the user wrote in source
+		for pair in data.pairs {
+			if DEBUG do log.infof("compiling key")
+			if err = c->compile(pair.key); err != "" do return
+
+			if DEBUG do log.infof("compiling value")
+			if err = c->compile(pair.value); err != "" do return
 		}
-		c->emit(.Ht, len(data) * 2)
+
+		// Emit hash-table construction instruction.
+		// Each pair contributes 2 items (key + value)
+		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
 		if err = c->compile(data.operand^); err != "" do return
 		if err = c->compile(data.index^); err != "" do return
@@ -313,7 +314,7 @@ leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	return instructions
 }
 current_instructions :: proc(c: ^Compiler) -> ^Instructions {
-	if DEBUG do log.infof("current_instructions %v", c.scopes[c.scopes_idx])
+	// if DEBUG do log.infof("current_instructions %v", c.scopes[c.scopes_idx])
 	return &c.scopes[c.scopes_idx].instructions
 }
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
@@ -327,15 +328,15 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 }
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	//%desc{{"adds instructions to the current scope"}}
-	if DEBUG do log.infof("adding instructions to scope %v", c.scopes[0])
+	// if DEBUG do log.infof("adding instructions to scope %v", c.scopes[0])
 	pos := len(c->current_instructions())
-	if DEBUG do log.infof("scopes len %v, %v, %v", len(c.scopes), c.scopes[0], instructions)
+	// if DEBUG do log.infof("scopes len %v, %v, %v", len(c.scopes), c.scopes[0], instructions)
 	n, err := append(c->current_instructions(), ..instructions)
-	if DEBUG do log.infof("%d", n)
+	// if DEBUG do log.infof("%d", n)
 	if err != nil {
 		log.errorf("appending instructions to scope %v failed with: %v", c.scopes[0], err)
 	}
-	if DEBUG do log.infof("added instructions to scope %v", c.scopes[0])
+	// if DEBUG do log.infof("added instructions to scope %v", c.scopes[0])
 	return pos
 }
 replace_last_pop_with_return :: proc(c: ^Compiler) {
@@ -346,7 +347,7 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 	unimplemented("replace_last_pop_with_return")
 }
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
-	if DEBUG do log.infof("adding constant %v", obj)
+	// if DEBUG do log.infof("adding constant %v", obj)
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
@@ -733,11 +734,11 @@ test_compile_hash_table_literals :: proc(t: ^testing.T) {
 				make_instructions(context.temp_allocator, .Cnst, 0),
 				make_instructions(context.temp_allocator, .Cnst, 1),
 				make_instructions(context.temp_allocator, .Cnst, 2),
-				make_instructions(context.temp_allocator, .Add),
+				make_instructions(context.temp_allocator, .Add), // My compile is doing Mul here
 				make_instructions(context.temp_allocator, .Cnst, 3),
 				make_instructions(context.temp_allocator, .Cnst, 4),
 				make_instructions(context.temp_allocator, .Cnst, 5),
-				make_instructions(context.temp_allocator, .Mul),
+				make_instructions(context.temp_allocator, .Mul), // My compile is doing Add here
 				make_instructions(context.temp_allocator, .Ht, 4),
 				make_instructions(context.temp_allocator, .Pop),
 			},
