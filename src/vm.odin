@@ -21,7 +21,7 @@ GLOBALS_SIZE :: 65536
 
 MAX_FRAMES :: 1024
 
-DEBUG_VM :: true
+DEBUG_VM :: false
 
 
 VM :: struct {
@@ -52,7 +52,14 @@ VM :: struct {
 	exec_arr_idx:           proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string),
 	exec_ht_idx:            proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string),
 	exec_set_idx_expr:      proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string),
-	exec_arr_set_idx:       proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase) -> (err: string),
+	exec_arr_set_idx:       proc(
+		v: ^VM,
+		arr: ObjectArray,
+		index: int,
+		value: ObjectBase,
+	) -> (
+		err: string
+	),
 	exec_call:              proc(v: ^VM, num_args: int) -> (err: string),
 	build_array:            proc(v: ^VM, start, end: int) -> ObjectBase,
 	build_hash_table:       proc(v: ^VM, start, end: int) -> (ObjectBase, string),
@@ -328,7 +335,13 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_macro := left.(ObjectMacro)
 		_, left_is_quote := left.(ObjectQuote)
 
-		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function || left_is_macro || left_is_quote {
+		if left_is_array ||
+		   left_is_ht ||
+		   left_is_builtin ||
+		   left_is_compiled ||
+		   left_is_function ||
+		   left_is_macro ||
+		   left_is_quote {
 			return v->push_vm(false)
 		} else if left_is_string {
 			return v->push_vm(left.(string) == right.(string))
@@ -347,7 +360,13 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_macro := left.(ObjectMacro)
 		_, left_is_quote := left.(ObjectQuote)
 
-		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function || left_is_macro || left_is_quote {
+		if left_is_array ||
+		   left_is_ht ||
+		   left_is_builtin ||
+		   left_is_compiled ||
+		   left_is_function ||
+		   left_is_macro ||
+		   left_is_quote {
 			return v->push_vm(false)
 		} else if left_is_string {
 			return v->push_vm(left.(string) != right.(string))
@@ -489,17 +508,20 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 		// Push result
 		return v->push_vm(result)
-		
+
 	case ObjectMacro:
 		// Macros should be expanded during compilation, not executed at runtime
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
 		return strings.to_string(v.sb)
-		
+
 	case ObjectQuote:
 		// Quote objects should be handled during compilation
 		strings.builder_reset(&v.sb)
-		fmt.sbprintf(&v.sb, "quote object encountered at runtime - should have been handled during compilation")
+		fmt.sbprintf(
+			&v.sb,
+			"quote object encountered at runtime - should have been handled during compilation",
+		)
 		return strings.to_string(v.sb)
 	}
 
@@ -562,7 +584,7 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 		key_str := index.(string)
 		varena := virtual.arena_allocator(v.vmem)
 		ht[strings.clone(key_str, varena)] = value
-		return v->push_vm(value)  // Return the assigned value
+		return v->push_vm(value) // Return the assigned value
 	}
 
 	strings.builder_reset(&v.sb)
@@ -575,7 +597,14 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 	return strings.to_string(v.sb)
 }
 
-exec_arr_set_idx :: proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase) -> (err: string) {
+exec_arr_set_idx :: proc(
+	v: ^VM,
+	arr: ObjectArray,
+	index: int,
+	value: ObjectBase,
+) -> (
+	err: string,
+) {
 	max := len(arr) - 1
 	if index < 0 || index > max {
 		strings.builder_reset(&v.sb)
@@ -583,6 +612,6 @@ exec_arr_set_idx :: proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase
 		return strings.to_string(v.sb)
 	}
 	arr[index] = value
-	return v->push_vm(value)  // Return the assigned value
+	return v->push_vm(value) // Return the assigned value
 }
 
