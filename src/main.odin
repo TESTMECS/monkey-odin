@@ -24,14 +24,19 @@ monkey_err :: proc(msg: string, status: int, sb: ^strings.Builder, xtra: ..any) 
 	os.exit(status)
 }
 
-monkey_result :: proc(return_object: Object, sb: ^strings.Builder, xtra: ..any) {
+monkey_result :: proc(return_object: Object, sb: ^strings.Builder, exit: bool, xtra: ..any) {
 	strings.builder_reset(sb)
+
 	fmt.sbprintf(sb, "=>>")
 	if xtra != nil do fmt.sbprintln(sb, ..xtra)
+
 	obj := Object(return_object)
 	ObjectInspect(obj, sb)
+
 	fmt.println(strings.to_string(sb^))
-	os.exit(0)
+	if exit do os.exit(0)
+
+	return
 }
 
 
@@ -68,20 +73,17 @@ main :: proc() {
 			line, err := bufio.reader_read_string(&reader, '\n')
 			if err != nil do monkey_err("Error reading input", 1, &sb)
 			line = strings.trim_space(line)
-			if line == "exit" do monkey_result(nil, &sb)
+			if line == "exit" do monkey_result(nil, &sb, true)
 
 			p := Parser__New__(line)
 			program := p->parse()
-			if parser_has_error(p) {
-				p->free()
-				continue
-			}
+			defer p->free()
+
+			if parser_has_error(p) do continue
+
 			result, ok := evaluator.eval(&evaluator, program, varena)
 			if !ok do monkey_err("Error evaluating expression", 1, &sb)
-			if ok {
-				monkey_result(result, &sb)
-				p->free()
-			}
+			if ok do monkey_result(result, &sb, false)
 		}
 	case "file":
 		file_path := os.args[2]
@@ -131,7 +133,7 @@ main :: proc() {
 		if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, &sb, vm_err)
 
 		last_popped := vm->last_popped()
-		monkey_result(last_popped, &sb)
+		monkey_result(last_popped, &sb, true)
 	case "help":
 		fmt.println(HELPMSG)
 	}

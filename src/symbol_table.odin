@@ -5,6 +5,7 @@ import "core:strings"
 Symbol_Scope :: enum {
 	Global,
 	Local,
+	Builtin,
 }
 
 Symbol :: struct {
@@ -18,6 +19,7 @@ Symbol_Table :: struct {
 	outer:   ^Symbol_Table,
 	free:    proc(table: ^Symbol_Table),
 	define:  proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol,
+	define_builtin: proc(table: ^Symbol_Table, name: string, index: int),
 	resolve: proc(table: ^Symbol_Table, name: string) -> (Symbol, bool),
 }
 
@@ -34,6 +36,11 @@ Symbol_Table_New :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -
 			symbol := Symbol{name_copied, scope, len(table.store)}
 			table.store[name_copied] = symbol
 			return symbol
+		},
+		define_builtin = proc(table: ^Symbol_Table, name: string, index: int) {
+			name_copied := strings.clone(name, table.store.allocator)
+			symbol := Symbol{name_copied, .Builtin, index}
+			table.store[name_copied] = symbol
 		},
 		resolve = proc(table: ^Symbol_Table, name: string) -> (Symbol, bool) {
 			obj, ok := table.store[name]

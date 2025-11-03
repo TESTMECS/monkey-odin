@@ -2,4 +2,4 @@
 
 let five_plus_ten = fn() { 5 + 10; };
 
-five_plus_ten();
+puts(five_plus_ten());

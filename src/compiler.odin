@@ -81,8 +81,16 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
+define_builtins :: proc(c: ^Compiler) {
+	varena := virtual.arena_allocator(c.vmem)
+	builtins := []string{"len", "first", "last", "rest", "push", "puts", "int", "str", "typeof", "abs", "range"}
+	for name in builtins {
+		c.symbol_table->define_builtin(name, len(c.symbol_table.store))
+	}
+}
+
 Compiler__New__ :: proc() -> Compiler {
-	return Compiler {
+	compiler := Compiler {
 		compiler_state = Compiler_State_New(),
 		scopes_idx = 0,
 		compile_program = compile_program,
@@ -101,6 +109,8 @@ Compiler__New__ :: proc() -> Compiler {
 		replace_instructions = replace_instructions,
 		change_operand = change_operand,
 	}
+	define_builtins(&compiler)
+	return compiler
 }
 
 compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
@@ -126,7 +136,16 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			err = compiler_error(c, "identifier '%s' is not declared", data.value)
 			return
 		} else {
-			c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
+			if symbol.scope == .Builtin {
+				builtin_fn := find_builtin_fn(data.value)
+				if builtin_fn == nil {
+					err = compiler_error(c, "builtin function '%s' not found", data.value)
+					return
+				}
+				c->emit(.Cnst, c->add_constant(builtin_fn))
+			} else {
+				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
+			}
 		}
 	case Ast_Infix:
 		if data.op == "<" {

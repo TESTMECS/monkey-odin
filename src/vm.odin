@@ -21,7 +21,7 @@ GLOBALS_SIZE :: 65536
 
 MAX_FRAMES :: 1024
 
-DEBUG_VM :: true
+DEBUG_VM :: false
 
 
 VM :: struct {
@@ -423,30 +423,63 @@ exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 }
 
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
-	fn, ok := v.stack[v.sp - 1 - int(num_args)].(ObjectCompiledFunction)
-	if DEBUG_VM do fmt.println("EXEC_CALL, fn=", fn)
+	callee := v.stack[v.sp - 1 - int(num_args)]
 
-	if !ok {
-		strings.builder_reset(&v.sb)
-		fmt.sbprintf(&v.sb, "not a function: '%v'", ObjectType(v.stack[v.sp - 1 - int(num_args)]))
-		return strings.to_string(v.sb)
+	#partial switch fn in callee {
+	case ObjectCompiledFunction:
+		if DEBUG_VM do fmt.println("EXEC_CALL, fn=", fn)
+
+		if num_args != fn.num_parameters {
+			strings.builder_reset(&v.sb)
+			fmt.sbprintf(
+				&v.sb,
+				"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
+				fn.num_parameters,
+				num_args,
+			)
+			return strings.to_string(v.sb)
+		}
+
+		frame := frame(fn.instructions[:], v.sp - num_args)
+		v->push_frame(frame)
+		v.sp = frame.base_pointer + fn.num_locals
+		return ""
+
+	case ObjectBuilinFunction:
+		if DEBUG_VM do fmt.println("EXEC_CALL, builtin fn=", fn)
+
+		varena := virtual.arena_allocator(v.vmem)
+		args := make([dynamic]ObjectBase, 0, varena)
+
+		// Extract arguments from stack
+		for i := v.sp - int(num_args); i < v.sp; i += 1 {
+			append(&args, v.stack[i])
+		}
+
+		// Create a temporary evaluator-like interface for the builtin
+		temp_evaluator := Evaluator {
+			vmem = v.vmem,
+			sb   = v.sb,
+		}
+
+		// Call builtin function
+		result, ok := fn(&temp_evaluator, args)
+		if !ok {
+			strings.builder_reset(&v.sb)
+			fmt.sbprintf(&v.sb, "builtin function error: %v", result)
+			return strings.to_string(v.sb)
+		}
+
+		// Pop function and arguments from stack
+		v.sp -= int(num_args) + 1
+
+		// Push result
+		return v->push_vm(result)
 	}
 
-	if num_args != fn.num_parameters {
-		strings.builder_reset(&v.sb)
-		fmt.sbprintf(
-			&v.sb,
-			"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
-			fn.num_parameters,
-			num_args,
-		)
-		return strings.to_string(v.sb)
-	}
-
-	frame := frame(fn.instructions[:], v.sp - num_args)
-	v->push_frame(frame)
-	v.sp = frame.base_pointer + fn.num_locals
-	return ""
+	strings.builder_reset(&v.sb)
+	fmt.sbprintf(&v.sb, "not a function: '%v'", ObjectType(callee))
+	return strings.to_string(v.sb)
 }
 
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
