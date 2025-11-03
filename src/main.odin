@@ -27,7 +27,7 @@ monkey_err :: proc(msg: string, status: int, sb: ^strings.Builder, xtra: ..any) 
 monkey_result :: proc(return_object: Object, sb: ^strings.Builder, xtra: ..any) {
 	strings.builder_reset(sb)
 	fmt.sbprintf(sb, "=>>")
-	fmt.sbprintf(sb, "%v", xtra)
+	if xtra != nil do fmt.sbprintln(sb, ..xtra)
 	obj := Object(return_object)
 	ObjectInspect(obj, sb)
 	fmt.println(strings.to_string(sb^))
@@ -115,10 +115,23 @@ main :: proc() {
 		program := p->parse()
 		if parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
 		// dbg("program=%v", program)
-		result, okk := evaluator.eval(&evaluator, program, varena)
-		// dbg("result=%v", result)
-		if !okk do monkey_err("Error evaluating expression: <<%v>>", 1, &sb, result)
-		if okk do monkey_result(result, &sb)
+
+		c := Compiler__New__()
+		defer c->free()
+		compile_err := c->compile_program(program)
+		if compile_err != "" do monkey_err("Error compiling file", 1, &sb, compile_err)
+
+		bytecode := c->bytecode()
+		// dbg("bytecode=%v", bytecode)
+
+		vm := Vm_New(bytecode, &c.compiler_state)
+		defer vm->free_vm()
+
+		vm_err := vm->run_vm()
+		if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, &sb, vm_err)
+
+		last_popped := vm->last_popped()
+		monkey_result(last_popped, &sb)
 	case "help":
 		fmt.println(HELPMSG)
 	}

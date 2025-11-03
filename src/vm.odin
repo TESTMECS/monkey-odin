@@ -21,7 +21,7 @@ GLOBALS_SIZE :: 65536
 
 MAX_FRAMES :: 1024
 
-DEBUG_VM :: false
+DEBUG_VM :: true
 
 
 VM :: struct {
@@ -424,6 +424,7 @@ exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	fn, ok := v.stack[v.sp - 1 - int(num_args)].(ObjectCompiledFunction)
+	if DEBUG_VM do fmt.println("EXEC_CALL, fn=", fn)
 
 	if !ok {
 		strings.builder_reset(&v.sb)

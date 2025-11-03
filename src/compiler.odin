@@ -226,7 +226,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		varena := virtual.arena_allocator(c.vmem)
 		instr_copy := make(Instructions, len(instructions), varena)
 		copy(instr_copy[:], instructions[:])
-		
+
 		compiled_fn := ObjectCompiledFunction {
 			instructions   = instr_copy,
 			num_locals     = num_locals,
