@@ -154,16 +154,48 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					fmt.sbprintln(&e.sb)
 				}
 
-				fmt.print(strings.to_string(e.sb))
-
-				return NULL, true
+				return strings.to_string(e.sb), true
 			}
 
 	case "args":
 		unimplemented()
 	case "printf":
-		unimplemented()
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) < 2 {
+					return eval_new_error(
+							e,
+							"'printf' function error: wrong number of arguments, wants=<<Greater than or equal to 2>>, got='%d'",
+							len(args),
+						),
+						false
+				}
+				is_valid_format_string := proc(s: string) -> bool {
+					for i := 0; i < len(s); i += 1 {
+						if s[i] == '%' {
+							if i + 1 >= len(s) {return false} 	// dangling '%'
+							valid_specifiers := "sdxfv" // TODO: add more
+							if !strings.contains(valid_specifiers, s[i + 1:]) {
+								return false
+							}
+						}
+					}
+					return true
+				}
+				format_str, ok := args[0].(string)
+				is_valid := is_valid_format_string(format_str)
+				if !ok || !is_valid {
+					return eval_new_error(
+							e,
+							"'printf' function error: first argument must be a valid format string, got '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
 
+				strings.builder_reset(&e.sb)
+				fmt.sbprintf(&e.sb, format_str, args[1:])
+				return strings.to_string(e.sb), true
+			}
 	case "int":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
@@ -212,7 +244,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				strings.builder_reset(&e.sb)
 				ObjectInspect(args[0], &e.sb)
-				varena := virtual.arena_allocator(e.vmem)
 				return strings.to_string(e.sb), true
 			}
 
@@ -279,6 +310,14 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				case bool:
 					return arg, true
 				case string:
+					return arg, true
+				case ObjectCompiledFunction:
+					return arg, true
+				case ObjectHashTable:
+					return arg, true
+				case ObjectArray:
+					return arg, true
+				case ObjectQuote:
 					return arg, true
 				}
 
