@@ -4,7 +4,7 @@ import "core:testing"
 
 @(test)
 test_vm_integer_arithmetic :: proc(t: ^testing.T) {
-	tests := []Test_Cases {
+	tests := []VM_Test_Cases {
 		{"1", 1},
 		{"2", 2},
 		{"-5", -5},
@@ -22,6 +22,6 @@ test_vm_integer_arithmetic :: proc(t: ^testing.T) {
 
 	defer free_all(context.temp_allocator)
 
-	run_vm_test(t, tests)
+	run_vm_tests(t, tests)
 }
 

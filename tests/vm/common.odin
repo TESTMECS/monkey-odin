@@ -4,12 +4,12 @@ import m "../.."
 import "core:log"
 import "core:testing"
 
-Test_Cases :: struct {
+VM_Test_Cases :: struct {
 	input:    string,
 	expected: m.Test_Data,
 }
 
-run_vm_test :: proc(t: ^testing.T, tests: []Test_Cases) {
+run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 	for test_case, i in tests {
 		p := m.Parser__New__(test_case.input)
 		defer p->free()

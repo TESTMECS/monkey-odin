@@ -310,10 +310,11 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		     ObjectFunction:
 			break
 		case string:
-			if left.(string) == right.(string) do return v->push_vm(true)
+			return v->push_vm(left.(string) == right.(string))
 		case bool:
-			if left.(bool) == right.(bool) do return v->push_vm(true)
+			return v->push_vm(left.(bool) == right.(bool))
 		}
+		return v->push_vm(false)
 	case .Neq:
 		switch ObjectType(left) {
 		case ObjectArray,
@@ -323,10 +324,11 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		     ObjectFunction:
 			break
 		case string:
-			if left.(string) != right.(string) do return v->push_vm(true)
+			return v->push_vm(left.(string) != right.(string))
 		case bool:
-			if left.(bool) != right.(bool) do return v->push_vm(true)
+			return v->push_vm(left.(bool) != right.(bool))
 		}
+		return v->push_vm(false)
 	}
 	strings.builder_reset(&v.sb)
 	fmt.sbprintf(&v.sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
@@ -358,9 +360,8 @@ exec_not_op :: proc(v: ^VM) -> (err: string) {
 	case ObjectNil:
 		return v->push_vm(true)
 	case:
-		v->push_vm(false)
+		return v->push_vm(false)
 	}
-	unreachable()
 }
 
 exec_neg_op :: proc(v: ^VM) -> (err: string) {
