@@ -218,7 +218,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
-		if !c->last_instruction_is(.Ret_V) do c->emit(.Ret_V)
+		if !c->last_instruction_is(.Ret_V) && !c->last_instruction_is(.Ret) do c->emit(.Ret_V if len(c->current_instructions()) > 0 else .Ret)
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
 

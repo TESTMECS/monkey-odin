@@ -3,6 +3,76 @@ package compiler_tests
 import m "../.."
 import "core:testing"
 
+
+@(test)
+test_compile_functions :: proc(t: ^testing.T) {
+	tests := [?]Compiler_Test_Case {
+		{
+			"fn () { return 5 + 10 }",
+			{
+				5,
+				10,
+				[]m.Instructions {
+					m.make_instructions(context.temp_allocator, .Cnst, 0),
+					m.make_instructions(context.temp_allocator, .Cnst, 1),
+					m.make_instructions(context.temp_allocator, .Add),
+					m.make_instructions(context.temp_allocator, .Ret_V),
+				},
+			},
+			{
+				m.make_instructions(context.temp_allocator, .Cnst, 2),
+				m.make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"fn () { 5 + 10 }",
+			{
+				5,
+				10,
+				[]m.Instructions {
+					m.make_instructions(context.temp_allocator, .Cnst, 0),
+					m.make_instructions(context.temp_allocator, .Cnst, 1),
+					m.make_instructions(context.temp_allocator, .Add),
+					m.make_instructions(context.temp_allocator, .Ret_V),
+				},
+			},
+			{
+				m.make_instructions(context.temp_allocator, .Cnst, 2),
+				m.make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"fn () { 1; 2 }",
+			{
+				1,
+				2,
+				[]m.Instructions {
+					m.make_instructions(context.temp_allocator, .Cnst, 0),
+					m.make_instructions(context.temp_allocator, .Pop),
+					m.make_instructions(context.temp_allocator, .Cnst, 1),
+					m.make_instructions(context.temp_allocator, .Ret_V),
+				},
+			},
+			{
+				m.make_instructions(context.temp_allocator, .Cnst, 2),
+				m.make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+		{
+			"fn () { }",
+			{[]m.Instructions{m.make_instructions(context.temp_allocator, .Ret)}},
+			{
+				m.make_instructions(context.temp_allocator, .Cnst, 0),
+				m.make_instructions(context.temp_allocator, .Pop),
+			},
+		},
+	}
+
+	defer free_all(context.temp_allocator)
+
+	run_compiler_tests(t, tests[:])
+}
+
 @(test)
 test_compile_function_calls :: proc(t: ^testing.T) {
 	tests := [?]Compiler_Test_Case {

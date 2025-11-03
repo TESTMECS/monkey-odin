@@ -1,6 +1,7 @@
 package compiler_tests
 import m "../.."
 import "core:testing"
+
 @(test)
 test_compile_index_expressions :: proc(t: ^testing.T) {
 	tests := [?]Compiler_Test_Case {
