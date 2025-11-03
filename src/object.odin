@@ -14,6 +14,16 @@ ObjectFunction :: struct {
 	env:        ^Environment,
 }
 
+ObjectMacro :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
+	env:        ^Environment,
+}
+
+ObjectQuote :: struct {
+	node: Node,
+}
+
 ObjectHashTable :: map[string]ObjectBase
 
 ObjectBuilinFunction :: #type proc(
@@ -42,6 +52,7 @@ ObjectBase :: union {
 	ObjectArray,
 	ObjectHashTable,
 	ObjectCompiledFunction,
+	ObjectMacro,
 }
 
 ObjectReturn :: distinct ObjectBase
@@ -154,6 +165,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 		fmt.sbprint(sb, " }")
 	case ObjectCompiledFunction:
 		fmt.sbprint(sb, "(compiled function)")
+	case ObjectMacro:
+		fmt.sbprint(sb, "(macro)")
 
 	}
 }

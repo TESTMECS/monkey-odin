@@ -373,6 +373,16 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 			operand = new_clone(ast_copy(data.operand, allocator), allocator),
 			index = new_clone(ast_copy(data.index, allocator), allocator),
 		}
+
+	case Ast_Macro:
+		parameters := make([dynamic]Ast_Identifier, 0, len(data.parameters), allocator)
+		Ast__Copy__(&data.parameters, &parameters, allocator)
+
+		body := make(Ast_Block, 0, len(data.body), allocator)
+		Ast__Copy__(&data.body, &body, allocator)
+
+		return Ast_Function{parameters = parameters, body = body}
+
 	}
 	unimplemented()
 }
