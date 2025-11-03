@@ -44,11 +44,6 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
-define_builtins :: proc(c: ^Compiler) {
-	// Don't pre-add builtins to the symbol table.
-	// They will be added when they're actually referenced.
-}
-
 Compiler__New__ :: proc() -> Compiler {
 	compiler := Compiler {
 		compiler_state               = Compiler_State_New(),
@@ -69,7 +64,6 @@ Compiler__New__ :: proc() -> Compiler {
 		replace_instructions         = replace_instructions,
 		change_operand               = change_operand,
 	}
-	define_builtins(&compiler)
 	return compiler
 }
 
@@ -100,7 +94,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				c.symbol_table->define_builtin(data.value, len(c.symbol_table.store))
 				symbol, ok = c.symbol_table->resolve(data.value)
 				if !ok {
-					err = compiler_error(c, "failed to resolve builtin '%s' after defining it", data.value)
+					err = compiler_error(
+						c,
+						"failed to resolve builtin '%s' after defining it",
+						data.value,
+					)
 					return
 				}
 				c->emit(.Cnst, c->add_constant(builtin_fn))
@@ -236,6 +234,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// Macros are handled during expansion, so we shouldn't reach here
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
+	case Ast_For:
+		unimplemented()
 	case int:
 		c->emit(.Cnst, c->add_constant(data)) // returns 0
 	case bool:
@@ -249,14 +249,14 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 // Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 	err = ""
-	
+
 	// Expand macros before compilation
 	expanded_program, expand_err := expand_macros(program, c.vmem)
 	if expand_err != "" {
 		err = compiler_error(c, "macro expansion error: %s", expand_err)
 		return
 	}
-	
+
 	for stmt in expanded_program.(Ast_Program) {
 		if err = c->compile(stmt); err != "" do return
 		if Ast_IsExpr(stmt) {

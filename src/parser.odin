@@ -146,6 +146,7 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.False        = parse_boolean_literal,
 	.If           = parse_if_expression,
 	.Macro        = parse_macro_expression,
+	.For          = parse_for_expression,
 }
 
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
@@ -425,7 +426,20 @@ parse_macro_expression :: proc(p: ^Parser) -> Node {
 
 	return Ast_Macro{parameters = parameters, body = body}
 }
-// end <<Expressions
+parse_for_expression :: proc(p: ^Parser) -> Node {
+	varena := virtual.arena_allocator(p.vmem)
+	next_token(p)
+
+	cond_expr := parse_expression(p, .Lowest)
+	if cond_expr == nil do return nil
+
+	if !expect_peek(p, .Left_Brace) do return nil
+	body := parse_block_statement(p)
+
+	condition := new_clone(cond_expr, varena)
+
+	return Ast_For{cond = condition, body = body}
+} // end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	varena := virtual.arena_allocator(p.vmem)

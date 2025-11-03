@@ -23,6 +23,7 @@ Node :: union {
 	Ast_Call,
 	Ast_Index,
 	Ast_Macro,
+	Ast_For,
 }
 // @Ast=>>begin
 Ast_Program :: distinct [dynamic]Node
@@ -31,10 +32,16 @@ Ast_Block :: distinct [dynamic]Node
 
 Ast_Array :: distinct [dynamic]Node
 
+Ast_For :: struct {
+	cond: ^Node,
+	body: Ast_Block,
+}
+
 Ast_Call :: struct {
 	function:  ^Node,
 	arguments: [dynamic]Node,
 }
+
 Ast_Hash_Table :: struct {
 	pairs: [dynamic]kvpair,
 	table: map[string]Node,
@@ -129,6 +136,16 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			ast_to_string(stmt, sb)
 			if i < len(data) - 1 do fmt.sbprint(sb, "\n")
 		}
+
+	case Ast_For:
+		fmt.sbprint(sb, "for ")
+		ast_to_string(data.cond, sb)
+		fmt.sbprint(sb, " ")
+		ast_to_string(data.body, sb)
+
+	case Ast_Macro:
+		fmt.sbprint(sb, "macro ")
+		ast_to_string(data.body, sb)
 
 	case Ast_Identifier:
 		fmt.sbprint(sb, data.value)
@@ -372,6 +389,12 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		return Ast_Index {
 			operand = new_clone(ast_copy(data.operand, allocator), allocator),
 			index = new_clone(ast_copy(data.index, allocator), allocator),
+		}
+
+	case Ast_For:
+		return Ast_For {
+			cond = new_clone(ast_copy(data.cond, allocator), allocator),
+			body = make(Ast_Block, 0, len(data.body), allocator),
 		}
 
 	case Ast_Macro:
