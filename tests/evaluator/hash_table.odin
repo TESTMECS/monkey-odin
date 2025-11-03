@@ -8,6 +8,7 @@ import "core:testing"
 @(test)
 test_eval_hash_literals :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	input := `
     {
         "one": 10 - 9,
@@ -57,6 +58,7 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 @(test)
 test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: int,

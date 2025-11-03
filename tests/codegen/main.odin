@@ -1,6 +1,8 @@
 #+feature dynamic-literals
 package codegen_tests
 
+
+import tc "../"
 import monkey "../../src"
 import "core:log"
 import "core:testing"
@@ -53,6 +55,7 @@ test_code_make :: proc(t: ^testing.T) {
 @(test)
 test_instructions_string :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	instructions := [?]Instructions {
 		make_instructions(context.allocator, .Add),
 		make_instructions(context.allocator, .Get_L, 1),

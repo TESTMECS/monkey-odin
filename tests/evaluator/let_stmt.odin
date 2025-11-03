@@ -8,6 +8,7 @@ import "core:testing"
 @(test)
 test_eval_let_statements :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: int,

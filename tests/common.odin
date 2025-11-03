@@ -1,8 +1,5 @@
 package test_commons
-// import "./compiler"
-// import "./evaluator"
-// import "./parser"
-// import "./vm"
+
 import monkey "../src"
 import "core:fmt"
 import "core:reflect"

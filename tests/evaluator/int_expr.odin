@@ -7,6 +7,7 @@ import "core:testing"
 @(test)
 test_eval_integer_expression :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: int,

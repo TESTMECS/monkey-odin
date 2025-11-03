@@ -1,5 +1,6 @@
 package parser_tests
 
+import test_commons "../"
 import monkey "../../src"
 import "core:log"
 
@@ -8,8 +9,8 @@ Literal :: union {
 	string,
 	bool,
 }
-
-parser_has_error :: monkey.parser_has_error
+tc :: test_commons
+parser_has_error :: tc.parser_has_error
 
 integer_literal_is_valid :: proc(il: ^monkey.Node, expected_value: int) -> bool {
 	using monkey

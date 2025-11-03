@@ -1,7 +1,10 @@
 package evaluator_tests
 
+import test_commons "../"
 import monkey "../../src"
 import "core:log"
+
+tc :: test_commons
 
 eval_test_get :: proc(
 	input: string,
@@ -12,6 +15,7 @@ eval_test_get :: proc(
 	bool,
 ) {
 	using monkey
+	using tc
 	p := Parser__New__(input)
 	defer p->free()
 	program := p->parse()

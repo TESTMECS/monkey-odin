@@ -15,7 +15,12 @@ run ARGS:
 
 alias ta := test-all
 test-all:
-	odin test ./tests --all-packages
+	odin test ./tests/compiler/
+	odin test ./tests/vm/
+	odin test ./tests/parser/
+	odin test ./tests/lexer/
+	odin test ./tests/codegen/
+	odin test ./tests/evaluator/
 
 alias c := clean
 clean:

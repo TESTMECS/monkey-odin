@@ -8,6 +8,7 @@ import "core:testing"
 @(test)
 test_eval_function_object :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	input := "fn(x) { x + 2 };"
 
 	evaluated, e, ok := eval_test_get(input)
@@ -54,6 +55,7 @@ test_eval_function_object :: proc(t: ^testing.T) {
 @(test)
 test_eval_function_application :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: int,
@@ -94,6 +96,7 @@ test_eval_function_application :: proc(t: ^testing.T) {
 @(test)
 test_eval_builtin_functions :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: union {

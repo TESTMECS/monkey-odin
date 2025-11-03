@@ -7,6 +7,7 @@ import "core:testing"
 @(test)
 test_eval_array_literals :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	input := "[1, 2 * 2, 3 + 3]"
 
 	evaluated, e, ok := eval_test_is_valid(input)
@@ -40,6 +41,7 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 @(test)
 test_eval_array_index_expression :: proc(t: ^testing.T) {
 	using monkey
+	using tc
 	tests := [?]struct {
 		input:    string,
 		expected: int,

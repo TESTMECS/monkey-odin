@@ -1,16 +1,20 @@
 package vm_tests
 
+import test_commons "../"
 import monkey "../../src"
 import "core:log"
 import "core:testing"
 
+tc :: test_commons
+
 VM_Test_Cases :: struct {
 	input:    string,
-	expected: monkey.Test_Data,
+	expected: tc.Test_Data,
 }
 
 run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 	using monkey
+	using tc
 	for test_case, i in tests {
 		p := Parser__New__(test_case.input)
 		defer p->free()

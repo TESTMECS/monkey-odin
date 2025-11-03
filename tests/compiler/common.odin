@@ -75,7 +75,7 @@ test_constants :: proc(
 	err: string,
 ) {
 	using monkey
-	using test_commons
+	using tc
 	if len(expected) != len(actual) {
 		return fmt.tprintf(
 			"wrong number of constants. wants='%d', got='%d'",
