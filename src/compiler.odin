@@ -45,25 +45,8 @@ Compiler :: struct {
 }
 
 define_builtins :: proc(c: ^Compiler) {
-	varena := virtual.arena_allocator(c.vmem)
-	builtins := []string {
-		"len",
-		"first",
-		"last",
-		"rest",
-		"push",
-		"puts",
-		"int",
-		"str",
-		"typeof",
-		"abs",
-		"range",
-		"args",
-		"printf",
-	}
-	for name in builtins {
-		c.symbol_table->define_builtin(name, len(c.symbol_table.store))
-	}
+	// Don't pre-add builtins to the symbol table.
+	// They will be added when they're actually referenced.
 }
 
 Compiler__New__ :: proc() -> Compiler {
@@ -110,8 +93,21 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Ret_V)
 	case Ast_Identifier:
 		if symbol, ok := c.symbol_table->resolve(data.value); !ok {
-			err = compiler_error(c, "identifier '%s' is not declared", data.value)
-			return
+			// Check if this is a builtin that hasn't been defined yet
+			builtin_fn := find_builtin_fn(data.value)
+			if builtin_fn != nil {
+				// Add this builtin to the symbol table
+				c.symbol_table->define_builtin(data.value, len(c.symbol_table.store))
+				symbol, ok = c.symbol_table->resolve(data.value)
+				if !ok {
+					err = compiler_error(c, "failed to resolve builtin '%s' after defining it", data.value)
+					return
+				}
+				c->emit(.Cnst, c->add_constant(builtin_fn))
+			} else {
+				err = compiler_error(c, "identifier '%s' is not declared", data.value)
+				return
+			}
 		} else {
 			if symbol.scope == .Builtin {
 				builtin_fn := find_builtin_fn(data.value)
