@@ -315,7 +315,7 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_function := left.(^ObjectFunction)
 		_, left_is_string := left.(string)
 		_, left_is_bool := left.(bool)
-		
+
 		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
 			return v->push_vm(false)
 		} else if left_is_string {
@@ -332,7 +332,7 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_function := left.(^ObjectFunction)
 		_, left_is_string := left.(string)
 		_, left_is_bool := left.(bool)
-		
+
 		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
 			return v->push_vm(false)
 		} else if left_is_string {
@@ -393,7 +393,7 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	_, operand_is_ht := operand.(ObjectHashTable)
 	_, index_is_int := index.(int)
 	_, index_is_string := index.(string)
-	
+
 	if operand_is_array && index_is_int {
 		return v->exec_arr_idx(operand.(ObjectArray), index.(int))
 	} else if operand_is_ht && index_is_string {
@@ -401,7 +401,12 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	}
 
 	strings.builder_reset(&v.sb)
-	fmt.sbprintf(&v.sb, "index operator not supported: operand type '%v', index type '%v'", reflect.union_variant_typeid(operand), reflect.union_variant_typeid(index))
+	fmt.sbprintf(
+		&v.sb,
+		"index operator not supported: operand type '%v', index type '%v'",
+		reflect.union_variant_typeid(operand),
+		reflect.union_variant_typeid(index),
+	)
 	return strings.to_string(v.sb)
 }
 
