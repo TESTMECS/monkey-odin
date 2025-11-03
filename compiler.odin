@@ -222,8 +222,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
 
+		// Create a deep copy of instructions for the function
+		varena := virtual.arena_allocator(c.vmem)
+		instr_copy := make(Instructions, len(instructions), varena)
+		copy(instr_copy[:], instructions[:])
+		
 		compiled_fn := ObjectCompiledFunction {
-			instructions   = instructions,
+			instructions   = instr_copy,
 			num_locals     = num_locals,
 			num_parameters = len(data.parameters),
 		}

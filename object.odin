@@ -27,7 +27,7 @@ ObjectBuilinFunction :: #type proc(
 ObjectArray :: distinct [dynamic]ObjectBase
 
 ObjectCompiledFunction :: struct {
-	instructions:   ^Instructions,
+	instructions:   Instructions,
 	num_locals:     int,
 	num_parameters: int,
 }
