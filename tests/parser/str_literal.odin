@@ -1,13 +1,15 @@
 package parser_tests
-import m "../.."
+
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_parse_string_literal :: proc(t: ^testing.T) {
+	using monkey
 	input := `"hello world";`
 
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -20,7 +22,7 @@ test_parse_string_literal :: proc(t: ^testing.T) {
 
 	literal, str_ok := program[0].(string)
 	if !str_ok {
-		log.errorf("expression is not string, got='%v'", m.Ast__Type__(program[0]))
+		log.errorf("expression is not string, got='%v'", Ast__Type__(program[0]))
 		return
 	}
 

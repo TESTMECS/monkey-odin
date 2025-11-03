@@ -1,13 +1,15 @@
 package parser_tests
 
-import m "../.."
-import "core:testing"
+import monkey "../../src"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_parse_identifier :: proc(t: ^testing.T) {
+	using monkey
+
 	input := "foobar;"
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -20,3 +22,4 @@ test_parse_identifier :: proc(t: ^testing.T) {
 
 	identifier_is_valid(&program[0], "foobar")
 }
+

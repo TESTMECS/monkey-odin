@@ -22,6 +22,7 @@ Node :: union {
 	Ast_Function,
 	Ast_Call,
 	Ast_Index,
+	Ast_Macro,
 }
 // @Ast=>>begin
 Ast_Program :: distinct [dynamic]Node
@@ -82,6 +83,11 @@ kvpair :: struct {
 Ast_Index :: struct {
 	operand: ^Node,
 	index:   ^Node,
+}
+
+Ast_Macro :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
 } // end <<@Ast
 
 Ast_IsExpr :: proc(ast: Node) -> bool {

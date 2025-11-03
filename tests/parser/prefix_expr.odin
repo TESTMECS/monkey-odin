@@ -1,11 +1,13 @@
 package parser_tests
 
-import "core:testing"
+import monkey "../../src"
 import "core:log"
+import "core:testing"
 
 
 @(test)
 test_prefix_expression :: proc(t: ^testing.T) {
+	using monkey
 	prefix_tests := [?]struct {
 		input:         string,
 		operator:      string,
@@ -26,3 +28,4 @@ test_prefix_expression :: proc(t: ^testing.T) {
 	}
 
 }
+

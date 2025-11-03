@@ -1,6 +1,6 @@
 package parser_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 
 Literal :: union {
@@ -9,12 +9,13 @@ Literal :: union {
 	bool,
 }
 
-parser_has_error :: m.parser_has_error
+parser_has_error :: monkey.parser_has_error
 
-integer_literal_is_valid :: proc(il: ^m.Node, expected_value: int) -> bool {
+integer_literal_is_valid :: proc(il: ^monkey.Node, expected_value: int) -> bool {
+	using monkey
 	val, ok := il.(int)
 	if !ok {
-		log.errorf("il is not 'int', got='%v'", m.Ast__Type__(il))
+		log.errorf("il is not 'int', got='%v'", Ast__Type__(il))
 		return false
 	}
 	if val != expected_value {
@@ -24,10 +25,11 @@ integer_literal_is_valid :: proc(il: ^m.Node, expected_value: int) -> bool {
 	return true
 }
 
-identifier_is_valid :: proc(expr: ^m.Node, expected_value: string) -> bool {
-	ident, ok := expr.(m.Ast_Identifier)
+identifier_is_valid :: proc(expr: ^monkey.Node, expected_value: string) -> bool {
+	using monkey
+	ident, ok := expr.(Ast_Identifier)
 	if !ok {
-		log.errorf("expression is not Ast_Identifier, got='%v'", m.Ast__Type__(expr))
+		log.errorf("expression is not Ast_Identifier, got='%v'", Ast__Type__(expr))
 		return false
 	}
 
@@ -39,10 +41,11 @@ identifier_is_valid :: proc(expr: ^m.Node, expected_value: string) -> bool {
 	return true
 }
 
-boolean_is_valid :: proc(b: ^m.Node, expected_value: bool) -> bool {
+boolean_is_valid :: proc(b: ^monkey.Node, expected_value: bool) -> bool {
+	using monkey
 	blit, ok := b.(bool)
 	if !ok {
-		log.errorf("expression is not boolean, got='%v'", m.Ast__Type__(b))
+		log.errorf("expression is not boolean, got='%v'", Ast__Type__(b))
 		return false
 	}
 	if blit != expected_value {
@@ -52,7 +55,7 @@ boolean_is_valid :: proc(b: ^m.Node, expected_value: bool) -> bool {
 	return true
 }
 
-literal_value_is_valid :: proc(lit: ^m.Node, expected: Literal) -> bool {
+literal_value_is_valid :: proc(lit: ^monkey.Node, expected: Literal) -> bool {
 	switch v in expected {
 	case int:
 		return integer_literal_is_valid(lit, v)
@@ -68,14 +71,15 @@ literal_value_is_valid :: proc(lit: ^m.Node, expected: Literal) -> bool {
 }
 
 infix_expression_is_valid :: proc(
-	expression: ^m.Node,
+	expression: ^monkey.Node,
 	left_value: Literal,
 	operator: string,
 	right_value: Literal,
 ) -> bool {
-	infix, ok := expression.(m.Ast_Infix)
+	using monkey
+	infix, ok := expression.(Ast_Infix)
 	if !ok {
-		log.errorf("expression is not 'Ast_Infix', got'%v'", m.Ast__Type__(expression))
+		log.errorf("expression is not 'Ast_Infix', got'%v'", Ast__Type__(expression))
 		return false
 	}
 
@@ -96,10 +100,11 @@ infix_expression_is_valid :: proc(
 	return true
 }
 
-stmt_is_let :: proc(s: m.Node, name: string, expected_value: Literal) -> bool {
-	let_stmt, ok := s.(m.Ast_Let)
+stmt_is_let :: proc(s: monkey.Node, name: string, expected_value: Literal) -> bool {
+	using monkey
+	let_stmt, ok := s.(Ast_Let)
 	if !ok {
-		log.errorf("s is not a let statement. got='%v'", m.Ast__Type__(s))
+		log.errorf("s is not a let statement. got='%v'", Ast__Type__(s))
 		return false
 	}
 	if let_stmt.name != name {
@@ -115,7 +120,8 @@ prefix_test_case_is_ok :: proc(
 	operator: string,
 	operand_value: Literal,
 ) -> bool {
-	p := m.Parser__New__(input)
+	using monkey
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -130,12 +136,12 @@ prefix_test_case_is_ok :: proc(
 		return false
 	}
 
-	infix, ok := program[0].(m.Ast_Prefix) // check infix
+	infix, ok := program[0].(Ast_Prefix) // check infix
 	if !ok {
 		log.errorf(
 			"test [%d]: program[0] is not 'Node_Prefix_Expression', got='%v'",
 			test_number,
-			m.Ast__Type__(program[0]),
+			Ast__Type__(program[0]),
 		)
 		return false
 	}
@@ -164,7 +170,8 @@ infix_test_case_is_valid :: proc(
 	operator: string,
 	right_value: Literal,
 ) -> bool {
-	p := m.Parser__New__(input)
+	using monkey
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()

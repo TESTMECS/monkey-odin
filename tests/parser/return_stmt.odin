@@ -1,10 +1,12 @@
 package parser_tests
-import m "../.."
+
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_parsing_return_statement :: proc(t: ^testing.T) {
+	using monkey
 	input := `
 	return 5;
 	return 10;
@@ -12,7 +14,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	`
 
 
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -29,13 +31,9 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 
 	for _, i in tests {
 		stmt := program[i]
-		_, ok := stmt.(m.Ast_Ret)
+		_, ok := stmt.(Ast_Ret)
 		if !ok {
-			log.errorf(
-				"test [%d]: stmt is not a return statement. got='%v'",
-				i,
-				m.Ast__Type__(stmt),
-			)
+			log.errorf("test [%d]: stmt is not a return statement. got='%v'", i, Ast__Type__(stmt))
 		}
 	}
 }

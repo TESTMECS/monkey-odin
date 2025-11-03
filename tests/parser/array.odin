@@ -1,13 +1,14 @@
 package parser_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_array :: proc(t: ^testing.T) {
+	using monkey
 	input := "[1,2*2,3+3]"
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -18,9 +19,9 @@ test_array :: proc(t: ^testing.T) {
 		return
 	}
 
-	stmt, ok := program[0].(m.Ast_Array) // check array
+	stmt, ok := program[0].(Ast_Array) // check array
 	if !ok {
-		log.errorf("program[0] is not Ast_Array, got='%v'", m.Ast__Type__(program[0]))
+		log.errorf("program[0] is not Ast_Array, got='%v'", Ast__Type__(program[0]))
 		return
 	}
 

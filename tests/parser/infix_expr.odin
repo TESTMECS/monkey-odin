@@ -1,12 +1,13 @@
 package parser_tests
 
-import m "../.."
-import "core:testing"
+import monkey "../../src"
 import "core:log"
+import "core:testing"
 
 
 @(test)
 test_parsing_infix :: proc(t: ^testing.T) {
+	using monkey
 	tests := []struct {
 		input:       string,
 		left_value:  Literal,
@@ -40,3 +41,4 @@ test_parsing_infix :: proc(t: ^testing.T) {
 	}
 
 }
+

@@ -141,6 +141,7 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok.text_slice = {}
 		tok.type = .EOF
 	case:
+		// Identifiers, numbers, and keywords
 		if is_letter(l.ch) {
 			tok = create_identifier(l)
 			UpdateKwType(&tok)

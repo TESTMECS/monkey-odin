@@ -1,10 +1,11 @@
 package parser_tests
 
-import m "../.."
-import "core:testing"
+import monkey "../../src"
 import "core:log"
+import "core:testing"
 @(test)
 test_let_statement :: proc(t: ^testing.T) {
+	using monkey
 	input := `
 	let x = 5;
 	let y = true;
@@ -17,7 +18,7 @@ test_let_statement :: proc(t: ^testing.T) {
 		expected_value:      Literal,
 	}{{"x", 5}, {"y", true}, {"foobar", "y"}}
 
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -34,3 +35,4 @@ test_let_statement :: proc(t: ^testing.T) {
 		}
 	}
 }
+

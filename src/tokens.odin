@@ -32,6 +32,7 @@ Token_Type :: enum {
 	If,
 	Else,
 	Return,
+	Macro,
 }
 
 Token :: struct {
@@ -59,6 +60,8 @@ UpdateKwType :: proc(tok: ^Token) {
 		tok.type = .Else
 	case "return":
 		tok.type = .Return
+	case "macro":
+		tok.type = .Macro
 	}
 }
 

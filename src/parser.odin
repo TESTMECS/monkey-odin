@@ -145,6 +145,7 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.True         = parse_boolean_literal,
 	.False        = parse_boolean_literal,
 	.If           = parse_if_expression,
+	.Macro        = parse_macro_expression,
 }
 
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
@@ -412,7 +413,19 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 		left_expr = infix(p, left_expr)
 	}
 	return left_expr
-} // end <<Expressions
+}
+parse_macro_expression :: proc(p: ^Parser) -> Node {
+	varena := virtual.arena_allocator(p.vmem)
+	if !expect_peek(p, .Left_Paren) do return nil
+
+	parameters := parse_function_parameters(p)
+	if !expect_peek(p, .Left_Brace) do return nil
+
+	body := parse_block_statement(p)
+
+	return Ast_Macro{parameters = parameters, body = body}
+}
+// end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	varena := virtual.arena_allocator(p.vmem)

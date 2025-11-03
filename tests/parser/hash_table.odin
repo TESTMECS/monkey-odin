@@ -1,17 +1,16 @@
 #+feature dynamic-literals
 package parser_tests
 
-import m "../.."
-import "core:fmt"
+import monkey "../../src"
 import "core:log"
-import "core:strings"
 import "core:testing"
 
 @(test)
 test_hash_table :: proc(t: ^testing.T) {
+	using monkey
 	input := `{"one": 1, "two": 2, "three": 3};`
 
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -22,9 +21,9 @@ test_hash_table :: proc(t: ^testing.T) {
 		return
 	}
 
-	stmt, ok := program[0].(m.Ast_Hash_Table)
+	stmt, ok := program[0].(Ast_Hash_Table)
 	if !ok {
-		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", m.Ast__Type__(program[0]))
+		log.errorf("program[0] is not Ast_Hash_Table, got='%v'", Ast__Type__(program[0]))
 		return
 	} else if len(stmt.table) != 3 {
 		log.errorf("length of the hash table is not 3, got'%d'", len(stmt.table))

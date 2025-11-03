@@ -1,13 +1,14 @@
 package parser_tests
 
-import m "../.."
-import "core:testing"
+import monkey "../../src"
 import "core:log"
+import "core:testing"
 
 @(test)
 test_integer_literal :: proc(t: ^testing.T) {
+	using monkey
 	input := "5;"
-	p := m.Parser__New__(input)
+	p := Parser__New__(input)
 	defer p->free()
 
 	program := p->parse()
@@ -20,3 +21,4 @@ test_integer_literal :: proc(t: ^testing.T) {
 
 	literal_value_is_valid(&program[0], 5)
 }
+
