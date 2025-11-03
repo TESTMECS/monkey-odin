@@ -2,6 +2,7 @@ package monkey
 
 import "core:fmt"
 import "core:mem/virtual"
+import "core:reflect"
 import "core:strings"
 
 Frame :: struct {
@@ -237,9 +238,14 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right := v->pop_vm()
 	left := v->pop_vm()
 
-	if ObjectType(right) == int && ObjectType(left) == int {
+	_, left_is_int := left.(int)
+	_, right_is_int := right.(int)
+	_, left_is_string := left.(string)
+	_, right_is_string := right.(string)
+
+	if left_is_int && right_is_int {
 		return v->exec_binary_int_op(op, left.(int), right.(int))
-	} else if ObjectType(right) == string && ObjectType(left) == string {
+	} else if left_is_string && right_is_string {
 		return v->exec_binary_string_op(op, left.(string), right.(string))
 	}
 	strings.builder_reset(&v.sb)
@@ -247,8 +253,8 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		&v.sb,
 		"unknown operator: '%s' for types '%v' and '%v'",
 		op,
-		ObjectType(left),
-		ObjectType(right),
+		reflect.union_variant_typeid(left),
+		reflect.union_variant_typeid(right),
 	)
 	return strings.to_string(v.sb)
 }
@@ -302,30 +308,36 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	}
 	#partial switch op {
 	case .Eq:
-		switch ObjectType(left) {
-		case ObjectArray,
-		     ObjectHashTable,
-		     ObjectBuilinFunction,
-		     ObjectCompiledFunction,
-		     ObjectFunction:
-			break
-		case string:
+		_, left_is_array := left.(ObjectArray)
+		_, left_is_ht := left.(ObjectHashTable)
+		_, left_is_builtin := left.(ObjectBuilinFunction)
+		_, left_is_compiled := left.(ObjectCompiledFunction)
+		_, left_is_function := left.(^ObjectFunction)
+		_, left_is_string := left.(string)
+		_, left_is_bool := left.(bool)
+		
+		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
+			return v->push_vm(false)
+		} else if left_is_string {
 			return v->push_vm(left.(string) == right.(string))
-		case bool:
+		} else if left_is_bool {
 			return v->push_vm(left.(bool) == right.(bool))
 		}
 		return v->push_vm(false)
 	case .Neq:
-		switch ObjectType(left) {
-		case ObjectArray,
-		     ObjectHashTable,
-		     ObjectBuilinFunction,
-		     ObjectCompiledFunction,
-		     ObjectFunction:
-			break
-		case string:
+		_, left_is_array := left.(ObjectArray)
+		_, left_is_ht := left.(ObjectHashTable)
+		_, left_is_builtin := left.(ObjectBuilinFunction)
+		_, left_is_compiled := left.(ObjectCompiledFunction)
+		_, left_is_function := left.(^ObjectFunction)
+		_, left_is_string := left.(string)
+		_, left_is_bool := left.(bool)
+		
+		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
+			return v->push_vm(false)
+		} else if left_is_string {
 			return v->push_vm(left.(string) != right.(string))
-		case bool:
+		} else if left_is_bool {
 			return v->push_vm(left.(bool) != right.(bool))
 		}
 		return v->push_vm(false)
@@ -376,14 +388,20 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 }
 
 exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
-	if ObjectType(operand) == ObjectArray && ObjectType(index) == int {
+	// Check types using type assertions instead of ObjectType
+	_, operand_is_array := operand.(ObjectArray)
+	_, operand_is_ht := operand.(ObjectHashTable)
+	_, index_is_int := index.(int)
+	_, index_is_string := index.(string)
+	
+	if operand_is_array && index_is_int {
 		return v->exec_arr_idx(operand.(ObjectArray), index.(int))
-	} else if ObjectType(operand) == ObjectHashTable && ObjectType(index) == string {
+	} else if operand_is_ht && index_is_string {
 		return v->exec_ht_idx(operand.(ObjectHashTable), index.(string))
 	}
 
 	strings.builder_reset(&v.sb)
-	fmt.sbprintf(&v.sb, "index operator does not support: '%v'", ObjectType(operand))
+	fmt.sbprintf(&v.sb, "index operator not supported: operand type '%v', index type '%v'", reflect.union_variant_typeid(operand), reflect.union_variant_typeid(index))
 	return strings.to_string(v.sb)
 }
 
@@ -427,7 +445,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 	varena := virtual.arena_allocator(v.vmem)
-	elements := make(ObjectArray, end - start, varena)
+	elements := make(ObjectArray, 0, varena)
 
 	for i := start; i < end; i += 1 {
 		append(&elements, v.stack[i])
