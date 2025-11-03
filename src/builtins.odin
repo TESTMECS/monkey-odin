@@ -257,6 +257,55 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				return value, true
 			}
 
+	case "quote":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'quote' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				// For quote, we need to convert the argument back to an AST node
+				// This is a simplified implementation - in a real system, you'd need
+				// to track the original AST nodes
+				varena := virtual.arena_allocator(e.vmem)
+				
+				#partial switch arg in args[0] {
+				case int:
+					return arg, true
+				case bool:
+					return arg, true
+				case string:
+					return arg, true
+				}
+				
+				return eval_new_error(
+						e,
+						"'quote' function error: cannot quote type '%v'",
+						ObjectType(args[0]),
+					),
+					false
+			}
+
+	case "unquote":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'unquote' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				// For unquote, we just return the argument as-is
+				// In a real implementation, this would be handled during macro expansion
+				return args[0], true
+			}
+
 	case "range":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) < 1 || len(args) > 3 {

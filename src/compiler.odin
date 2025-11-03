@@ -232,6 +232,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			if err = c->compile(arg); err != "" do return
 		}
 		c->emit(.Call, len(data.arguments))
+	case Ast_Macro:
+		// Macros are handled during expansion, so we shouldn't reach here
+		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
+		return
 	case int:
 		c->emit(.Cnst, c->add_constant(data)) // returns 0
 	case bool:
@@ -245,7 +249,15 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 // Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 	err = ""
-	for stmt in program {
+	
+	// Expand macros before compilation
+	expanded_program, expand_err := expand_macros(program, c.vmem)
+	if expand_err != "" {
+		err = compiler_error(c, "macro expansion error: %s", expand_err)
+		return
+	}
+	
+	for stmt in expanded_program.(Ast_Program) {
 		if err = c->compile(stmt); err != "" do return
 		if Ast_IsExpr(stmt) {
 			c->emit(.Pop)

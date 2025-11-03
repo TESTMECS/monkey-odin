@@ -106,6 +106,46 @@ main :: proc() {
 
 		last_popped := vm->last_popped()
 		monkey_result(last_popped, &sb, true)
+	case "mexpand":
+		file_path := os.args[2]
+		if !os.exists(file_path) do monkey_err("File does not exist", 1, &sb)
+		dbg("file_path=%v", file_path)
+
+		f, err := os.open(file_path, os.O_RDONLY)
+		if err != nil do monkey_err("Error opening file", 1, &sb)
+		defer os.close(f)
+
+		contents, ok := os.read_entire_file_from_handle(f)
+		ensure(ok)
+		str_contents := strings.clone_from_bytes(contents, varena)
+
+		// --- Skip shebang line if present ---
+		if strings.starts_with(str_contents, "#!") {
+			if idx := strings.index_byte(str_contents, '\n'); idx >= 0 {
+				str_contents = str_contents[idx + 1:]
+			} else {
+				str_contents = ""
+			}
+		} else {
+			str_contents = strings.trim_space(str_contents)
+		}
+		stmts := str_contents
+		dbg("stmts=%v", str_contents)
+
+		p := Parser__New__(stmts)
+		defer p->free()
+
+		program := p->parse()
+		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
+		
+		// Expand macros
+		expanded_program, expand_err := expand_macros(program, &v)
+		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, expand_err)
+		
+		// Print expanded program
+		strings.builder_reset(&sb)
+		ast_to_string(expanded_program, &sb)
+		fmt.println(strings.to_string(sb))
 	case "help":
 		fmt.println(HELPMSG)
 	}

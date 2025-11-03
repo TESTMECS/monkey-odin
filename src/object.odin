@@ -53,6 +53,7 @@ ObjectBase :: union {
 	ObjectHashTable,
 	ObjectCompiledFunction,
 	ObjectMacro,
+	ObjectQuote,
 }
 
 ObjectReturn :: distinct ObjectBase
@@ -167,6 +168,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 		fmt.sbprint(sb, "(compiled function)")
 	case ObjectMacro:
 		fmt.sbprint(sb, "(macro)")
+	case ObjectQuote:
+		fmt.sbprint(sb, "(quote)")
 
 	}
 }

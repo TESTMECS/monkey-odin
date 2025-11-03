@@ -315,8 +315,10 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_function := left.(^ObjectFunction)
 		_, left_is_string := left.(string)
 		_, left_is_bool := left.(bool)
+		_, left_is_macro := left.(ObjectMacro)
+		_, left_is_quote := left.(ObjectQuote)
 
-		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
+		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function || left_is_macro || left_is_quote {
 			return v->push_vm(false)
 		} else if left_is_string {
 			return v->push_vm(left.(string) == right.(string))
@@ -332,8 +334,10 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		_, left_is_function := left.(^ObjectFunction)
 		_, left_is_string := left.(string)
 		_, left_is_bool := left.(bool)
+		_, left_is_macro := left.(ObjectMacro)
+		_, left_is_quote := left.(ObjectQuote)
 
-		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function {
+		if left_is_array || left_is_ht || left_is_builtin || left_is_compiled || left_is_function || left_is_macro || left_is_quote {
 			return v->push_vm(false)
 		} else if left_is_string {
 			return v->push_vm(left.(string) != right.(string))
@@ -475,6 +479,18 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 		// Push result
 		return v->push_vm(result)
+		
+	case ObjectMacro:
+		// Macros should be expanded during compilation, not executed at runtime
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
+		return strings.to_string(v.sb)
+		
+	case ObjectQuote:
+		// Quote objects should be handled during compilation
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "quote object encountered at runtime - should have been handled during compilation")
+		return strings.to_string(v.sb)
 	}
 
 	strings.builder_reset(&v.sb)
