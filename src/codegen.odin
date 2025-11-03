@@ -20,6 +20,7 @@ Opcode :: enum byte {
 	Mul,
 	Div,
 	Idx,
+	SetIdx,  // Set array element
 	Call,
 	Ret_V,
 	Ret,
@@ -54,6 +55,7 @@ Definition__Map__ := [Opcode]Definition {
 	.Mul        = {"OpMul", {}},
 	.Div        = {"OpDiv", {}},
 	.Idx        = {"OpIndex", {}},
+	.SetIdx     = {"OpSetIndex", {}},
 	.Call       = {"OpCall", {1}},
 	.Ret_V      = {"OpReturnValue", {}},
 	.Ret        = {"OpReturn", {}},

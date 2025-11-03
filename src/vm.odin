@@ -21,7 +21,7 @@ GLOBALS_SIZE :: 65536
 
 MAX_FRAMES :: 1024
 
-DEBUG_VM :: false
+DEBUG_VM :: true
 
 
 VM :: struct {
@@ -51,6 +51,8 @@ VM :: struct {
 	exec_idx_expr:          proc(v: ^VM, operand, index: ObjectBase) -> (err: string),
 	exec_arr_idx:           proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string),
 	exec_ht_idx:            proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string),
+	exec_set_idx_expr:      proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string),
+	exec_arr_set_idx:       proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase) -> (err: string),
 	exec_call:              proc(v: ^VM, num_args: int) -> (err: string),
 	build_array:            proc(v: ^VM, start, end: int) -> ObjectBase,
 	build_hash_table:       proc(v: ^VM, start, end: int) -> (ObjectBase, string),
@@ -89,6 +91,8 @@ Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
 		exec_idx_expr         = exec_idx_expr,
 		exec_arr_idx          = exec_arr_idx,
 		exec_ht_idx           = exec_ht_idx,
+		exec_set_idx_expr     = exec_set_idx_expr,
+		exec_arr_set_idx      = exec_arr_set_idx,
 		exec_call             = exec_call,
 		build_array           = build_array,
 		build_hash_table      = build_hash_table,
@@ -136,6 +140,11 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			index := v->pop_vm()
 			operand := v->pop_vm()
 			if err = v->exec_idx_expr(operand, index); err != "" do return
+		case .SetIdx:
+			value := v->pop_vm()
+			index := v->pop_vm()
+			operand := v->pop_vm()
+			if err = v->exec_set_idx_expr(operand, index, value); err != "" do return
 		case .Call:
 			num_args := int(read_u8(ins[ip + 1:]))
 			v->current_frame().ip += 1
@@ -231,6 +240,7 @@ pop_vm :: proc(v: ^VM) -> ObjectBase {
 }
 
 last_popped :: proc(v: ^VM) -> ObjectBase {
+	if v.sp < 0 do return nil
 	return v.stack[v.sp]
 }
 
@@ -535,5 +545,44 @@ pop_frame :: proc(v: ^VM) -> ^Frame {
 push_frame :: proc(v: ^VM, f: Frame) {
 	v.frames[v.frames_idx] = f
 	v.frames_idx += 1
+}
+
+exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string) {
+	// Check types using type assertions
+	_, operand_is_array := operand.(ObjectArray)
+	_, operand_is_ht := operand.(ObjectHashTable)
+	_, index_is_int := index.(int)
+	_, index_is_string := index.(string)
+
+	if operand_is_array && index_is_int {
+		return v->exec_arr_set_idx(operand.(ObjectArray), index.(int), value)
+	} else if operand_is_ht && index_is_string {
+		// For hash table assignment
+		ht := operand.(ObjectHashTable)
+		key_str := index.(string)
+		varena := virtual.arena_allocator(v.vmem)
+		ht[strings.clone(key_str, varena)] = value
+		return v->push_vm(value)  // Return the assigned value
+	}
+
+	strings.builder_reset(&v.sb)
+	fmt.sbprintf(
+		&v.sb,
+		"set index operator not supported: operand type '%v', index type '%v'",
+		reflect.union_variant_typeid(operand),
+		reflect.union_variant_typeid(index),
+	)
+	return strings.to_string(v.sb)
+}
+
+exec_arr_set_idx :: proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase) -> (err: string) {
+	max := len(arr) - 1
+	if index < 0 || index > max {
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "array index out of bounds: %d", index)
+		return strings.to_string(v.sb)
+	}
+	arr[index] = value
+	return v->push_vm(value)  // Return the assigned value
 }
 

@@ -22,6 +22,9 @@ Parser__New__ :: proc(input: string) -> Parser {
 	ensure(arena_err == nil)
 	varena := virtual.arena_allocator(v)
 
+	// Initialize precedences
+	init_precedences()
+
 	p := Parser {
 		vmem   = v,
 		errors = make([dynamic]string, 0, varena),
@@ -95,27 +98,55 @@ next_token :: proc(p: ^Parser) {
 // Precedence=>>begin
 Precedence :: enum {
 	Lowest, // 0
+	Assign,  // Assignment precedence
 	Equals,
 	Less_Greater,
 	Sum,
 	Product,
 	Prefix,
 	Call,
-	Index, // 7
+	Index, // 8
 }
 
-@(rodata)
-GetPrecedence := #partial [Token_Type]Precedence {
-	.Plus         = .Sum,
-	.Minus        = .Sum,
-	.Asterisk     = .Product,
-	.Slash        = .Product,
-	.Less_Than    = .Less_Greater,
-	.Greater_Than = .Less_Greater,
-	.Equal        = .Equals,
-	.Not_Equal    = .Equals,
-	.Left_Paren   = .Call,
-	.Left_Bracket = .Index,
+GetPrecedence: [Token_Type]Precedence
+
+init_precedences :: proc() {
+	GetPrecedence = {
+		.Plus         = .Sum,
+		.Minus        = .Sum,
+		.Asterisk     = .Product,
+		.Slash        = .Product,
+		.Less_Than    = .Less_Greater,
+		.Greater_Than = .Less_Greater,
+		.Equal        = .Equals,
+		.Not_Equal    = .Equals,
+		.Assign       = .Assign,  // Assignment has lowest precedence
+		.Left_Paren   = .Call,
+		.Left_Bracket = .Index,
+		// Default cases for tokens that don't have precedence
+		.Illegal      = .Lowest,
+		.EOF          = .Lowest,
+		.Identifier   = .Lowest,
+		.Int          = .Lowest,
+		.String       = .Lowest,
+		.Bang         = .Lowest,
+		.Comma        = .Lowest,
+		.Semicolon    = .Lowest,
+		.Colon        = .Lowest,
+		.Right_Paren  = .Lowest,
+		.Left_Brace   = .Lowest,
+		.Right_Brace  = .Lowest,
+		.Right_Bracket= .Lowest,
+		.Function     = .Lowest,
+		.Let          = .Lowest,
+		.True         = .Lowest,
+		.False        = .Lowest,
+		.If           = .Lowest,
+		.Else         = .Lowest,
+		.Return       = .Lowest,
+		.Macro        = .Lowest,
+		.For          = .Lowest,
+	}
 }
 
 peek_precedence :: proc(p: ^Parser) -> Precedence {
@@ -158,6 +189,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Greater_Than = parse_infix_expression,
 	.Equal        = parse_infix_expression,
 	.Not_Equal    = parse_infix_expression,
+	.Assign       = parse_infix_expression,
 	.Left_Paren   = parse_call_expression,
 	.Left_Bracket = parse_index_expression,
 }

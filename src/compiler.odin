@@ -121,8 +121,36 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Infix:
 		if data.op == "<" {
 			if err = c->compile(data.right^); err != "" do return
-			if err = c->compile(data.left^); err != "" do return
+			if err = c->compile(data.left^); err !="" do return
 			c->emit(.Gt)
+			return
+		}
+		if data.op == "=" {
+			// Assignment: handle different types of assignment
+			#partial switch left in data.left^ {
+			case Ast_Identifier:
+				// Simple variable assignment: compile right side, then store
+				if err = c->compile(data.right^); err != "" do return
+				symbol, ok := c.symbol_table->resolve(left.value)
+				if !ok {
+					err = compiler_error(c, "identifier '%s' is not declared", left.value)
+					return
+				}
+				// Store the value (pops from stack)
+				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
+				// For assignment expressions, push the assigned value back on stack
+				// We need to get the value again since Set popped it
+				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
+			case Ast_Index:
+				// Array assignment: compile array, index, value, then set
+				if err = c->compile(left.operand^); err != "" do return  // array
+				if err = c->compile(left.index^); err != "" do return   // index
+				if err = c->compile(data.right^); err != "" do return    // value
+				c->emit(.SetIdx)  // This already pushes the value back on stack
+			case:
+				err = compiler_error(c, "assignment to '%v' is not supported", Ast__Type__(data.left^))
+				return
+			}
 			return
 		}
 		if err = c->compile(data.left^); err != "" do return
@@ -235,7 +263,37 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
 	case Ast_For:
-		unimplemented()
+		// Compile for loop: for(condition) { body }
+		// Structure:
+		// 1. Evaluate condition
+		// 2. If false, jump to end
+		// 3. Execute body (with cleanup)
+		// 4. Jump back to condition evaluation
+		
+		// Store where condition evaluation starts
+		condition_start_pos := len(c->current_instructions())
+		
+		// Start of loop - evaluate condition
+		if err = c->compile(data.cond^); err != "" do return
+		
+		// Jump if not to end of loop
+		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
+		
+		// Execute loop body - but don't pop expressions since they're statements
+		for s in data.body {
+			if err = c->compile(s); err != "" do return
+			// Don't pop expressions in loop body - they should be handled as statements
+		}
+		
+		// Jump back to condition evaluation
+		jump_back_pos := c->emit(.Jmp, 9999)
+		
+		// Set the jump target for Jmp_If_Not (to after the loop)
+		after_loop_pos := len(c->current_instructions())
+		c->change_operand(jump_if_not_pos, after_loop_pos)
+		
+		// Set the jump target for Jmp (back to condition evaluation start)
+		c->change_operand(jump_back_pos, condition_start_pos)
 	case int:
 		c->emit(.Cnst, c->add_constant(data)) // returns 0
 	case bool:
