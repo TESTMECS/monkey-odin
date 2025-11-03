@@ -159,6 +159,11 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				return NULL, true
 			}
 
+	case "args":
+		unimplemented()
+	case "printf":
+		unimplemented()
+
 	case "int":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {

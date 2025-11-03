@@ -3,6 +3,7 @@ package monkey
 import "core:bufio"
 import "core:fmt"
 import "core:io"
+import "core:log"
 import "core:mem/virtual"
 import "core:os"
 import "core:strings"
@@ -15,6 +16,13 @@ Commands:
 	mexpand  Run a << file_path >> and prettyprint file with all macros expanded.
   help     Show this help message`
 
+
+monkey_parser_has_error :: proc(p: Parser) -> bool {
+	if len(p.errors) == 0 do return false
+	log.errorf("parser has %d errors", len(p.errors))
+	for msg, _ in p.errors do log.errorf("parser error: %q", msg)
+	return true
+}
 
 monkey_err :: proc(msg: string, status: int, sb: ^strings.Builder, xtra: ..any) {
 	strings.builder_reset(sb)
@@ -38,7 +46,6 @@ monkey_result :: proc(return_object: Object, sb: ^strings.Builder, exit: bool, x
 
 	return
 }
-
 
 dbg :: proc(fstring: string, args: ..any) {
 	fmt.printfln(fstring, ..args)
@@ -79,7 +86,7 @@ main :: proc() {
 			program := p->parse()
 			defer p->free()
 
-			if parser_has_error(p) do continue
+			if monkey_parser_has_error(p) do continue
 
 			result, ok := evaluator.eval(&evaluator, program, varena)
 			if !ok do monkey_err("Error evaluating expression", 1, &sb)
@@ -115,7 +122,7 @@ main :: proc() {
 		defer p->free()
 
 		program := p->parse()
-		if parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
+		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
 		// dbg("program=%v", program)
 
 		c := Compiler__New__()
@@ -137,6 +144,5 @@ main :: proc() {
 	case "help":
 		fmt.println(HELPMSG)
 	}
-
 }
 

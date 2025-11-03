@@ -7,43 +7,6 @@ import "core:strings"
 
 DEBUG :: false
 
-// compiler-state=>>begin
-Compiler_State :: struct {
-	vmem:         ^virtual.Arena,
-	symbol_table: Symbol_Table,
-	globals:      []ObjectBase,
-	constants:    [dynamic]ObjectBase,
-	scopes:       [dynamic]Compilation_Scope,
-	sb:           strings.Builder,
-	free:         proc(state: ^Compiler_State),
-}
-
-Compiler_State_New :: proc() -> Compiler_State {
-	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
-	arena_err := virtual.arena_init_growing(v)
-	ensure(arena_err == nil)
-	varena := virtual.arena_allocator(v)
-
-	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena) // $vm::STACK_SIZE
-	main_scope: Compilation_Scope
-	main_scope_instructions := make(Instructions, 0, varena)
-	main_scope.instructions = main_scope_instructions
-	append(&scopes, main_scope) // append main scope
-
-	return Compiler_State {
-		constants = make([dynamic]ObjectBase, 0, varena),
-		globals = make([]ObjectBase, GLOBALS_SIZE, varena),
-		symbol_table = Symbol_Table_New(varena),
-		scopes = scopes,
-		free = free_state,
-		vmem = v,
-	}
-}
-
-free_state :: proc(state: ^Compiler_State) {
-	virtual.arena_destroy(state.vmem)
-	free(state.vmem, context.allocator) // @free-arena-ptr
-} //end <<Compiler_State
 // Compiler=>>begin
 Emitted_Instruction :: struct {
 	op_code: Opcode,
@@ -83,7 +46,21 @@ Compiler :: struct {
 
 define_builtins :: proc(c: ^Compiler) {
 	varena := virtual.arena_allocator(c.vmem)
-	builtins := []string{"len", "first", "last", "rest", "push", "puts", "int", "str", "typeof", "abs", "range"}
+	builtins := []string {
+		"len",
+		"first",
+		"last",
+		"rest",
+		"push",
+		"puts",
+		"int",
+		"str",
+		"typeof",
+		"abs",
+		"range",
+		"args",
+		"printf",
+	}
 	for name in builtins {
 		c.symbol_table->define_builtin(name, len(c.symbol_table.store))
 	}
@@ -91,23 +68,23 @@ define_builtins :: proc(c: ^Compiler) {
 
 Compiler__New__ :: proc() -> Compiler {
 	compiler := Compiler {
-		compiler_state = Compiler_State_New(),
-		scopes_idx = 0,
-		compile_program = compile_program,
-		compile = compile,
-		emit = emit,
-		bytecode = bytecode,
-		enter_scope = enter_scope,
-		leave_scope = leave_scope,
-		current_instructions = current_instructions,
-		set_last_instruction = set_last_instruction,
-		add_instructions = add_instructions,
+		compiler_state               = Compiler_State_New(),
+		scopes_idx                   = 0,
+		compile_program              = compile_program,
+		compile                      = compile,
+		emit                         = emit,
+		bytecode                     = bytecode,
+		enter_scope                  = enter_scope,
+		leave_scope                  = leave_scope,
+		current_instructions         = current_instructions,
+		set_last_instruction         = set_last_instruction,
+		add_instructions             = add_instructions,
 		replace_last_pop_with_return = replace_last_pop_with_return,
-		add_constant = add_constant,
-		remove_last_pop = remove_last_pop,
-		last_instruction_is = last_instruction_is,
-		replace_instructions = replace_instructions,
-		change_operand = change_operand,
+		add_constant                 = add_constant,
+		remove_last_pop              = remove_last_pop,
+		last_instruction_is          = last_instruction_is,
+		replace_instructions         = replace_instructions,
+		change_operand               = change_operand,
 	}
 	define_builtins(&compiler)
 	return compiler

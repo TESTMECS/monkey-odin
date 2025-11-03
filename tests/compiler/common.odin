@@ -1,5 +1,6 @@
 package compiler_tests
 
+import test_commons "../"
 import monkey "../../src"
 import "core:fmt"
 import "core:log"
@@ -19,6 +20,8 @@ Compiler_Test_Case :: struct {
 	expected_constants:    []Compiler_Test_Data,
 	expected_instructions: []monkey.Instructions,
 }
+
+tc :: test_commons
 
 run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 	using monkey
@@ -72,6 +75,7 @@ test_constants :: proc(
 	err: string,
 ) {
 	using monkey
+	using test_commons
 	if len(expected) != len(actual) {
 		return fmt.tprintf(
 			"wrong number of constants. wants='%d', got='%d'",
@@ -117,6 +121,7 @@ test_instructions :: proc(
 	err: string,
 ) {
 	using monkey
+	using tc
 	concatenated := concat_instructions(expected)
 	if (len(actual) != len(concatenated)) {
 		return fmt.tprintf(

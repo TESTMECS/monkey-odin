@@ -1,8 +1,6 @@
 # Monkey Compiler in Odin.
 
 ## TODO:
-- Better readline. 
-- Source test files.
 
 - Builtins so far =>> puts, first, last, rest, push, len <<
 todo=>>
@@ -13,6 +11,7 @@ array -> sort, reverse, slice, indexOf, sum, min, max,
 random -> rand, randint, hash, 
 conversions -> int, str, typeof, range, abs << todo
 
+- Loops, break, continue
 - Macros, quote, unquote
 
 
