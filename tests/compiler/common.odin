@@ -1,11 +1,11 @@
 package compiler_tests
 
 import m "../.."
-import "core:testing"
 import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:reflect"
+import "core:testing"
 
 @(private = "file")
 Compiler_Test_Data :: union {
@@ -36,7 +36,6 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 
 		c := m.Compiler__New__()
 		defer c->free()
-
 		err := c->compile_program(program)
 		if err != "" {
 			log.errorf("Compiling encountered errors on test_case[%d]", i)
@@ -135,3 +134,4 @@ test_instructions :: proc(
 	}
 	return ""
 }
+

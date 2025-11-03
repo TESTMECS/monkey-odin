@@ -3,7 +3,7 @@
 ? -- Modulo
 $ -- Comments
 # -- IO 
-@ -- allocator 
+@ -- Allocator 
 -- Swap the meanings?
 >> -- quote 
 << -- unquote
@@ -11,21 +11,18 @@ $ -- Comments
 % -- If/Else
 ! -- Pointers
 
-fn //T identity(x ::T) -> T {
-    return x
-}
-
 % *isDebug {
     $ debugging disabled
 } else {
     #print("Running program...")
 }
 
-v1 = @Vec2{{ x :1.0, y :2.0 }}
-v2 = @Vec2{{ x :3.0, y :4.0 }}
-
-fn add(a ::Vec2, b ::Vec2) -> Vec2 {
-    return @Vec2{{ x :a.x + b.x, y :a.y + b.y }}
+v1::table@{ x::int\\1.0 | y\\2.0 } 
+v2::table@{ x::int\\3.0 | y\\4.0 }
+Vec2::struct@{ x::float | y::float }
+ 
+add::fn@(a::Vec2, b::Vec2) -> Vec2 {
+    return Vec2@{ x = a.x + b.x, y = a.y + b.y }
 }
 
 sum = add(v1, v2)
@@ -267,9 +264,7 @@ msg = %n{
     else:"other"
 }
 
-%Vec2{{ x ::float, y ::float }}
-v ::Vec2 = @Vec2{{ x => 3, y => 4 }}
-v = @Vec2{{ x | 3, y | 4 }}
+@v::table{ x::int, 3 | y::str, 3 | 4 }
 
 table-schema ::= "%" identifier "{{" (field-type ("," field-type)*)? "}}"
 field-type   ::= identifier "::" type

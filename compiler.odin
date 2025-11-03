@@ -319,13 +319,17 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 
 replace_last_pop_with_return :: proc(c: ^Compiler) {
 	varena := virtual.arena_allocator(c.vmem)
+
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
+	if DEBUG do fmt.printf("replacing last pop with return at %v\n", last_pop)
+
 	c->replace_instructions(last_pop, make_instructions(varena, .Ret_V)[:])
+
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
-	unimplemented("replace_last_pop_with_return")
 }
 
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
+	fmt.printf("adding constant %v\n", obj)
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
