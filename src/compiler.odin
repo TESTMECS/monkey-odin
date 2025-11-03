@@ -79,9 +79,19 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	varena := virtual.arena_allocator(c.vmem)
 	#partial switch data in ast {
 	case Ast_Let:
-		if err = c->compile(data.value^); err != "" do return
-		symbol := c.symbol_table->define(data.name, varena)
-		c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
+		// Check if this is a function literal for recursive function support
+		_, is_function := data.value^.(Ast_Function)
+		if is_function {
+			// For function literals, define the name first so it can be used recursively
+			symbol := c.symbol_table->define(data.name, varena)
+			if err = c->compile(data.value^); err != "" do return
+			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
+		} else {
+			// For non-function values, use the normal approach
+			if err = c->compile(data.value^); err != "" do return
+			symbol := c.symbol_table->define(data.name, varena)
+			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
+		}
 	case Ast_Ret:
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)

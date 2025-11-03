@@ -2,11 +2,12 @@ default: build test
 
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "loop.monkey"
+test_file := "fib.monkey"
 
 alias t := test
 test:
-	{{exe}} file {{test_dir}}{{test_file}} 
+	echo "Running test {{test_file}}"
+	time {{exe}} file {{test_dir}}{{test_file}} 
 
 alias b := build
 build:

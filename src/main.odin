@@ -7,7 +7,7 @@ import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 
-HELPMSG :: ` Usage: monkey-odin <<repl |file <file_path>|bytes <file_path>|mexpand <file_path> |help>>
+HELPMSG :: ` Usage: monkey-odin << repl |file <file_path>|bytes <file_path>|mexpand <file_path> |help >>
 Commands:
   repl     Start the Monkey REPL.
   file     Run a << file_path >> and print the evaluation result.
@@ -109,7 +109,7 @@ main :: proc() {
 	case "mexpand":
 		file_path := os.args[2]
 		if !os.exists(file_path) do monkey_err("File does not exist", 1, &sb)
-		dbg("file_path=%v", file_path)
+		// dbg("file_path=%v", file_path)
 
 		f, err := os.open(file_path, os.O_RDONLY)
 		if err != nil do monkey_err("Error opening file", 1, &sb)
@@ -137,11 +137,11 @@ main :: proc() {
 
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
-		
+
 		// Expand macros
 		expanded_program, expand_err := expand_macros(program, &v)
 		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, expand_err)
-		
+
 		// Print expanded program
 		strings.builder_reset(&sb)
 		ast_to_string(expanded_program, &sb)
