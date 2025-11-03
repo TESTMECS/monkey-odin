@@ -108,10 +108,11 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				if len(arr) > 0 {
 					varena := virtual.arena_allocator(e.vmem)
-					new_arr := new(ObjectArray, varena)
-					inject_at(new_arr, 0, ..arr[1:])
+					new_arr := make([dynamic]ObjectBase, 0, varena)
+					append(&new_arr, ..arr[1:])
+					arr_obj := ObjectArray(new_arr)
 
-					return new_arr^, true
+					return arr_obj, true
 				}
 
 				return NULL, true

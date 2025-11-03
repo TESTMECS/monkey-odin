@@ -222,16 +222,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
 
-		instr := make(Instructions, len(instructions), varena)
-
 		compiled_fn := ObjectCompiledFunction {
-			instructions   = &instr,
+			instructions   = instructions,
 			num_locals     = num_locals,
 			num_parameters = len(data.parameters),
-		}
-
-		if len(instructions) > 0 {
-			inject_at(compiled_fn.instructions, 0, ..instructions[:])
 		}
 
 		c->emit(.Cnst, c->add_constant(compiled_fn))
