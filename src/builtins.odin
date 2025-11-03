@@ -272,7 +272,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				// This is a simplified implementation - in a real system, you'd need
 				// to track the original AST nodes
 				varena := virtual.arena_allocator(e.vmem)
-				
+
 				#partial switch arg in args[0] {
 				case int:
 					return arg, true
@@ -281,7 +281,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				case string:
 					return arg, true
 				}
-				
+
 				return eval_new_error(
 						e,
 						"'quote' function error: cannot quote type '%v'",

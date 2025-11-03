@@ -2,7 +2,7 @@ default: build test
 
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "fib.monkey"
+test_file := "builtins/str.monkey"
 
 alias t := test
 test:

@@ -1,14 +1,12 @@
 # Monkey Compiler in Odin.
 
 ## TODO:
+1. parse comments
 
-- Builtins so far =>> puts, first, last, rest, push, len <<
-todo=>>
-tables -> keys, values, items, 
-
+Builtins ideas:
 regex -> find, findall, replace, split, match
 array -> sort, reverse, slice, indexOf, sum, min, max,
 random -> rand, randint, hash, 
 conversions -> int, str, typeof, range, abs << todo
-- Loops, break, continue
+
 
