@@ -1,7 +1,7 @@
 package compiler_tests
 
-import test_commons "../"
 import monkey "../../src"
+import test_commons "../../tests_commons"
 import "core:fmt"
 import "core:log"
 import "core:mem"

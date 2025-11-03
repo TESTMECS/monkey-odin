@@ -1,7 +1,7 @@
 package evaluator_tests
 
-import test_commons "../"
 import monkey "../../src"
+import test_commons "../../tests_commons"
 import "core:log"
 
 tc :: test_commons

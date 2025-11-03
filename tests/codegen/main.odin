@@ -2,8 +2,8 @@
 package codegen_tests
 
 
-import tc "../"
 import monkey "../../src"
+import tc "../../tests_commons"
 import "core:log"
 import "core:testing"
 
