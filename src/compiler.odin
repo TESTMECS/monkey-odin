@@ -277,26 +277,14 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
 	case Ast_For:
-		// Compile for loop: for(condition) { body }
-		// Structure:
-		// 1. Evaluate condition
-		// 2. If false, jump to end
-		// 3. Execute body (with cleanup)
-		// 4. Jump back to condition evaluation
-
-		// Store where condition evaluation starts
 		condition_start_pos := len(c->current_instructions())
 
-		// Start of loop - evaluate condition
 		if err = c->compile(data.cond^); err != "" do return
 
-		// Jump if not to end of loop
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
 
-		// Execute loop body - but don't pop expressions since they're statements
 		for s in data.body {
 			if err = c->compile(s); err != "" do return
-			// Don't pop expressions in loop body - they should be handled as statements
 		}
 
 		// Jump back to condition evaluation

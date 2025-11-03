@@ -157,8 +157,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				return strings.to_string(e.sb), true
 			}
 
-	case "args":
-		unimplemented()
 	case "printf":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) < 2 {
@@ -343,104 +341,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				// For unquote, we just return the argument as-is
 				// In a real implementation, this would be handled during macro expansion
 				return args[0], true
-			}
-
-	case "range":
-		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
-				if len(args) < 1 || len(args) > 3 {
-					return eval_new_error(
-							e,
-							"'range' function error: wrong number of arguments, wants='1-3', got='%d'",
-							len(args),
-						),
-						false
-				}
-
-				start, end, step := 0, 0, 1
-
-				if len(args) == 1 {
-					// range(end)
-					end_val, ok := args[0].(int)
-					if !ok {
-						return eval_new_error(
-								e,
-								"'range' function error: end must be int, got '%v'",
-								ObjectType(args[0]),
-							),
-							false
-					}
-					end = end_val
-				} else if len(args) == 2 {
-					// range(start, end)
-					start_val, start_ok := args[0].(int)
-					if !start_ok {
-						return eval_new_error(
-								e,
-								"'range' function error: start must be int, got '%v'",
-								ObjectType(args[0]),
-							),
-							false
-					}
-					end_val, end_ok := args[1].(int)
-					if !end_ok {
-						return eval_new_error(
-								e,
-								"'range' function error: end must be int, got '%v'",
-								ObjectType(args[1]),
-							),
-							false
-					}
-					start, end = start_val, end_val
-				} else {
-					// range(start, end, step)
-					start_val, start_ok := args[0].(int)
-					if !start_ok {
-						return eval_new_error(
-								e,
-								"'range' function error: start must be int, got '%v'",
-								ObjectType(args[0]),
-							),
-							false
-					}
-					end_val, end_ok := args[1].(int)
-					if !end_ok {
-						return eval_new_error(
-								e,
-								"'range' function error: end must be int, got '%v'",
-								ObjectType(args[1]),
-							),
-							false
-					}
-					step_val, step_ok := args[2].(int)
-					if !step_ok {
-						return eval_new_error(
-								e,
-								"'range' function error: step must be int, got '%v'",
-								ObjectType(args[2]),
-							),
-							false
-					}
-					if step_val == 0 {
-						return eval_new_error(e, "'range' function error: step cannot be zero"),
-							false
-					}
-					start, end, step = start_val, end_val, step_val
-				}
-
-				varena := virtual.arena_allocator(e.vmem)
-				result := make([dynamic]ObjectBase, 0, varena)
-
-				if step > 0 {
-					for i := start; i < end; i += step {
-						append(&result, i)
-					}
-				} else {
-					for i := start; i > end; i += step {
-						append(&result, i)
-					}
-				}
-
-				return ObjectArray(result), true
 			}
 	}
 
