@@ -12,4 +12,4 @@ let fibonacci = fn(x) {
   }
 };
 
-print(fibonacci(10));
+puts(fibonacci(0));

@@ -7,43 +7,121 @@ import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 
+HELPMSG :: ` Usage: monkey-odin <<repl |file <file_path>|bytes <file_path>|mexpand <file_path> |help>>
+Commands:
+  repl     Start the Monkey REPL.
+  file     Run a << file_path >> and print the evaluation result.
+	bytes    Run a << file_path >> and prettyprint bytecode.
+	mexpand  Run a << file_path >> and prettyprint file with all macros expanded.
+  help     Show this help message`
+
+
+monkey_err :: proc(msg: string, status: int, sb: ^strings.Builder, xtra: ..any) {
+	strings.builder_reset(sb)
+	fmt.sbprintf(sb, msg, ..xtra)
+	err_msg := strings.to_string(sb^)
+	fmt.println(err_msg)
+	os.exit(status)
+}
+
+monkey_result :: proc(return_object: Object, sb: ^strings.Builder, xtra: ..any) {
+	strings.builder_reset(sb)
+	fmt.sbprintf(sb, "=>>")
+	fmt.sbprintf(sb, "%v", xtra)
+	obj := Object(return_object)
+	ObjectInspect(obj, sb)
+	fmt.println(strings.to_string(sb^))
+	os.exit(0)
+}
+
+
+dbg :: proc(fstring: string, args: ..any) {
+	fmt.printfln(fstring, ..args)
+}
+
 main :: proc() {
+	if len(os.args) < 2 {
+		fmt.println(HELPMSG)
+		return
+	}
+
+	v: virtual.Arena
+	err := virtual.arena_init_growing(&v)
+	ensure(err == nil)
+	varena := virtual.arena_allocator(&v)
+	defer virtual.arena_destroy(&v)
+
+	sb := strings.builder_make(varena)
+	defer strings.builder_destroy(&sb)
+
 	evaluator := Evaluator_New()
 	defer evaluator->free()
-	varena := virtual.arena_allocator(evaluator.vmem)
 
-	buf: [2048]byte
-	reader: bufio.Reader
-	bufio.reader_init_with_buf(&reader, os.stream_from_handle(os.stdin), buf[:])
+	switch os.args[1] {
+	case "repl":
+		reader: bufio.Reader
+		bufio.reader_init(&reader, os.stream_from_handle(os.stdin), bufio.DEFAULT_BUF_SIZE, varena)
 
-	fmt.println("Monkey REPL. Type 'exit' to quit.")
+		fmt.println("Monkey REPL. Type 'exit' to quit.")
+		for {
+			fmt.print(">> ")
+			line, err := bufio.reader_read_string(&reader, '\n')
+			if err != nil do monkey_err("Error reading input", 1, &sb)
+			line = strings.trim_space(line)
+			if line == "exit" do monkey_result(nil, &sb)
 
-	for {
-		fmt.print(">> ")
-		line, err := bufio.reader_read_string(&reader, '\n')
-		if err != nil do break
-		line = strings.trim_space(line)
-		if line == "exit" do break
-
-		p := Parser__New__(line)
-		program := p->parse()
-		if parser_has_error(p) {
-			p->free()
-			continue
+			p := Parser__New__(line)
+			program := p->parse()
+			if parser_has_error(p) {
+				p->free()
+				continue
+			}
+			result, ok := evaluator.eval(&evaluator, program, varena)
+			if !ok do monkey_err("Error evaluating expression", 1, &sb)
+			if ok {
+				monkey_result(result, &sb)
+				p->free()
+			}
 		}
+	case "file":
+		file_path := os.args[2]
+		if !os.exists(file_path) do monkey_err("File does not exist", 1, &sb)
+		dbg("file_path=%v", file_path)
 
-		result, ok := evaluator.eval(&evaluator, program, varena)
-		p->free()
-		if !ok {
-			fmt.println("Error:", result)
+		f, err := os.open(file_path, os.O_RDONLY)
+		if err != nil do monkey_err("Error opening file", 1, &sb)
+		defer os.close(f)
+
+		contents, ok := os.read_entire_file_from_handle(f)
+		ensure(ok)
+		str_contents := strings.clone_from_bytes(contents, varena)
+
+		// --- Skip shebang line if present ---
+		if strings.starts_with(str_contents, "#!") {
+			if idx := strings.index_byte(str_contents, '\n'); idx >= 0 {
+				str_contents = str_contents[idx + 1:]
+			} else {
+				str_contents = ""
+			}
 		} else {
-			// Print the result
-			sb := strings.builder_make(context.temp_allocator)
-			defer strings.builder_destroy(&sb)
-			obj := Object(result)
-			ObjectInspect(obj, &sb)
-			fmt.println(strings.to_string(sb))
+			str_contents = strings.trim_space(str_contents)
 		}
+		stmts := str_contents
+		dbg("stmts=%v", str_contents)
+
+		p := Parser__New__(stmts)
+		defer p->free()
+
+		program := p->parse()
+		if parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
+		// dbg("program=%v", program)
+		result, okk := evaluator.eval(&evaluator, program, varena)
+		// dbg("result=%v", result)
+		if !okk do monkey_err("Error evaluating expression: <<%v>>", 1, &sb, result)
+		if okk do monkey_result(result, &sb)
+	case "help":
+		fmt.println(HELPMSG)
 	}
+
 }
 
