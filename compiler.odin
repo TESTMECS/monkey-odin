@@ -323,7 +323,6 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 }
 
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
-	fmt.printf("adding constant %v\n", obj)
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
