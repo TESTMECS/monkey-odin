@@ -1,37 +1,38 @@
 package compiler_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:testing"
 
 @(test)
 test_compile_if_expression :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]Compiler_Test_Case {
 		{
 			"if true { 10 }; 3333;",
 			{10, 3333},
 			{
-				m.make_instructions(context.temp_allocator, .True), // 0000
-				m.make_instructions(context.temp_allocator, .Jmp_If_Not, 10), // 0001
-				m.make_instructions(context.temp_allocator, .Cnst, 0), // 0004
-				m.make_instructions(context.temp_allocator, .Jmp, 11), // 0007
-				m.make_instructions(context.temp_allocator, .Nil), // 0010
-				m.make_instructions(context.temp_allocator, .Pop), // 0011
-				m.make_instructions(context.temp_allocator, .Cnst, 1), // 0012
-				m.make_instructions(context.temp_allocator, .Pop), // 0015
+				make_instructions(context.temp_allocator, .True), // 0000
+				make_instructions(context.temp_allocator, .Jmp_If_Not, 10), // 0001
+				make_instructions(context.temp_allocator, .Cnst, 0), // 0004
+				make_instructions(context.temp_allocator, .Jmp, 11), // 0007
+				make_instructions(context.temp_allocator, .Nil), // 0010
+				make_instructions(context.temp_allocator, .Pop), // 0011
+				make_instructions(context.temp_allocator, .Cnst, 1), // 0012
+				make_instructions(context.temp_allocator, .Pop), // 0015
 			},
 		},
 		{
 			"if true { 10 } else { 20 }; 3333;",
 			{10, 20, 3333},
 			{
-				m.make_instructions(context.temp_allocator, .True), // 0000
-				m.make_instructions(context.temp_allocator, .Jmp_If_Not, 10), // 0001
-				m.make_instructions(context.temp_allocator, .Cnst, 0), // 0004
-				m.make_instructions(context.temp_allocator, .Jmp, 13), // 0007
-				m.make_instructions(context.temp_allocator, .Cnst, 1), // 0010
-				m.make_instructions(context.temp_allocator, .Pop), // 0013
-				m.make_instructions(context.temp_allocator, .Cnst, 2), // 0014
-				m.make_instructions(context.temp_allocator, .Pop), // 0017
+				make_instructions(context.temp_allocator, .True), // 0000
+				make_instructions(context.temp_allocator, .Jmp_If_Not, 10), // 0001
+				make_instructions(context.temp_allocator, .Cnst, 0), // 0004
+				make_instructions(context.temp_allocator, .Jmp, 13), // 0007
+				make_instructions(context.temp_allocator, .Cnst, 1), // 0010
+				make_instructions(context.temp_allocator, .Pop), // 0013
+				make_instructions(context.temp_allocator, .Cnst, 2), // 0014
+				make_instructions(context.temp_allocator, .Pop), // 0017
 			},
 		},
 	}
@@ -40,3 +41,4 @@ test_compile_if_expression :: proc(t: ^testing.T) {
 
 	run_compiler_tests(t, tests[:])
 }
+

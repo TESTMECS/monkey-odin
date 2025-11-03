@@ -1,21 +1,22 @@
 package evaluator_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:strings"
 import "core:testing"
 
 @(test)
 test_eval_function_object :: proc(t: ^testing.T) {
+	using monkey
 	input := "fn(x) { x + 2 };"
 
 	evaluated, e, ok := eval_test_get(input)
 	defer e->free()
 	if !ok do return
 
-	fn, is_fn := evaluated.(^m.ObjectFunction)
+	fn, is_fn := evaluated.(^ObjectFunction)
 	if !is_fn {
-		log.errorf("object is not function. got='%v'", m.ObjectType(evaluated))
+		log.errorf("object is not function. got='%v'", ObjectType(evaluated))
 		return
 	}
 
@@ -39,7 +40,7 @@ test_eval_function_object :: proc(t: ^testing.T) {
 	sb := strings.builder_make(context.temp_allocator)
 	defer free_all(context.temp_allocator)
 
-	m.ast_to_string(fn.body, &sb)
+	ast_to_string(fn.body, &sb)
 
 	if strings.to_string(sb) != expected_body {
 		log.errorf(
@@ -52,6 +53,7 @@ test_eval_function_object :: proc(t: ^testing.T) {
 
 @(test)
 test_eval_function_application :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: int,
@@ -62,13 +64,16 @@ test_eval_function_application :: proc(t: ^testing.T) {
 		{"let add = fn(x, y) { x * y; }; add(5, 5);", 25},
 		{"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20},
 		{"fn (x) { x; }(5)", 5},
-		{`
-let new_adder = fn(x) {
-	fn(y) {x + y};
-};
+		{
+			`
+			let new_adder = fn(x) {
+				fn(y) {x + y};
+			};
 
-let add_two = new_adder(2);
-add_two(2)`, 4},
+			let add_two = new_adder(2);
+			add_two(2)`,
+			4,
+		},
 	}
 
 	for test_case, i in tests {
@@ -79,7 +84,7 @@ add_two(2)`, 4},
 			continue
 		}
 
-		if !m.integer_object_is_valid(evaluated, test_case.expected) {
+		if !integer_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test[%d] has failed", i)
 		}
 
@@ -88,6 +93,7 @@ add_two(2)`, 4},
 
 @(test)
 test_eval_builtin_functions :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: union {
@@ -106,12 +112,12 @@ test_eval_builtin_functions :: proc(t: ^testing.T) {
 
 		switch expected in test_case.expected {
 		case int:
-			if !m.integer_object_is_valid(evaluated, expected) {
+			if !integer_object_is_valid(evaluated, expected) {
 				log.errorf("test[%d] has failed", i)
 			}
 
 		case string:
-			if !m.string_object_is_valid(evaluated, expected) {
+			if !string_object_is_valid(evaluated, expected) {
 				log.errorf("test[%d] has failed", i)
 			}
 		}

@@ -1,6 +1,6 @@
 package compiler_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -11,18 +11,19 @@ import "core:testing"
 Compiler_Test_Data :: union {
 	int,
 	string,
-	[]m.Instructions,
+	[]monkey.Instructions,
 }
 
 Compiler_Test_Case :: struct {
 	input:                 string,
 	expected_constants:    []Compiler_Test_Data,
-	expected_instructions: []m.Instructions,
+	expected_instructions: []monkey.Instructions,
 }
 
 run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
+	using monkey
 	for test_case, i in tests {
-		p := m.Parser__New__(test_case.input)
+		p := Parser__New__(test_case.input)
 		defer p->free()
 
 		program := p->parse()
@@ -34,7 +35,7 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 			continue
 		}
 
-		c := m.Compiler__New__()
+		c := Compiler__New__()
 		defer c->free()
 		err := c->compile_program(program)
 		if err != "" {
@@ -65,11 +66,12 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 
 test_constants :: proc(
 	expected: []Compiler_Test_Data,
-	actual: []m.ObjectBase,
+	actual: []monkey.ObjectBase,
 	alloc: mem.Allocator,
 ) -> (
 	err: string,
 ) {
+	using monkey
 	if len(expected) != len(actual) {
 		return fmt.tprintf(
 			"wrong number of constants. wants='%d', got='%d'",
@@ -85,13 +87,13 @@ test_constants :: proc(
 
 		switch constant_value in constant {
 		case int:
-			err = m.test_integer_object(constant_value, actual[i])
+			err = test_integer_object(constant_value, actual[i])
 		case string:
-			err = m.test_string_object(constant_value, actual[i])
-		case []m.Instructions:
-			fn, ok := actual[i].(m.ObjectCompiledFunction)
+			err = test_string_object(constant_value, actual[i])
+		case []Instructions:
+			fn, ok := actual[i].(ObjectCompiledFunction)
 			if !ok {
-				err = fmt.tprintf("not a function: '%v'", m.ObjectType(actual[i]))
+				err = fmt.tprintf("not a function: '%v'", ObjectType(actual[i]))
 			} else {
 				err = test_instructions(constant_value, fn.instructions[:], alloc)
 			}
@@ -108,13 +110,14 @@ test_constants :: proc(
 }
 
 test_instructions :: proc(
-	expected: []m.Instructions,
+	expected: []monkey.Instructions,
 	actual: []byte,
 	alloc: mem.Allocator,
 ) -> (
 	err: string,
 ) {
-	concatenated := m.concat_instructions(expected)
+	using monkey
+	concatenated := concat_instructions(expected)
 	if (len(actual) != len(concatenated)) {
 		return fmt.tprintf(
 			"wrong number of instructions. wants='%v', got='%v'",

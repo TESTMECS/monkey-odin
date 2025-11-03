@@ -1,12 +1,13 @@
 #+feature dynamic-literals
 package evaluator_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_eval_hash_literals :: proc(t: ^testing.T) {
+	using monkey
 	input := `
     {
         "one": 10 - 9,
@@ -19,9 +20,9 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 	defer e->free()
 	if !ok do return
 
-	ht, is_hash_table := evaluated.(m.ObjectHashTable)
+	ht, is_hash_table := evaluated.(ObjectHashTable)
 	if !is_hash_table {
-		log.errorf("expected hash table object but got '%v'", m.ObjectType(evaluated))
+		log.errorf("expected hash table object but got '%v'", ObjectType(evaluated))
 		return
 	}
 
@@ -47,7 +48,7 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 			continue
 		}
 
-		if !m.integer_object_is_valid(value, expected_value) {
+		if !integer_object_is_valid(value, expected_value) {
 			log.errorf("key '%s' has wrong value", expected_key)
 		}
 	}
@@ -55,6 +56,7 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
 
 @(test)
 test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: int,
@@ -68,7 +70,7 @@ test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
 			continue
 		}
 
-		if !m.integer_object_is_valid(evaluated, test_case.expected) {
+		if !integer_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test[%d] has failed", i)
 		}
 	}

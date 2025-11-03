@@ -1,20 +1,21 @@
 package evaluator_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_eval_array_literals :: proc(t: ^testing.T) {
+	using monkey
 	input := "[1, 2 * 2, 3 + 3]"
 
 	evaluated, e, ok := eval_test_is_valid(input)
 	defer e->free()
 	if !ok do return
 
-	arr, is_arr := evaluated.(m.ObjectArray)
+	arr, is_arr := evaluated.(ObjectArray)
 	if !is_arr {
-		log.errorf("expected array object but got '%v'", m.ObjectType(evaluated))
+		log.errorf("expected array object but got '%v'", ObjectType(evaluated))
 		return
 	}
 
@@ -23,21 +24,22 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 		return
 	}
 
-	if !m.integer_object_is_valid(arr[0], 1) {
+	if !integer_object_is_valid(arr[0], 1) {
 		log.errorf("arr[0] does not match")
 	}
 
-	if !m.integer_object_is_valid(arr[1], 4) {
+	if !integer_object_is_valid(arr[1], 4) {
 		log.errorf("arr[1] does not match")
 	}
 
-	if !m.integer_object_is_valid(arr[2], 6) {
+	if !integer_object_is_valid(arr[2], 6) {
 		log.errorf("arr[2] does not match")
 	}
 }
 
 @(test)
 test_eval_array_index_expression :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: int,
@@ -60,7 +62,7 @@ test_eval_array_index_expression :: proc(t: ^testing.T) {
 			continue
 		}
 
-		if !m.integer_object_is_valid(evaluated, test_case.expected) {
+		if !integer_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test[%d] has failed", i)
 		}
 	}

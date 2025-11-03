@@ -1,20 +1,22 @@
 #+feature dynamic-literals
 package evaluator_tests
-import m "../.."
+
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_eval_if_expression :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
-		expected: m.ObjectBase,
+		expected: ObjectBase,
 	} {
 		{"if (true) { 10 }", 10},
-		{"if (false) { 10 }", m.NULL},
+		{"if (false) { 10 }", NULL},
 		{"if (1) { 10 }", 10},
 		{"if (1 < 2) { 10 }", 10},
-		{"if (1 > 2) { 10 }", m.NULL},
+		{"if (1 > 2) { 10 }", NULL},
 		{"if (1 < 2) { 10 } else { 20 }", 10},
 		{"if (1 > 2) { 10 } else { 20 }", 20},
 	}
@@ -27,15 +29,15 @@ test_eval_if_expression :: proc(t: ^testing.T) {
 		}
 		#partial switch expected in test_case.expected {
 		case int:
-			if !m.integer_object_is_valid(evaluated, expected) {
+			if !integer_object_is_valid(evaluated, expected) {
 				log.errorf("test [%d] has failed", i)
 			}
-		case m.ObjectNil:
-			if m.ObjectType(evaluated) != m.ObjectNil {
+		case ObjectNil:
+			if ObjectType(evaluated) != ObjectNil {
 				log.errorf(
 					"test [%d] has failed, Object is not nil, got='%v' instead.",
 					i,
-					m.ObjectType(evaluated),
+					ObjectType(evaluated),
 				)
 			}
 		}

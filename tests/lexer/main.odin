@@ -1,11 +1,12 @@
 package lexer_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_lexer :: proc(t: ^testing.T) {
+	using monkey
 	input := `let five = 5;
 							let ten = 10;
 
@@ -33,7 +34,7 @@ test_lexer :: proc(t: ^testing.T) {
 
 
 	tests := [?]struct {
-		expected_type:    m.Token_Type,
+		expected_type:    Token_Type,
 		expected_literal: string,
 	} {
 		{.Let, "let"},
@@ -141,7 +142,7 @@ test_lexer :: proc(t: ^testing.T) {
 		// end of test cases
 	}
 
-	l := m.Lexer_New(input)
+	l := Lexer_New(input)
 
 	for test_case, i in tests {
 		tok := l->next_token()

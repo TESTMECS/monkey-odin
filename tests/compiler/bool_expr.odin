@@ -1,94 +1,95 @@
 package compiler_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:testing"
 
 @(test)
 test_compile_boolean_expressions :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]Compiler_Test_Case {
 		{
 			"true",
 			{},
 			{
-				m.make_instructions(context.temp_allocator, .True),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"false",
 			{},
 			{
-				m.make_instructions(context.temp_allocator, .False),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"!true",
 			{},
 			{
-				m.make_instructions(context.temp_allocator, .True),
-				m.make_instructions(context.temp_allocator, .Not),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .Not),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"1 > 2",
 			{1, 2},
 			{
-				m.make_instructions(context.temp_allocator, .Cnst, 0),
-				m.make_instructions(context.temp_allocator, .Cnst, 1),
-				m.make_instructions(context.temp_allocator, .Gt),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Gt),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"1 < 2",
 			{2, 1},
 			{
-				m.make_instructions(context.temp_allocator, .Cnst, 0),
-				m.make_instructions(context.temp_allocator, .Cnst, 1),
-				m.make_instructions(context.temp_allocator, .Gt),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Gt),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"1 == 2",
 			{1, 2},
 			{
-				m.make_instructions(context.temp_allocator, .Cnst, 0),
-				m.make_instructions(context.temp_allocator, .Cnst, 1),
-				m.make_instructions(context.temp_allocator, .Eq),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Eq),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"1 != 2",
 			{1, 2},
 			{
-				m.make_instructions(context.temp_allocator, .Cnst, 0),
-				m.make_instructions(context.temp_allocator, .Cnst, 1),
-				m.make_instructions(context.temp_allocator, .Neq),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .Cnst, 0),
+				make_instructions(context.temp_allocator, .Cnst, 1),
+				make_instructions(context.temp_allocator, .Neq),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"true == false",
 			{},
 			{
-				m.make_instructions(context.temp_allocator, .True),
-				m.make_instructions(context.temp_allocator, .False),
-				m.make_instructions(context.temp_allocator, .Eq),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Eq),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 		{
 			"true != false",
 			{},
 			{
-				m.make_instructions(context.temp_allocator, .True),
-				m.make_instructions(context.temp_allocator, .False),
-				m.make_instructions(context.temp_allocator, .Neq),
-				m.make_instructions(context.temp_allocator, .Pop),
+				make_instructions(context.temp_allocator, .True),
+				make_instructions(context.temp_allocator, .False),
+				make_instructions(context.temp_allocator, .Neq),
+				make_instructions(context.temp_allocator, .Pop),
 			},
 		},
 	}
@@ -97,3 +98,4 @@ test_compile_boolean_expressions :: proc(t: ^testing.T) {
 
 	run_compiler_tests(t, tests[:])
 }
+

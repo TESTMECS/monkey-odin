@@ -1,23 +1,24 @@
 package vm_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 VM_Test_Cases :: struct {
 	input:    string,
-	expected: m.Test_Data,
+	expected: monkey.Test_Data,
 }
 
 run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
+	using monkey
 	for test_case, i in tests {
-		p := m.Parser__New__(test_case.input)
+		p := Parser__New__(test_case.input)
 		defer p->free()
 
 		program := p->parse()
-		if m.parser_has_error(p) do return
+		if parser_has_error(p) do return
 
-		compiler := m.Compiler__New__()
+		compiler := Compiler__New__()
 		defer compiler->free()
 
 		err := compiler->compile_program(program)
@@ -26,7 +27,7 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 			continue
 		}
 
-		vm := m.Vm_New(compiler->bytecode(), &compiler.compiler_state)
+		vm := Vm_New(compiler->bytecode(), &compiler.compiler_state)
 		defer vm->free_vm()
 
 		err = vm->run_vm()
@@ -36,7 +37,7 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 		}
 
 		last_popped := vm->last_popped()
-		err = m.test_expected_object(t, test_case.expected, last_popped)
+		err = test_expected_object(t, test_case.expected, last_popped)
 
 		if err != "" {
 			log.errorf(

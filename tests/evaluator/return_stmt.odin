@@ -1,11 +1,12 @@
 package evaluator_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_eval_return_statement :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: int,
@@ -35,7 +36,7 @@ test_eval_return_statement :: proc(t: ^testing.T) {
 			continue
 		}
 
-		if !m.integer_object_is_valid(evaluated, test_case.expected) {
+		if !integer_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test[%d] has failed", i)
 		}
 	}

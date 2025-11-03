@@ -1,11 +1,12 @@
 package evaluator_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_eval_boolean_expression :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
 		input:    string,
 		expected: bool,
@@ -29,7 +30,7 @@ test_eval_boolean_expression :: proc(t: ^testing.T) {
 			log.errorf("test [%d] has failed", i)
 			continue
 		}
-		if !m.boolean_object_is_valid(evaluated, test_case.expected) {
+		if !boolean_object_is_valid(evaluated, test_case.expected) {
 			log.errorf("test [%d] has failed", i)
 		}
 	}

@@ -1,26 +1,27 @@
 #+feature dynamic-literals
 package codegen_tests
 
-import m "../.."
+import monkey "../../src"
 import "core:log"
 import "core:testing"
 
 @(test)
 test_code_make :: proc(t: ^testing.T) {
+	using monkey
 	tests := [?]struct {
-		op:       m.Opcode,
+		op:       Opcode,
 		operands: [dynamic]int,
 		expected: []byte,
 	} {
-		{.Cnst, {65534}, {u8(m.Opcode.Cnst), 255, 254}},
-		{.Add, {}, {u8(m.Opcode.Add)}},
-		{.Get_L, {1}, {u8(m.Opcode.Get_L), 1}},
+		{.Cnst, {65534}, {u8(Opcode.Cnst), 255, 254}},
+		{.Add, {}, {u8(Opcode.Add)}},
+		{.Get_L, {1}, {u8(Opcode.Get_L), 1}},
 	}
 
 	defer free_all(context.allocator)
 
 	for test_case, i in tests {
-		instructions := m.make_instructions(
+		instructions := make_instructions(
 			context.temp_allocator,
 			test_case.op,
 			..test_case.operands[:],
@@ -51,11 +52,12 @@ test_code_make :: proc(t: ^testing.T) {
 
 @(test)
 test_instructions_string :: proc(t: ^testing.T) {
-	instructions := [?]m.Instructions {
-		m.make_instructions(context.allocator, .Add),
-		m.make_instructions(context.allocator, .Get_L, 1),
-		m.make_instructions(context.allocator, .Cnst, 2),
-		m.make_instructions(context.allocator, .Cnst, 65535),
+	using monkey
+	instructions := [?]Instructions {
+		make_instructions(context.allocator, .Add),
+		make_instructions(context.allocator, .Get_L, 1),
+		make_instructions(context.allocator, .Cnst, 2),
+		make_instructions(context.allocator, .Cnst, 65535),
 	}
 
 	defer free_all(context.allocator)
@@ -67,9 +69,9 @@ test_instructions_string :: proc(t: ^testing.T) {
 `
 
 
-	concatenated := m.concat_instructions(instructions[:])
+	concatenated := concat_instructions(instructions[:])
 
-	instructions_str := m.instructions_to_string(concatenated, context.allocator)
+	instructions_str := instructions_to_string(concatenated, context.allocator)
 
 	if instructions_str != expected {
 		log.errorf(
@@ -83,8 +85,9 @@ test_instructions_string :: proc(t: ^testing.T) {
 
 @(test)
 test_read_operands :: proc(t: ^testing.T) {
+	using monkey
 	tests := []struct {
-		op:         m.Opcode,
+		op:         Opcode,
 		operands:   []int,
 		bytes_read: int,
 	}{{.Cnst, {65535}, 2}, {.Get_L, {255}, 1}}
@@ -92,16 +95,16 @@ test_read_operands :: proc(t: ^testing.T) {
 	defer free_all(context.allocator)
 
 	for test_case, i in tests {
-		instruction := m.make_instructions(context.allocator, test_case.op, ..test_case.operands)
+		instruction := make_instructions(context.allocator, test_case.op, ..test_case.operands)
 
-		def, ok := m.lookup(test_case.op)
+		def, ok := lookup(test_case.op)
 		if !ok {
 			log.errorf("definition not found: %q", test_case.op)
 			testing.fail(t)
 			continue
 		}
 
-		operands_read, n := m.read_operands(def, instruction[1:], context.allocator)
+		operands_read, n := read_operands(def, instruction[1:], context.allocator)
 		if n != test_case.bytes_read {
 			log.errorf(
 				"test[%d] has failed: n wrong. wants='%d', got='%d'",
