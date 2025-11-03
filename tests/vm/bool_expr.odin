@@ -1,6 +1,5 @@
 package vm_tests
 
-import m "../.."
 import "core:testing"
 
 @(test)
