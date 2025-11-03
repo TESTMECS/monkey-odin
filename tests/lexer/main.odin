@@ -12,7 +12,7 @@ test_lexer :: proc(t: ^testing.T) {
 
 							let add = fn(x, y) {
 									x + y;
-							};
+							}; 
 
 							let result = add(five, ten);
 
@@ -30,6 +30,7 @@ test_lexer :: proc(t: ^testing.T) {
 							"foo bar"
 							[]
 							:
+              # comment
 	`
 
 

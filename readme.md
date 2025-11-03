@@ -1,7 +1,7 @@
 # Monkey Compiler in Odin.
 
 ## TODO:
-1. parse comments
+1. Fix and test builtins.
 
 Builtins ideas:
 regex -> find, findall, replace, split, match

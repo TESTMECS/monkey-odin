@@ -137,6 +137,9 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok = token_from_current_char(l, .Right_Bracket)
 	case '"':
 		tok = create_string(l)
+	case '#':
+		for l.ch != '\n' && l.ch != 0 do read_char(l)
+		return next_token(l)
 	case 0:
 		tok.text_slice = {}
 		tok.type = .EOF
