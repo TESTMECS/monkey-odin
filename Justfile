@@ -1,17 +1,20 @@
-default: 
-	@just --list --list-prefix ····
+default: build test
+
+test_dir := "./tests/monkey-src/"
+exe := "./monkey-odin.out"
+test_file := "puts.monkey"
 
 alias t := test
 test:
-	./monkey-odin.out file ./tests/monkey-src/five_plus_ten.monkey 
+	{{exe}} file {{test_dir}}{{test_file}} 
 
 alias b := build
-build :
+build:
 	time odin build ./src -out:monkey-odin.out
 
 alias r := run
 run ARGS:
-	./monkey-odin.out {{ARGS}}
+	{{exe}} {{ARGS}}
 
 alias ta := test-all
 test-all:
