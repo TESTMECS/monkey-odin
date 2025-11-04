@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "builtins/hash.monkey"
+test_file := "builtins/reverse.monkey"
 
 default: build test
 
