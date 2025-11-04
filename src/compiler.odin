@@ -135,7 +135,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			return
 		}
 		if data.op == "=" {
-			// Assignment: handle different types of assignment
 			#partial switch left in data.left^ {
 			case Ast_Identifier:
 				// Simple variable assignment: compile right side, then store
@@ -151,11 +150,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				// We need to get the value again since Set popped it
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 			case Ast_Index:
-				// Array assignment: compile array, index, value, then set
 				if err = c->compile(left.operand^); err != "" do return // array
 				if err = c->compile(left.index^); err != "" do return // index
 				if err = c->compile(data.right^); err != "" do return // value
-				c->emit(.SetIdx) // This already pushes the value back on stack
+				c->emit(.SetIdx)
 			case:
 				err = compiler_error(
 					c,

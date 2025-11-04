@@ -841,7 +841,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				// Check if all elements are integers
 				for elem in arr {
 					_, ok := elem.(int)
 					if !ok {
