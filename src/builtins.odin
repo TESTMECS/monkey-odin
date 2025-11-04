@@ -141,11 +141,20 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 			}
 	case "rand":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get random int">>
+				rand()
+				$ none
+				Usage: rand()=>>1<<
+				`
+
+
 				if len(args) != 0 {
 					return eval_new_error(
 							e,
-							"'rand' function error: wrong number of arguments, wants='0', got='%d'",
+							"'rand' function error: wrong number of arguments, wants='0', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
