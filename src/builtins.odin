@@ -165,7 +165,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "hash":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				usage := `
-				"Hash string">>
+				"Hash a string">>
 				hash(str)
 				$ str
 				Usage: hash("monkey")=>>123456789<<
@@ -175,8 +175,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'hash' function error: wrong number of arguments, wants='1', got='%d'",
+							"'hash' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -195,8 +196,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				return eval_new_error(
 						e,
-						"'hash' function error: not supported for argument of type '%v'",
+						"'hash' function error: not supported for argument of type '%v'.%s",
 						ObjectType(args[0]),
+						usage,
 					),
 					false
 			}
