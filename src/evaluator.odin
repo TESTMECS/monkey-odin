@@ -12,6 +12,7 @@ Evaluator :: struct {
 	_env:   Environment,
 	varena: mem.Allocator,
 	sb:     strings.Builder,
+	args:   []string,
 	//eval method
 	eval:   proc(
 		e: ^Evaluator,

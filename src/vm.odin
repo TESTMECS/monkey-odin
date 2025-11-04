@@ -563,6 +563,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		temp_evaluator := Evaluator {
 			varena = v.varena,
 			sb     = v.sb,
+			args   = v.compiler_state.cli_arguments,
 		}
 
 		// Call builtin function

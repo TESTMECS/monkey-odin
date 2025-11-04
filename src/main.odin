@@ -46,6 +46,7 @@ main :: proc() {
 	case "repl":
 		reader: bufio.Reader
 		bufio.reader_init(&reader, os.stream_from_handle(os.stdin), bufio.DEFAULT_BUF_SIZE, varena)
+		cli_args := os.args[2:] // added as constants in the compiler
 
 		fmt.println(
 			ansi.CSI + ansi.FG_BRIGHT_GREEN + ansi.SGR + "Monkey REPL. Type 'exit' to quit.",
@@ -58,13 +59,24 @@ main :: proc() {
 			if err != nil do monkey_err("Error reading input", 1, &sb, false, err)
 			line = strings.trim_space(line)
 			if line == "exit" do monkey_result(nil, &sb, true) // exit
-			Monkey_Run_String(line, &sb, false, varena) // don't exit
+			Monkey_Run_String(line, &sb, false, varena, cli_args) // don't exit
 		} //<<repl
 	case "file":
-		stmts := Monkey_Read_File(os.args[2], &sb, varena)
-		Monkey_Run_String(stmts, &sb, true, varena)
+		stmts, shebang_args := Monkey_Read_File(os.args[2], &sb, varena)
+		// Combine shebang args with command line args (os.args[3:])
+		all_args := make([dynamic]string, 0, varena)
+		for arg in shebang_args {
+			append(&all_args, arg)
+		}
+		if len(os.args) > 3 {
+			// Append command line args after the file path
+			for arg in os.args[3:] {
+				append(&all_args, arg)
+			}
+		}
+		Monkey_Run_String(stmts, &sb, true, varena, all_args[:])
 	case "mexpand":
-		stmts := Monkey_Read_File(os.args[2], &sb, varena)
+		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
 		// Parse file
 		p := Parser_New(stmts, varena)
 		program := p->parse()

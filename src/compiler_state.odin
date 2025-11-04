@@ -5,15 +5,16 @@ import "core:strings"
 
 // compiler-state=>>begin
 Compiler_State :: struct {
-	varena:       mem.Allocator,
-	symbol_table: Symbol_Table,
-	globals:      []ObjectBase,
-	constants:    [dynamic]ObjectBase,
-	scopes:       [dynamic]Compilation_Scope,
-	sb:           strings.Builder,
+	varena:        mem.Allocator,
+	symbol_table:  Symbol_Table,
+	globals:       []ObjectBase,
+	constants:     [dynamic]ObjectBase,
+	scopes:        [dynamic]Compilation_Scope,
+	cli_arguments: []string,
+	sb:            strings.Builder,
 }
 
-Compiler_State_New :: proc(varena: mem.Allocator) -> Compiler_State {
+Compiler_State_New :: proc(varena: mem.Allocator, cli_args: []string) -> Compiler_State {
 	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena) // $vm::STACK_SIZE
 	main_scope: Compilation_Scope
 	main_scope_instructions := make(Instructions, 0, varena)
@@ -23,6 +24,7 @@ Compiler_State_New :: proc(varena: mem.Allocator) -> Compiler_State {
 	return Compiler_State {
 		constants = make([dynamic]ObjectBase, 0, varena),
 		globals = make([]ObjectBase, GLOBALS_SIZE, varena),
+		cli_arguments = cli_args,
 		symbol_table = Symbol_Table_New(varena),
 		scopes = scopes,
 		varena = varena,

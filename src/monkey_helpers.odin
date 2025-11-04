@@ -8,30 +8,38 @@ import "core:strings"
 import "core:terminal/ansi"
 
 
-Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool, varena: mem.Allocator) {
+Monkey_Run_String :: proc(
+	stmts: string,
+	sb: ^strings.Builder,
+	exit: bool,
+	varena: mem.Allocator,
+	cli_args: []string,
+) {
 	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
+	// Parse the program string
 	p := Parser_New(stmts, varena)
-
 	program := p->parse()
 	if monkey_parser_has_error(p) {
 		monkey_err("Error parsing file", 1, sb, exit, p.errors)
 		return
 	}
-
-	c := Compiler_New(varena)
+	// Compile
+	c := Compiler_New(varena, cli_args)
 	compile_err := c->compile_program(program)
 	if compile_err != "" {
 		monkey_err("Error compiling file", 1, sb, exit, compile_err)
 		return
 	}
+	// bytecode
 	bytecode := c->bytecode()
-
+	//vm start with state
 	vm := Vm_New(bytecode, &c.compiler_state, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" {
 		monkey_err("Error running file: <<%v>>", 1, sb, exit, vm_err)
 		return
 	}
+	// Get Last Popped Object
 	last_popped := vm->last_popped()
 	monkey_result(last_popped, sb, exit) // true for file, false for repl.
 }
@@ -42,6 +50,7 @@ Monkey_Read_File :: proc(
 	varena: mem.Allocator,
 ) -> (
 	stmts: string,
+	cli_args: []string,
 ) {
 	// Read file path and return its string contents.
 	if !os.exists(file_path) do monkey_err("File does not exist", 1, sb)
@@ -54,9 +63,25 @@ Monkey_Read_File :: proc(
 	ensure(ok)
 	str_contents := strings.clone_from_bytes(contents, varena)
 
+	// Skip Shebang, parse args here.
+	cli_args = []string{}
 	if strings.starts_with(str_contents, "#!") {
+		// Extract the first line (shebang)
 		if idx := strings.index_byte(str_contents, '\n'); idx >= 0 {
+			shebang_line := str_contents[:idx]
 			str_contents = str_contents[idx + 1:]
+			
+			// Parse arguments from shebang line
+			// Look for "--" to extract arguments after it
+			if double_dash_idx := strings.index(shebang_line, "--"); double_dash_idx >= 0 {
+				args_part := strings.trim_space(shebang_line[double_dash_idx + 2:])
+				if args_part != "" {
+					// Split by spaces to get individual arguments
+					args_split := strings.split(args_part, " ")
+					cli_args = make([]string, len(args_split), varena)
+					copy(cli_args[:], args_split[:])
+				}
+			}
 		} else {
 			str_contents = ""
 		}
@@ -64,7 +89,7 @@ Monkey_Read_File :: proc(
 		str_contents = strings.trim_space(str_contents)
 	}
 
-	return str_contents
+	return str_contents, cli_args
 }
 
 monkey_parser_has_error :: proc(p: Parser) -> bool {

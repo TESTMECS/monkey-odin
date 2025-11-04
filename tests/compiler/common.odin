@@ -32,6 +32,7 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 	v := new_vmem()
 	a := virtual.arena_allocator(v.a)
 	defer v->free()
+	cli_args := []string{""}
 
 	for test_case, i in tests {
 		p := Parser_New(test_case.input, a)
@@ -43,7 +44,7 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 			}
 			continue
 		}
-		c := Compiler_New(a)
+		c := Compiler_New(a, cli_args)
 		err := c->compile_program(program)
 		if err != "" {
 			log.errorf("Compiling encountered errors on test_case[%d]", i)

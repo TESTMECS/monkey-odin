@@ -3,7 +3,6 @@ package monkey
 import "core:fmt"
 import "core:log"
 import "core:mem"
-import "core:mem/virtual"
 import "core:strings"
 
 DEBUG :: false
@@ -45,9 +44,9 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
-Compiler_New :: proc(varena: mem.Allocator) -> Compiler {
+Compiler_New :: proc(varena: mem.Allocator, cli_args: []string) -> Compiler {
 	return Compiler {
-		compiler_state = Compiler_State_New(varena),
+		compiler_state = Compiler_State_New(varena, cli_args),
 		scopes_idx = 0,
 		compile_program = compile_program,
 		compile = compile,

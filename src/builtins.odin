@@ -853,6 +853,26 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				return max_val, true
 			}
+
+	case "args":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 0 {
+					return eval_new_error(
+							e,
+							"'args' function error: wrong number of arguments, wants='0', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				args_array := make([dynamic]ObjectBase, 0, e.varena)
+				for arg in e.args {
+					arg_clone := strings.clone(arg, e.varena)
+					append(&args_array, arg_clone)
+				}
+
+				return ObjectArray(args_array), true
+			}
 	}
 
 	return nil
