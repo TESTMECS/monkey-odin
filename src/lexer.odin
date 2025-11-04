@@ -54,7 +54,7 @@ create_number :: proc(l: ^Lexer) -> Token {
 	start := l.pos
 
 	for is_digit(l.ch) do read_char(l)
-	
+
 	// Handle decimal point for floating point numbers
 	if l.ch == '.' {
 		read_char(l)

@@ -12,8 +12,8 @@ hi def link mNumber Number
 hi def link mBoolean Boolean
 
 " BuilinFn
-syn match mBuiltinFn "print\|puts\|first\|last\|copy\|open\|close\|read\|bool\|int\|float\|str\|typeof\|"
-syn match mBuiltinFn "choose\|rand\|hash\|len\|args\|sum\|min\|max\|reverse\|sort\|slice\|indexOf\|"
+syn match mBuiltinFn "printf\|puts\|first\|last\|copy\|open\|close\|read\|bool\|int\|float\|str\|typeof\|"
+syn match mBuiltinFn "choose\|rand\|hash\|len\|args\|sum\|min\|max\|reverse\|sort\|slice\|indexOf\|arr\|"
 hi def link mBuiltinFn Function
 
 " Statement

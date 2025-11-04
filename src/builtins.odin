@@ -1,9 +1,9 @@
 package monkey
 
+import "base:runtime"
 import "core:crypto/hash"
 import "core:fmt"
 import "core:math/rand"
-import "core:mem/virtual"
 import "core:strconv"
 import "core:strings"
 
@@ -11,12 +11,22 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
 	case "bool":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Convert value to bool">>
+				bool(value)
+				$ str | int
+				Usage: bool(1)=>>true
+				true: "1", "True", "true", "t", "T"
+				false: "0", "False", "false", "f", "F"<<
+				`
+
 
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'bool' function error: wrong number of arguments, wants='1', got='%d'",
+							"'bool' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -27,8 +37,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					if !ok {
 						return eval_new_error(
 								e,
-								"'bool' function error: cannot convert '%s' to bool",
+								"'bool' function error: cannot convert '%s' to bool.%s",
 								arg,
+								usage,
 							),
 							false
 					}
@@ -39,18 +50,27 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				return eval_new_error(
 						e,
-						"'bool' function error: not supported for argument of type '%v'",
+						"'bool' function error: not supported for argument of type '%v'.%s",
 						ObjectType(args[0]),
+						usage,
 					),
 					false
 			}
 	case "float":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+						"Convert value to float">>
+						float(value)
+						$ str | int
+						Usage: float(1)=>>1.0`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'float' function error: wrong number of arguments, wants='1', got='%d'",
+							"'float' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -61,8 +81,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					if !ok {
 						return eval_new_error(
 								e,
-								"'float' function error: cannot convert '%s' to float",
+								"'float' function error: cannot convert '%s' to float.%s",
 								arg,
+								usage,
 							),
 							false
 					}
@@ -73,8 +94,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				return eval_new_error(
 						e,
-						"'float' function error: not supported for argument of type '%v'",
+						"'float' function error: not supported for argument of type '%v'.%s",
 						ObjectType(args[0]),
+						usage,
 					),
 					false
 			}
@@ -324,7 +346,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 				strings.builder_reset(&e.sb)
-				
+
 				// Count format specifiers to validate argument count
 				specifier_count := 0
 				for i := 0; i < len(format_str); i += 1 {
@@ -337,7 +359,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						}
 					}
 				}
-				
+
 				if specifier_count != len(args) - 1 {
 					return eval_new_error(
 							e,
@@ -347,14 +369,16 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						),
 						false
 				}
-				
+
 				// Convert arguments to any type for fmt.sbprintf
 				fmt_args := make([]any, len(args) - 1, e.varena)
 				for i in 1 ..< len(args) {
 					fmt_args[i - 1] = args[i]
 				}
-				
+
 				fmt.sbprintf(&e.sb, format_str, ..fmt_args)
+				// print and return
+				fmt.println(strings.to_string(e.sb))
 				return strings.to_string(e.sb), true
 			}
 	case "int":
@@ -679,14 +703,49 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				return ObjectArray(reversed_arr), true
 			}
-
+	case "arr":
+		// str to arr
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'arr' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+				str_arg, ok := args[0].(string)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'arr' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+				arr_arg := strings.split(str_arg, ",")
+				make_arr := make([dynamic]ObjectBase, len(arr_arg), e.varena)
+				for value, idx in arr_arg {
+					make_arr[idx] = value
+				}
+				return ObjectArray(make_arr), true
+			}
 	case "slice":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				Get a arr slice from array>>
+				slice(arr, start, end)
+				$ arr :: int, int
+				Usage: arr([1,2,3],0,1)=>>[1]<<
+				`
+
+
 				if len(args) != 3 {
 					return eval_new_error(
 							e,
-							"'slice' function error: wrong number of arguments, wants='3', got='%d'",
+							"function error: wrong number of arguments, wants='3', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -695,8 +754,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !ok {
 					return eval_new_error(
 							e,
-							"'slice' function error: first argument must be array, got '%v'",
+							"'slice' function error: first argument must be array, got '%v'.%s",
 							ObjectType(args[0]),
+							usage,
 						),
 						false
 				}
@@ -705,8 +765,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !start_ok {
 					return eval_new_error(
 							e,
-							"'slice' function error: start index must be integer, got '%v'",
+							"'slice' function error: start index must be integer, got '%v'.%s",
 							ObjectType(args[1]),
+							usage,
 						),
 						false
 				}
@@ -715,8 +776,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !end_ok {
 					return eval_new_error(
 							e,
-							"'slice' function error: end index must be integer, got '%v'",
+							"'slice' function error: end index must be integer, got '%v'.%s",
 							ObjectType(args[2]),
+							usage,
 						),
 						false
 				}
@@ -724,10 +786,11 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if start < 0 || end > len(arr) || start > end {
 					return eval_new_error(
 							e,
-							"'slice' function error: invalid slice range [%d, %d] for array of length %d",
+							"'slice' function error: invalid slice range [%d, %d] for array of length %d.%s",
 							start,
 							end,
 							len(arr),
+							usage,
 						),
 						false
 				}
