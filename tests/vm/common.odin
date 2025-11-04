@@ -27,8 +27,7 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 		program := p->parse()
 		if parser_has_error(p) do return
 
-		compiler := Compiler__New__()
-		defer compiler->free()
+		compiler := Compiler_New(a)
 
 		err := compiler->compile_program(program)
 		if err != "" {

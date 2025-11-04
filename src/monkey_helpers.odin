@@ -15,8 +15,7 @@ Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool, varen
 	program := p->parse()
 	if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, sb)
 
-	c := Compiler__New__()
-	defer c->free()
+	c := Compiler_New(varena)
 	compile_err := c->compile_program(program)
 	if compile_err != "" do monkey_err("Error compiling file", 1, sb, compile_err)
 

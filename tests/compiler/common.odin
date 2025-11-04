@@ -45,9 +45,9 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 			continue
 		}
 
-		c := Compiler__New__()
-		defer c->free()
+		c := Compiler_New(a)
 		err := c->compile_program(program)
+
 		if err != "" {
 			log.errorf("Compiling encountered errors on test_case[%d]", i)
 			log.error(err)

@@ -2,6 +2,7 @@ package monkey
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:mem/virtual"
 import "core:strings"
 
@@ -44,9 +45,9 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
-Compiler__New__ :: proc() -> Compiler {
+Compiler_New :: proc(varena: mem.Allocator) -> Compiler {
 	return Compiler {
-		compiler_state = Compiler_State_New(),
+		compiler_state = Compiler_State_New(varena),
 		scopes_idx = 0,
 		compile_program = compile_program,
 		compile = compile,
@@ -75,20 +76,19 @@ compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) 
 
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
-	varena := virtual.arena_allocator(c.vmem)
 	#partial switch data in ast {
 	case Ast_Let:
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
 		if is_function {
 			// For function literals, define the name first so it can be used recursively
-			symbol := c.symbol_table->define(data.name, varena)
+			symbol := c.symbol_table->define(data.name, c.varena)
 			if err = c->compile(data.value^); err != "" do return
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 		} else {
 			// For non-function values, use the normal approach
 			if err = c->compile(data.value^); err != "" do return
-			symbol := c.symbol_table->define(data.name, varena)
+			symbol := c.symbol_table->define(data.name, c.varena)
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 		}
 	case Ast_Ret:
@@ -243,7 +243,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Function:
 		c->enter_scope()
 		for param in data.parameters {
-			c.symbol_table->define(param.value, varena)
+			c.symbol_table->define(param.value, c.varena)
 		}
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
@@ -252,8 +252,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		instructions := c->leave_scope()
 
 		// Create a deep copy of instructions for the function
-		varena := virtual.arena_allocator(c.vmem)
-		instr_copy := make(Instructions, len(instructions), varena)
+		instr_copy := make(Instructions, len(instructions), c.varena)
 		copy(instr_copy[:], instructions[:])
 
 		compiled_fn := ObjectCompiledFunction {
@@ -300,7 +299,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case bool:
 		c->emit(.True if data else .False)
 	case string:
-		str_clone, _ := strings.clone(data, varena)
+		str_clone, _ := strings.clone(data, c.varena)
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
 	return
@@ -310,7 +309,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 	err = ""
 
 	// Expand macros before compilation
-	expanded_program, expand_err := expand_macros(program, c.vmem)
+	expanded_program, expand_err := expand_macros(program, c.varena)
 	if expand_err != "" {
 		err = compiler_error(c, "macro expansion error: %s", expand_err)
 		return
@@ -326,8 +325,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 }
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
-	varena := virtual.arena_allocator(c.vmem)
-	ins := make_instructions(varena, op, ..operands)
+	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
 	return pos
@@ -338,14 +336,13 @@ bytecode :: proc(c: ^Compiler) -> Bytecode {
 }
 
 enter_scope :: proc(c: ^Compiler) {
-	varena := virtual.arena_allocator(c.vmem)
 	scope := Compilation_Scope{}
-	instr := make(Instructions, 0, varena)
+	instr := make(Instructions, 0, c.varena)
 	scope.instructions = instr
 	append(&c.scopes, scope)
 	c.scopes_idx = len(c.scopes) - 1
-	symbol_clone := new_clone(c.symbol_table, varena) // Clone
-	c.symbol_table = Symbol_Table_New(varena, outer = symbol_clone)
+	symbol_clone := new_clone(c.symbol_table, c.varena) // Clone
+	c.symbol_table = Symbol_Table_New(c.varena, outer = symbol_clone)
 }
 
 leave_scope :: proc(c: ^Compiler) -> ^Instructions {
@@ -361,9 +358,8 @@ current_instructions :: proc(c: ^Compiler) -> ^Instructions {
 }
 
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
-	varena := virtual.arena_allocator(c.vmem)
 	prev := c.scopes[c.scopes_idx].last_instruction
-	last := new(Emitted_Instruction, varena)
+	last := new(Emitted_Instruction, c.varena)
 	last.op_code = op
 	last.pos = pos
 	c.scopes[c.scopes_idx].previous_instruction = prev
@@ -380,12 +376,9 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 }
 
 replace_last_pop_with_return :: proc(c: ^Compiler) {
-	varena := virtual.arena_allocator(c.vmem)
-
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
-	if DEBUG do fmt.printf("replacing last pop with return at %v\n", last_pop)
 
-	c->replace_instructions(last_pop, make_instructions(varena, .Ret_V)[:])
+	c->replace_instructions(last_pop, make_instructions(c.varena, .Ret_V)[:])
 
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 }
@@ -413,9 +406,8 @@ replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte) {
 }
 
 change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
-	varena := virtual.arena_allocator(c.vmem)
 	op := Opcode(c->current_instructions()[pos])
-	new_instructions := make_instructions(varena, op, new_operand)
+	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
 } //end <<Compiler_helpers
 

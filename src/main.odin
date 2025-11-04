@@ -70,7 +70,7 @@ main :: proc() {
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
 		//expand macros
-		expanded_program, expand_err := expand_macros(program, &v)
+		expanded_program, expand_err := expand_macros(program, varena)
 		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, expand_err)
 		//print expanded program
 		strings.builder_reset(&sb)
