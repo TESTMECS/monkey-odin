@@ -306,29 +306,16 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "printf":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
-				if len(args) < 2 {
+				if len(args) < 1 {
 					return eval_new_error(
 							e,
-							"'printf' function error: wrong number of arguments, wants=<<Greater than or equal to 2>>, got='%d'",
+							"'printf' function error: wrong number of arguments, wants=<<Greater than or equal to 1>>, got='%d'",
 							len(args),
 						),
 						false
 				}
-				is_valid_format_string := proc(s: string) -> bool {
-					for i := 0; i < len(s); i += 1 {
-						if s[i] == '%' {
-							if i + 1 >= len(s) {return false} 	// dangling '%'
-							valid_specifiers := "sdxfv" // TODO: add more
-							if !strings.contains(valid_specifiers, s[i + 1:]) {
-								return false
-							}
-						}
-					}
-					return true
-				}
 				format_str, ok := args[0].(string)
-				is_valid := is_valid_format_string(format_str)
-				if !ok || !is_valid {
+				if !ok {
 					return eval_new_error(
 							e,
 							"'printf' function error: first argument must be a valid format string, got '%v'",
@@ -337,7 +324,37 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 				strings.builder_reset(&e.sb)
-				fmt.sbprintf(&e.sb, format_str, args[1:])
+				
+				// Count format specifiers to validate argument count
+				specifier_count := 0
+				for i := 0; i < len(format_str); i += 1 {
+					if format_str[i] == '%' {
+						if i + 1 >= len(format_str) {break} 	// dangling '%'
+						if format_str[i + 1] != '%' {
+							specifier_count += 1
+						} else {
+							i += 1 // skip escaped %%
+						}
+					}
+				}
+				
+				if specifier_count != len(args) - 1 {
+					return eval_new_error(
+							e,
+							"'printf' function error: format string expects %d arguments, got %d",
+							specifier_count,
+							len(args) - 1,
+						),
+						false
+				}
+				
+				// Convert arguments to any type for fmt.sbprintf
+				fmt_args := make([]any, len(args) - 1, e.varena)
+				for i in 1 ..< len(args) {
+					fmt_args[i - 1] = args[i]
+				}
+				
+				fmt.sbprintf(&e.sb, format_str, ..fmt_args)
 				return strings.to_string(e.sb), true
 			}
 	case "int":

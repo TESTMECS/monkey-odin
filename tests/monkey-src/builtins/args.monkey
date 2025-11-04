@@ -9,5 +9,6 @@ puts(typeof(bool(args()[0]))); # bool
 let i = 0;
 let a = args();
 for ( i < len(a) ) {
-	printf("arg:%d", a[i]);
+	printf("arg:%s", a[i]);
+	i = i + 1;
 }
