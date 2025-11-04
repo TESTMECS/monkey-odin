@@ -11,6 +11,7 @@ Test_Data :: union {
 	bool,
 	string,
 	[]int,
+	[]string,
 	map[string]int,
 }
 
@@ -45,6 +46,23 @@ test_expected_object :: proc(
 		}
 		for e_elem, i in expected_value {
 			if err = test_integer_object(e_elem, arr[i]); err != "" do break
+		}
+	case []string:
+		arr, ok := actual.(ObjectArray)
+		if !ok {
+			err = fmt.tprintf("expected array object but got '%v'", ObjectType(actual))
+			break
+		}
+		if len(arr) != len(expected_value) {
+			err = fmt.tprintf(
+				"wrong num of elements, want='%v', got='%v'",
+				len(expected_value),
+				len(arr),
+			)
+			break
+		}
+		for e_elem, i in expected_value {
+			if err = test_string_object(e_elem, arr[i]); err != "" do break
 		}
 	case map[string]int:
 		ht, ok := actual.(ObjectHashTable)

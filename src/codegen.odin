@@ -20,7 +20,7 @@ Opcode :: enum byte {
 	Mul,
 	Div,
 	Idx,
-	SetIdx,  // Set array element
+	SetIdx,
 	Call,
 	Ret_V,
 	Ret,

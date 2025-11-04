@@ -3,6 +3,13 @@ package vm_tests
 import "core:testing"
 
 @(test)
+test_hash :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases{{`hash("hello");`, "5d41402abc4b2a76b9719d911017c592"}}
+	run_vm_tests(t, tests)
+}
+
+@(test)
 test_rest :: proc(t: ^testing.T) {
 	using tc
 	tests := []VM_Test_Cases{{`rest([1,2,3]);`, `[2, 3]`}}
@@ -113,6 +120,43 @@ test_len :: proc(t: ^testing.T) {
 		{`len([1]);`, 1},
 		{`len([1,2,3]);`, 3},
 		{`len("hello");`, 5},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_keys :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`keys({});`, []string{}},
+		{`keys({"a": 1});`, []string{"a"}},
+		{`keys({"a": 1, "b": 2});`, []string{"a", "b"}},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_values :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`values({});`, []int{}},
+		{`values({"a": 1});`, []int{1}},
+		{`values({"a": 1, "b": 2});`, []int{1, 2}},
+		{`values({"one": "hello", "two": "world"});`, []string{"hello", "world"}},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_has :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`has({}, "a");`, false},
+		{`has({"a": 1}, "a");`, true},
+		{`has({"a": 1}, "b");`, false},
+		{`has({"a": 1, "b": 2}, "b");`, true},
+		{`has({"one": "hello", "two": "world"}, "one");`, true},
+		{`has({"one": "hello", "two": "world"}, "three");`, false},
 	}
 	run_vm_tests(t, tests)
 }
