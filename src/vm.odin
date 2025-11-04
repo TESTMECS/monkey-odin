@@ -1,7 +1,7 @@
 package monkey
 
 import "core:fmt"
-import "core:mem/virtual"
+import "core:mem"
 import "core:reflect"
 import "core:strings"
 
@@ -23,17 +23,15 @@ MAX_FRAMES :: 1024
 
 DEBUG_VM :: false
 
-
 VM :: struct {
+	varena:                 mem.Allocator,
 	compiler_state:         ^Compiler_State,
 	constants:              []ObjectBase,
 	frames:                 []Frame,
 	frames_idx:             int,
 	stack:                  []ObjectBase,
 	sp:                     int, //Top of stack is sp-1
-	vmem:                   ^virtual.Arena,
 	sb:                     strings.Builder,
-	free_vm:                proc(v: ^VM),
 	run_vm:                 proc(v: ^VM) -> (err: string),
 	stack_top:              proc(v: ^VM) -> ObjectBase,
 	last_popped_stack_elem: proc(v: ^VM) -> ObjectBase,
@@ -69,21 +67,15 @@ VM :: struct {
 	push_frame:             proc(v: ^VM, f: Frame),
 }
 
-Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
-	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
-	arena_err := virtual.arena_init_growing(v)
-	ensure(arena_err == nil)
-	varena := virtual.arena_allocator(v)
-
+Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State, varena: mem.Allocator) -> VM {
 	vm := VM {
 		compiler_state        = compiler_state,
 		stack                 = make([]ObjectBase, STACK_SIZE, varena),
 		frames                = make([]Frame, MAX_FRAMES, varena),
 		frames_idx            = 0,
 		constants             = bytecode.constants,
-		vmem                  = v,
+		varena                = varena,
 		sb                    = strings.builder_make(varena),
-		free_vm               = free_vm,
 		run_vm                = run_vm,
 		current_frame         = current_frame,
 		push_vm               = push_vm,
@@ -219,11 +211,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	return ""
 }
 
-free_vm :: proc(v: ^VM) {
-	virtual.arena_destroy(v.vmem) // deallocates everything in the arena
-	free(v.vmem, context.allocator) // deallocates the pointer to it.
-}
-
 stack_top :: proc(v: ^VM) -> ObjectBase {
 	if v.sp == 0 do return nil
 	return v.stack[v.sp - 1]
@@ -331,14 +318,13 @@ exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err:
 }
 
 exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
-	varena := virtual.arena_allocator(v.vmem)
 	result: string
 
 	#partial switch op {
 	case .Add:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "%s%s", left, right)
-		result = strings.clone(strings.to_string(v.sb), varena)
+		result = strings.clone(strings.to_string(v.sb), v.varena)
 	case:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "unknown string infix operator '%s'", op)
@@ -566,8 +552,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	case ObjectBuilinFunction:
 		if DEBUG_VM do fmt.println("EXEC_CALL, builtin fn=", fn)
 
-		varena := virtual.arena_allocator(v.vmem)
-		args := make([dynamic]ObjectBase, 0, varena)
+		args := make([dynamic]ObjectBase, 0, v.varena)
 
 		// Extract arguments from stack
 		for i := v.sp - int(num_args); i < v.sp; i += 1 {
@@ -576,8 +561,8 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 		// Create a temporary evaluator-like interface for the builtin
 		temp_evaluator := Evaluator {
-			vmem = v.vmem,
-			sb   = v.sb,
+			varena = v.varena,
+			sb     = v.sb,
 		}
 
 		// Call builtin function
@@ -616,8 +601,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 }
 
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
-	varena := virtual.arena_allocator(v.vmem)
-	elements := make(ObjectArray, 0, varena)
+	elements := make(ObjectArray, 0, v.varena)
 
 	for i := start; i < end; i += 1 {
 		append(&elements, v.stack[i])
@@ -626,8 +610,7 @@ build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 }
 
 build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
-	varena := virtual.arena_allocator(v.vmem)
-	ht := make(ObjectHashTable, (end - start) / 2, varena)
+	ht := make(ObjectHashTable, (end - start) / 2, v.varena)
 
 	for i := start; i < end; i += 2 {
 		key := v.stack[i]
@@ -639,7 +622,7 @@ build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 			fmt.sbprintf(&v.sb, "key '%v' is not a string", key)
 			return nil, strings.to_string(v.sb)
 		}
-		ht[strings.clone(key_str, varena)] = value
+		ht[strings.clone(key_str, v.varena)] = value
 	}
 	return ht, ""
 }
@@ -667,8 +650,7 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 		// For hash table assignment
 		ht := operand.(ObjectHashTable)
 		key_str := index.(string)
-		varena := virtual.arena_allocator(v.vmem)
-		ht[strings.clone(key_str, varena)] = value
+		ht[strings.clone(key_str, v.varena)] = value
 		return v->push_vm(value) // Return the assigned value
 	}
 

@@ -10,8 +10,8 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 	using tc
 	input := "[1, 2 * 2, 3 + 3]"
 
-	evaluated, e, ok := eval_test_is_valid(input)
-	defer e->free()
+	evaluated, e, ok, v := eval_test_is_valid(input)
+	defer v->free()
 	if !ok do return
 
 	arr, is_arr := evaluated.(ObjectArray)
@@ -36,6 +36,7 @@ test_eval_array_literals :: proc(t: ^testing.T) {
 	if !integer_object_is_valid(arr[2], 6) {
 		log.errorf("arr[2] does not match")
 	}
+	free_all(context.allocator)
 }
 
 @(test)
@@ -57,8 +58,8 @@ test_eval_array_index_expression :: proc(t: ^testing.T) {
 	}
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

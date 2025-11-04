@@ -30,8 +30,8 @@ test_eval_return_statement :: proc(t: ^testing.T) {
 	}
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

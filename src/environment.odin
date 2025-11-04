@@ -1,5 +1,5 @@
 package monkey
-import "base:runtime"
+import "core:mem"
 
 Environment :: struct {
 	store: map[string]ObjectBase,
@@ -9,7 +9,7 @@ Environment :: struct {
 	free:  proc(env: ^Environment),
 }
 
-Env_New :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> Environment {
+Env_New :: proc(outer: ^Environment = nil, allocator: mem.Allocator) -> Environment {
 	store_mem := make(map[string]ObjectBase, 0, allocator)
 
 	return {
@@ -24,7 +24,7 @@ Env_New :: proc(outer: ^Environment = nil, allocator: runtime.Allocator) -> Envi
 Env_Enclosed :: proc(
 	outer: ^Environment,
 	reserved: uint,
-	allocator: runtime.Allocator,
+	allocator: mem.Allocator,
 ) -> ^Environment {
 	env := Env_New(outer, allocator)
 	env.store = make(map[string]ObjectBase, reserved, allocator)

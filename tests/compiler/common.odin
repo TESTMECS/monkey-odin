@@ -35,7 +35,6 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 
 	for test_case, i in tests {
 		p := Parser_New(test_case.input, a)
-
 		program := p->parse()
 		if len(program) == 0 || len(p.errors) != 0 {
 			log.errorf("Parsing encountered errors on test_case[%d]", i)
@@ -44,28 +43,23 @@ run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 			}
 			continue
 		}
-
 		c := Compiler_New(a)
 		err := c->compile_program(program)
-
 		if err != "" {
 			log.errorf("Compiling encountered errors on test_case[%d]", i)
 			log.error(err)
 			continue
 		}
-
 		bytecode := c->bytecode()
 		err = test_instructions(
 			test_case.expected_instructions[:],
 			bytecode.instructions,
 			context.allocator,
 		)
-
 		if err != "" {
 			log.errorf("Instructions for test_case[%d] failed with: %v", i, err)
 			continue
 		}
-
 		err = test_constants(test_case.expected_constants, bytecode.constants, context.allocator)
 		if err != "" {
 			log.errorf("Constants for test_case[%d] failed with: %v", i, err)
@@ -131,6 +125,7 @@ test_instructions :: proc(
 ) {
 	using monkey
 	using tc
+
 	concatenated := concat_instructions(expected)
 	if (len(actual) != len(concatenated)) {
 		return fmt.tprintf(

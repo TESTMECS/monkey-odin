@@ -18,12 +18,9 @@ Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool, varen
 	c := Compiler_New(varena)
 	compile_err := c->compile_program(program)
 	if compile_err != "" do monkey_err("Error compiling file", 1, sb, compile_err)
-
 	bytecode := c->bytecode()
 
-	vm := Vm_New(bytecode, &c.compiler_state)
-	defer vm->free_vm()
-
+	vm := Vm_New(bytecode, &c.compiler_state, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, sb, vm_err)
 

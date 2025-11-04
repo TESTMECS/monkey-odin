@@ -30,8 +30,8 @@ test_eval_integer_expression :: proc(t: ^testing.T) {
 		{"(5 + 10 * 2 + 15 / 3) * 2 + -10", 50},
 	}
 	for test, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test.input)
+		defer v->free()
 		if !ok do return
 
 		if !integer_object_is_valid(evaluated, test.expected) {

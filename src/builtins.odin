@@ -56,7 +56,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "hash":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
-				varena := virtual.arena_allocator(e.vmem)
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
@@ -68,9 +67,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				#partial switch arg in args[0] {
 				case string:
-					s_copy := strings.clone(arg, varena)
+					s_copy := strings.clone(arg, e.varena)
 					digest := hash.hash_string(hash.Algorithm.SHA256, s_copy)
-					sb := strings.builder_make(varena)
+					sb := strings.builder_make(e.varena)
 					for b in digest {
 						fmt.sbprintf(&sb, "%02x", b)
 					}
@@ -187,8 +186,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				}
 
 				if len(arr) > 0 {
-					varena := virtual.arena_allocator(e.vmem)
-					new_arr := make([dynamic]ObjectBase, 0, varena)
+					new_arr := make([dynamic]ObjectBase, 0, e.varena)
 					append(&new_arr, ..arr[1:])
 					arr_obj := ObjectArray(new_arr)
 
@@ -335,8 +333,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				type_str := strings.clone(fmt.tprintf("%v", ObjectType(args[0])), varena)
+				type_str := strings.clone(fmt.tprintf("%v", ObjectType(args[0])), e.varena)
 				return type_str, true
 			}
 
@@ -379,8 +376,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				// For quote, we need to convert the argument back to an AST node
 				// This is a simplified implementation - in a real system, you'd need
 				// to track the original AST nodes
-				varena := virtual.arena_allocator(e.vmem)
-
 				#partial switch arg in args[0] {
 				case int:
 					return arg, true
@@ -443,8 +438,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				keys_arr := make([dynamic]ObjectBase, 0, varena)
+				keys_arr := make([dynamic]ObjectBase, 0, e.varena)
 
 				for key, _ in hash_table {
 					append(&keys_arr, key)
@@ -474,8 +468,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				values_arr := make([dynamic]ObjectBase, 0, varena)
+				values_arr := make([dynamic]ObjectBase, 0, e.varena)
 
 				for _, value in hash_table {
 					append(&values_arr, value)
@@ -553,8 +546,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					}
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				sorted_arr := make([dynamic]ObjectBase, len(arr), varena)
+				sorted_arr := make([dynamic]ObjectBase, len(arr), e.varena)
 				copy(sorted_arr[:], arr[:])
 
 				// Simple bubble sort for integers
@@ -592,8 +584,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				reversed_arr := make([dynamic]ObjectBase, len(arr), varena)
+				reversed_arr := make([dynamic]ObjectBase, len(arr), e.varena)
 
 				arr_len := len(arr)
 				for i in 0 ..< arr_len {
@@ -655,8 +646,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				varena := virtual.arena_allocator(e.vmem)
-				sliced_arr := make([dynamic]ObjectBase, 0, varena)
+				sliced_arr := make([dynamic]ObjectBase, 0, e.varena)
 				append(&sliced_arr, ..arr[start:end])
 
 				return ObjectArray(sliced_arr), true

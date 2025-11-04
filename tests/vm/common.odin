@@ -23,21 +23,17 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 
 	for test_case, i in tests {
 		p := Parser_New(test_case.input, a)
-
 		program := p->parse()
 		if parser_has_error(p) do return
 
 		compiler := Compiler_New(a)
-
 		err := compiler->compile_program(program)
 		if err != "" {
 			log.errorf("test [%d] has failed, compiler has error: %s", i, err)
 			continue
 		}
 
-		vm := Vm_New(compiler->bytecode(), &compiler.compiler_state)
-		defer vm->free_vm()
-
+		vm := Vm_New(compiler->bytecode(), &compiler.compiler_state, a)
 		err = vm->run_vm()
 		if err != "" {
 			log.errorf("test [%d] has failed, vm has error: %s", i, err)

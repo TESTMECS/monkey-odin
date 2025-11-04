@@ -17,8 +17,8 @@ test_eval_hash_literals :: proc(t: ^testing.T) {
     }`
 
 
-	evaluated, e, ok := eval_test_is_valid(input)
-	defer e->free()
+	evaluated, e, ok, v := eval_test_is_valid(input)
+	defer v->free()
 	if !ok do return
 
 	ht, is_hash_table := evaluated.(ObjectHashTable)
@@ -65,8 +65,8 @@ test_eval_hash_table_index_expression :: proc(t: ^testing.T) {
 	}{{`{"foo": 5}["foo"]`, 5}, {`let key = "foo"; {"foo": 5}[key]`, 5}}
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

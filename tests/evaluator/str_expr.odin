@@ -12,11 +12,12 @@ test_eval_string_expression :: proc(t: ^testing.T) {
 		input:    string,
 		expected: string,
 	}{{`"Hello World"`, "Hello World"}, {`"Hello" + " " + "World"`, "Hello World"}}
+
 	defer free_all(context.allocator)
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test [%d] has failed", i)
 			continue

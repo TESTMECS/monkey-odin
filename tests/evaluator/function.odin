@@ -11,8 +11,8 @@ test_eval_function_object :: proc(t: ^testing.T) {
 	using tc
 	input := "fn(x) { x + 2 };"
 
-	evaluated, e, ok := eval_test_get(input)
-	defer e->free()
+	evaluated, e, ok, v := eval_test_get(input)
+	defer v->free()
 	if !ok do return
 
 	fn, is_fn := evaluated.(^ObjectFunction)
@@ -79,8 +79,8 @@ test_eval_function_application :: proc(t: ^testing.T) {
 	}
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue
@@ -106,8 +106,8 @@ test_eval_builtin_functions :: proc(t: ^testing.T) {
 	}{{`len("")`, 0}, {`len("four")`, 4}, {`len("hello world")`, 11}}
 
 	for test_case, i in tests {
-		evaluated, e, ok := eval_test_is_valid(test_case.input)
-		defer e->free()
+		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
+		defer v->free()
 		if !ok {
 			log.errorf("test[%d] has failed", i)
 			continue

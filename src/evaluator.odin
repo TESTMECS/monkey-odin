@@ -4,16 +4,16 @@ package monkey
 import "base:runtime"
 import "core:fmt"
 import "core:log"
-import "core:mem/virtual"
+import "core:mem"
 import "core:strings"
 
 // Evaluator=>>begin
 Evaluator :: struct {
-	_env: Environment,
-	vmem: ^virtual.Arena,
-	sb:   strings.Builder,
+	_env:   Environment,
+	varena: mem.Allocator,
+	sb:     strings.Builder,
 	//eval method
-	eval: proc(
+	eval:   proc(
 		e: ^Evaluator,
 		node: Ast_Program,
 		allocator: runtime.Allocator,
@@ -21,39 +21,17 @@ Evaluator :: struct {
 		ObjectBase,
 		bool,
 	),
-	free: proc(e: ^Evaluator),
 }
 
-Evaluator_New :: proc() -> Evaluator {
-	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
-	arena_err := virtual.arena_init_growing(v)
-	ensure(arena_err == nil)
-	varena := virtual.arena_allocator(v)
-
-	new_env := Env_New(nil, varena)
-
-	e := Evaluator {
-		_env = new_env,
-		eval = eval_statements,
-		free = eval_free,
-		vmem = v,
-	}
-
-	return e
-}
-
-eval_free :: proc(e: ^Evaluator) {
-	virtual.arena_destroy(e.vmem)
-	free(e.vmem, context.allocator)
+Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
+	return Evaluator{_env = Env_New(nil, varena), eval = eval_statements, varena = varena}
 }
 
 eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
-	varena := virtual.arena_allocator(e.vmem)
-
 	strings.builder_reset(&e.sb)
 	fmt.sbprintf(&e.sb, str, ..args)
 	err := strings.to_string(e.sb)
-	str_clone := strings.clone(err, varena)
+	str_clone := strings.clone(err, e.varena)
 	return str_clone
 } // end <<Evaluator
 
@@ -65,12 +43,14 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		val, ok := eval(e, data.return_value^, current_env)
 		if !ok do return val, false
 		return ObjectReturn(ToObjectBase(val)), true
+
 	case Ast_Let:
 		val, ok := eval(e, data.value^, current_env)
 		if !ok do return val, false
 		_, ok = current_env->get(data.name)
 		if ok do return ObjectBase(eval_new_error(e, "identifier '%s' is already declared", data.name)), false
 		current_env->set(data.name, ToObjectBase(val))
+
 		return ObjectBase(NULL), true
 	// end <<statements
 	// expressions=>>begin
@@ -96,14 +76,13 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return eval_if_expression(e, data, current_env)
 
 	case Ast_Function:
-		varena := virtual.arena_allocator(e.vmem)
-		fn := new(ObjectFunction, varena) //$ heavy allocation
+		fn := new(ObjectFunction, e.varena) //$ heavy allocation
 
-		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), varena)
-		Ast__Copy__(&data.parameters, &fn.parameters, varena)
+		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.varena)
+		Ast__Copy__(&data.parameters, &fn.parameters, e.varena)
 
-		fn.body = make(Ast_Block, 0, len(data.body), varena)
-		Ast__Copy__(&data.body, &fn.body, varena)
+		fn.body = make(Ast_Block, 0, len(data.body), e.varena)
+		Ast__Copy__(&data.body, &fn.body, e.varena)
 
 		fn.env = current_env
 		return ObjectBase(fn), true
@@ -134,8 +113,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return ObjectBase(data), true
 
 	case string:
-		varena := virtual.arena_allocator(e.vmem)
-		return ObjectBase(strings.clone(data, varena)), true
+		return ObjectBase(strings.clone(data, e.varena)), true
 
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
@@ -182,8 +160,6 @@ eval_block_statements :: proc(
 	Object,
 	bool,
 ) {
-	varena := virtual.arena_allocator(e.vmem)
-
 	result: Object
 	ok: bool
 
@@ -195,7 +171,7 @@ eval_block_statements :: proc(
 	}
 
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
-		result = ObjectBase(strings.clone(str_obj, varena))
+		result = ObjectBase(strings.clone(str_obj, e.varena))
 	}
 
 	return result, true
@@ -495,9 +471,7 @@ eval_array_of_expressions_fixed :: proc(
 	[dynamic]ObjectBase,
 	bool,
 ) {
-	varena := virtual.arena_allocator(e.vmem)
-
-	args := make([dynamic]ObjectBase, 0, len(expressions), varena)
+	args := make([dynamic]ObjectBase, 0, len(expressions), e.varena)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
@@ -518,8 +492,7 @@ eval_array_of_expressions_registered :: proc(
 	ObjectArray,
 	bool,
 ) {
-	varena := virtual.arena_allocator(e.vmem)
-	args := make(ObjectArray, 0, len(expressions), varena)
+	args := make(ObjectArray, 0, len(expressions), e.varena)
 
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
@@ -536,8 +509,7 @@ extend_function_env :: proc(
 	fn: ^ObjectFunction,
 	args: [dynamic]ObjectBase,
 ) -> ^Environment {
-	varena := virtual.arena_allocator(e.vmem)
-	env := Env_Enclosed(fn.env, len(fn.parameters), varena)
+	env := Env_Enclosed(fn.env, len(fn.parameters), e.varena)
 
 	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
@@ -588,8 +560,7 @@ eval_hash_table_literal :: proc(
 	Object,
 	bool,
 ) {
-	varena := virtual.arena_allocator(e.vmem)
-	ht := make(ObjectHashTable, len(node.pairs), varena)
+	ht := make(ObjectHashTable, len(node.pairs), e.varena)
 
 	for pair in node.pairs {
 		key_obj, key_ok := eval(e, pair.key, current_env)

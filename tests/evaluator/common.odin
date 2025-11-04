@@ -14,29 +14,28 @@ eval_test_get :: proc(
 	monkey.ObjectBase,
 	monkey.Evaluator,
 	bool,
+	tc.Vmem,
 ) {
 	using monkey
 	using tc
 
 	v := new_vmem()
 	a := virtual.arena_allocator(v.a)
-	defer v->free()
 
 	p := Parser_New(input, a)
 
 	program := p->parse()
-	if parser_has_error(p) do return nil, Evaluator{}, false
+	if parser_has_error(p) do return nil, Evaluator{}, false, v
 
-	e := Evaluator_New() // Create the evaluator
-	evaluated, ok := e.eval(&e, program, context.allocator) // Evaluate the program
+	e := Evaluator_New(a) // Create the evaluator
+	evaluated, ok := e.eval(&e, program, a) // Evaluate the program
 
 	if !ok {
 		if print_errors do log.errorf("eval failed: %s", evaluated)
-		e->free()
-		return nil, Evaluator{}, false
+		return nil, Evaluator{}, false, v
 	}
 
-	return evaluated, e, true
+	return evaluated, e, true, v
 }
 
 eval_test_is_valid :: proc(
@@ -46,10 +45,11 @@ eval_test_is_valid :: proc(
 	monkey.ObjectBase,
 	monkey.Evaluator,
 	bool,
+	tc.Vmem,
 ) {
 	using monkey
-	evaluated, e, ok := eval_test_get(input, print_errors)
-	if !ok do return nil, Evaluator{}, false
-	return evaluated, e, ok
+	evaluated, e, ok, v := eval_test_get(input, print_errors)
+	if !ok do return nil, Evaluator{}, false, v
+	return evaluated, e, ok, v
 }
 
