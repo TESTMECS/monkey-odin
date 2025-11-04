@@ -102,6 +102,14 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 			}
 	case "choose":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Choose rand element from array">>
+				choose(arr)
+				$ arr :: int, int
+				Usage: choose([1,2,3])=>>1<<
+				`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,

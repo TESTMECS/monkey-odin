@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "builtins/bool.monkey"
+test_file := "math/choose.monkey"
 
 default: build test
 
