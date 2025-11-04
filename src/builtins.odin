@@ -472,6 +472,350 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				_, exists := hash_table[key_str]
 				return exists, true
 			}
+
+	case "sort":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'sort' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'sort' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				// Check if all elements are integers
+				for elem in arr {
+					_, ok := elem.(int)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'sort' function error: all elements must be integers, got '%v'",
+								ObjectType(elem),
+							),
+							false
+					}
+				}
+
+				varena := virtual.arena_allocator(e.vmem)
+				sorted_arr := make([dynamic]ObjectBase, len(arr), varena)
+				copy(sorted_arr[:], arr[:])
+
+				// Simple bubble sort for integers
+				for i := 0; i < len(sorted_arr); i += 1 {
+					for j := 0; j < len(sorted_arr) - i - 1; j += 1 {
+						a, _ := sorted_arr[j].(int)
+						b, _ := sorted_arr[j + 1].(int)
+						if a > b {
+							sorted_arr[j], sorted_arr[j + 1] = sorted_arr[j + 1], sorted_arr[j]
+						}
+					}
+				}
+
+				return ObjectArray(sorted_arr), true
+			}
+
+	case "reverse":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'reverse' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'reverse' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				varena := virtual.arena_allocator(e.vmem)
+				reversed_arr := make([dynamic]ObjectBase, len(arr), varena)
+				
+				arr_len := len(arr)
+				for i in 0..<arr_len {
+					reversed_arr[arr_len - 1 - i] = arr[i]
+				}
+
+				return ObjectArray(reversed_arr), true
+			}
+
+	case "slice":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 3 {
+					return eval_new_error(
+							e,
+							"'slice' function error: wrong number of arguments, wants='3', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'slice' function error: first argument must be array, got '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				start, start_ok := args[1].(int)
+				if !start_ok {
+					return eval_new_error(
+							e,
+							"'slice' function error: start index must be integer, got '%v'",
+							ObjectType(args[1]),
+						),
+						false
+				}
+
+				end, end_ok := args[2].(int)
+				if !end_ok {
+					return eval_new_error(
+							e,
+							"'slice' function error: end index must be integer, got '%v'",
+							ObjectType(args[2]),
+						),
+						false
+				}
+
+				if start < 0 || end > len(arr) || start > end {
+					return eval_new_error(
+							e,
+							"'slice' function error: invalid slice range [%d, %d] for array of length %d",
+							start, end, len(arr),
+						),
+						false
+				}
+
+				varena := virtual.arena_allocator(e.vmem)
+				sliced_arr := make([dynamic]ObjectBase, 0, varena)
+				append(&sliced_arr, ..arr[start:end])
+
+				return ObjectArray(sliced_arr), true
+			}
+
+	case "indexOf":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 2 {
+					return eval_new_error(
+							e,
+							"'indexOf' function error: wrong number of arguments, wants='2', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'indexOf' function error: first argument must be array, got '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				target := args[1]
+				for i in 0..<len(arr) {
+					elem := arr[i]
+					
+					// Check if types match first
+					if ObjectType(elem) != ObjectType(target) {
+						continue
+					}
+					
+					// Now compare based on the common type
+					#partial switch elem_val in elem {
+					case int:
+						#partial switch target_val in target {
+						case int:
+							if elem_val == target_val {
+								return i, true
+							}
+						}
+					case string:
+						#partial switch target_val in target {
+						case string:
+							if elem_val == target_val {
+								return i, true
+							}
+						}
+					case bool:
+						#partial switch target_val in target {
+						case bool:
+							if elem_val == target_val {
+								return i, true
+							}
+						}
+					}
+				}
+
+				return -1, true
+			}
+
+	case "sum":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'sum' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'sum' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				sum := 0
+				for elem in arr {
+					value, ok := elem.(int)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'sum' function error: all elements must be integers, got '%v'",
+								ObjectType(elem),
+							),
+							false
+					}
+					sum += value
+				}
+
+				return sum, true
+			}
+
+	case "min":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'min' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'min' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				if len(arr) == 0 {
+					return eval_new_error(
+							e,
+							"'min' function error: cannot find minimum of empty array",
+						),
+						false
+				}
+
+				// Check if all elements are integers
+				for elem in arr {
+					_, ok := elem.(int)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'min' function error: all elements must be integers, got '%v'",
+								ObjectType(elem),
+							),
+							false
+					}
+				}
+
+				min_val, _ := arr[0].(int)
+				for i := 1; i < len(arr); i += 1 {
+					value, _ := arr[i].(int)
+					if value < min_val {
+						min_val = value
+					}
+				}
+
+				return min_val, true
+			}
+
+	case "max":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'max' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'max' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				if len(arr) == 0 {
+					return eval_new_error(
+							e,
+							"'max' function error: cannot find maximum of empty array",
+						),
+						false
+				}
+
+				// Check if all elements are integers
+				for elem in arr {
+					_, ok := elem.(int)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'max' function error: all elements must be integers, got '%v'",
+								ObjectType(elem),
+							),
+							false
+					}
+				}
+
+				max_val, _ := arr[0].(int)
+				for i := 1; i < len(arr); i += 1 {
+					value, _ := arr[i].(int)
+					if value > max_val {
+						max_val = value
+					}
+				}
+
+				return max_val, true
+			}
 	}
 
 	return nil

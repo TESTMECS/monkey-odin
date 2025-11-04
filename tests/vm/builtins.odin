@@ -161,3 +161,94 @@ test_has :: proc(t: ^testing.T) {
 	run_vm_tests(t, tests)
 }
 
+@(test)
+test_sort :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`sort([]);`, []int{}},
+		{`sort([1]);`, []int{1}},
+		{`sort([3, 1, 2]);`, []int{1, 2, 3}},
+		{`sort([5, 4, 3, 2, 1]);`, []int{1, 2, 3, 4, 5}},
+		{`sort([1, 2, 3, 4, 5]);`, []int{1, 2, 3, 4, 5}},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_reverse :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`reverse([]);`, []int{}},
+		{`reverse([1]);`, []int{1}},
+		{`reverse([1, 2, 3]);`, []int{3, 2, 1}},
+		{`reverse(["a", "b", "c"]);`, []string{"c", "b", "a"}},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_slice :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`slice([1, 2, 3, 4, 5], 0, 3);`, []int{1, 2, 3}},
+		{`slice([1, 2, 3, 4, 5], 1, 4);`, []int{2, 3, 4}},
+		{`slice([1, 2, 3, 4, 5], 2, 5);`, []int{3, 4, 5}},
+		{`slice([1, 2, 3, 4, 5], 0, 0);`, []int{}},
+		{`slice(["a", "b", "c", "d"], 1, 3);`, []string{"b", "c"}},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_indexOf :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`indexOf([1, 2, 3, 4, 5], 3);`, 2},
+		{`indexOf([1, 2, 3, 4, 5], 1);`, 0},
+		{`indexOf([1, 2, 3, 4, 5], 5);`, 4},
+		{`indexOf([1, 2, 3, 4, 5], 6);`, -1},
+		{`indexOf(["a", "b", "c"], "b");`, 1},
+		{`indexOf(["a", "b", "c"], "d");`, -1},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_sum :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`sum([]);`, 0},
+		{`sum([1]);`, 1},
+		{`sum([1, 2, 3]);`, 6},
+		{`sum([5, 10, 15]);`, 30},
+		{`sum([-1, 1, -2, 2]);`, 0},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_min :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`min([1]);`, 1},
+		{`min([3, 1, 2]);`, 1},
+		{`min([5, 4, 3, 2, 1]);`, 1},
+		{`min([1, 2, 3, 4, 5]);`, 1},
+		{`min([-5, -1, -3]);`, -5},
+	}
+	run_vm_tests(t, tests)
+}
+
+@(test)
+test_max :: proc(t: ^testing.T) {
+	using tc
+	tests := []VM_Test_Cases {
+		{`max([1]);`, 1},
+		{`max([3, 1, 2]);`, 3},
+		{`max([5, 4, 3, 2, 1]);`, 5},
+		{`max([1, 2, 3, 4, 5]);`, 5},
+		{`max([-5, -1, -3]);`, -1},
+	}
+	run_vm_tests(t, tests)
+}
+
