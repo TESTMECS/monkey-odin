@@ -9,6 +9,37 @@ import "core:strings"
 
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
+	case "choose":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'choose' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				arr, ok := args[0].(ObjectArray)
+				if !ok {
+					return eval_new_error(
+							e,
+							"'choose' function error: not supported for argument of type '%v'",
+							ObjectType(args[0]),
+						),
+						false
+				}
+
+				if len(arr) == 0 {
+					return eval_new_error(
+							e,
+							"'choose' function error: cannot choose from empty array",
+						),
+						false
+				}
+
+				return arr[int(rand.int31()) % len(arr)], true
+			}
 	case "rand":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 0 {

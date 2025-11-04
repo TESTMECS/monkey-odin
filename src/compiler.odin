@@ -45,26 +45,25 @@ Compiler :: struct {
 }
 
 Compiler__New__ :: proc() -> Compiler {
-	compiler := Compiler {
-		compiler_state               = Compiler_State_New(),
-		scopes_idx                   = 0,
-		compile_program              = compile_program,
-		compile                      = compile,
-		emit                         = emit,
-		bytecode                     = bytecode,
-		enter_scope                  = enter_scope,
-		leave_scope                  = leave_scope,
-		current_instructions         = current_instructions,
-		set_last_instruction         = set_last_instruction,
-		add_instructions             = add_instructions,
+	return Compiler {
+		compiler_state = Compiler_State_New(),
+		scopes_idx = 0,
+		compile_program = compile_program,
+		compile = compile,
+		emit = emit,
+		bytecode = bytecode,
+		enter_scope = enter_scope,
+		leave_scope = leave_scope,
+		current_instructions = current_instructions,
+		set_last_instruction = set_last_instruction,
+		add_instructions = add_instructions,
 		replace_last_pop_with_return = replace_last_pop_with_return,
-		add_constant                 = add_constant,
-		remove_last_pop              = remove_last_pop,
-		last_instruction_is          = last_instruction_is,
-		replace_instructions         = replace_instructions,
-		change_operand               = change_operand,
+		add_constant = add_constant,
+		remove_last_pop = remove_last_pop,
+		last_instruction_is = last_instruction_is,
+		replace_instructions = replace_instructions,
+		change_operand = change_operand,
 	}
-	return compiler
 }
 
 compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {

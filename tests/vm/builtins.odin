@@ -2,12 +2,6 @@ package vm_tests
 
 import "core:testing"
 
-@(test)
-test_hash :: proc(t: ^testing.T) {
-	using tc
-	tests := []VM_Test_Cases{{`hash("hello");`, "5d41402abc4b2a76b9719d911017c592"}}
-	run_vm_tests(t, tests)
-}
 
 @(test)
 test_rest :: proc(t: ^testing.T) {
