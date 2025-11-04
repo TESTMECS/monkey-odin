@@ -164,6 +164,14 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "hash":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Hash string">>
+				hash(str)
+				$ str
+				Usage: hash("monkey")=>>123456789<<
+				`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,

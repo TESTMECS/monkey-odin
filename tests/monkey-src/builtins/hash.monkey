@@ -1,3 +1,4 @@
-#!/usr/bin/env monkey
+#!/usr/bin/env monkey -- "hello"
 
-hash("hello");
+let h = args()[0];
+hash(h);
