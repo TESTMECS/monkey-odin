@@ -2,8 +2,9 @@ default: build test
 
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "builtins/hash.monkey"
+test_file := "builtins/first.monkey"
 
+# for file tests
 alias t := test
 test:
 	echo "Running test {{test_file}}"
@@ -17,6 +18,7 @@ alias r := run
 run ARGS:
 	{{exe}} {{ARGS}}
 
+# for odin tests. 
 alias ta := test-all
 test-all:
 	odin test ./tests -all-packages
