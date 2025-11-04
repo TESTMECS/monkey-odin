@@ -1,7 +1,6 @@
 # Monkey Compiler in Odin.
 
 ## TODO:
-1. Add floats.
 2. Better VM ERRORS.
 
 

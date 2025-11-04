@@ -2,6 +2,7 @@ package monkey
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:os"
 import "core:strings"
 import "core:terminal/ansi"
@@ -29,6 +30,36 @@ Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool) {
 
 	last_popped := vm->last_popped()
 	monkey_result(last_popped, sb, exit) //exit:=true
+}
+
+Monkey_Read_File :: proc(
+	file_path: string,
+	sb: ^strings.Builder,
+	allocator: mem.Allocator,
+) -> (
+	stmts: string,
+) {
+	// Read file path and return its string contents.
+	if !os.exists(file_path) do monkey_err("File does not exist", 1, sb)
+
+	f, err := os.open(file_path, os.O_RDONLY)
+	if err != nil do monkey_err("Error opening file", 1, sb)
+	defer os.close(f)
+
+	contents, ok := os.read_entire_file_from_handle(f)
+	ensure(ok)
+	str_contents := strings.clone_from_bytes(contents, allocator)
+
+	if strings.starts_with(str_contents, "#!") {
+		if idx := strings.index_byte(str_contents, '\n'); idx >= 0 {
+			str_contents = str_contents[idx + 1:]
+		} else {
+			str_contents = ""
+		}
+	} else {
+		str_contents = strings.trim_space(str_contents)
+	}
+	return str_contents
 }
 
 monkey_parser_has_error :: proc(p: Parser) -> bool {
