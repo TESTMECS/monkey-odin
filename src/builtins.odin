@@ -2,12 +2,27 @@ package monkey
 
 import "core:crypto/hash"
 import "core:fmt"
+import "core:math/rand"
 import "core:mem/virtual"
 import "core:strconv"
 import "core:strings"
 
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
+	case "rand":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 0 {
+					return eval_new_error(
+							e,
+							"'rand' function error: wrong number of arguments, wants='0', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				return int(rand.int31()), true
+			}
+
 	case "hash":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				varena := virtual.arena_allocator(e.vmem)
@@ -548,9 +563,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 				varena := virtual.arena_allocator(e.vmem)
 				reversed_arr := make([dynamic]ObjectBase, len(arr), varena)
-				
+
 				arr_len := len(arr)
-				for i in 0..<arr_len {
+				for i in 0 ..< arr_len {
 					reversed_arr[arr_len - 1 - i] = arr[i]
 				}
 
@@ -602,7 +617,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					return eval_new_error(
 							e,
 							"'slice' function error: invalid slice range [%d, %d] for array of length %d",
-							start, end, len(arr),
+							start,
+							end,
+							len(arr),
 						),
 						false
 				}
@@ -636,14 +653,14 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				}
 
 				target := args[1]
-				for i in 0..<len(arr) {
+				for i in 0 ..< len(arr) {
 					elem := arr[i]
-					
+
 					// Check if types match first
 					if ObjectType(elem) != ObjectType(target) {
 						continue
 					}
-					
+
 					// Now compare based on the common type
 					#partial switch elem_val in elem {
 					case int:
