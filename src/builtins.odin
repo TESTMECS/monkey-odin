@@ -9,6 +9,75 @@ import "core:strings"
 
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
+	case "bool":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'bool' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				#partial switch arg in args[0] {
+				case string:
+					value, ok := strconv.parse_bool(arg)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'bool' function error: cannot convert '%s' to bool",
+								arg,
+							),
+							false
+					}
+					return value, true
+				case int:
+					return arg != 0, true
+				}
+
+				return eval_new_error(
+						e,
+						"'bool' function error: not supported for argument of type '%v'",
+						ObjectType(args[0]),
+					),
+					false
+			}
+	case "float":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'float' function error: wrong number of arguments, wants='1', got='%d'",
+							len(args),
+						),
+						false
+				}
+
+				#partial switch arg in args[0] {
+				case string:
+					value, ok := strconv.parse_f64(arg)
+					if !ok {
+						return eval_new_error(
+								e,
+								"'float' function error: cannot convert '%s' to float",
+								arg,
+							),
+							false
+					}
+					return value, true
+				case int:
+					return f64(arg), true
+				}
+
+				return eval_new_error(
+						e,
+						"'float' function error: not supported for argument of type '%v'",
+						ObjectType(args[0]),
+					),
+					false
+			}
 	case "choose":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				if len(args) != 1 {
@@ -230,6 +299,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					ObjectInspect(arg, &e.sb)
 					fmt.sbprintln(&e.sb)
 				}
+				dbg(strings.to_string(e.sb)) // also print for multiple statements.
 
 				return strings.to_string(e.sb), true
 			}
@@ -266,7 +336,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						),
 						false
 				}
-
 				strings.builder_reset(&e.sb)
 				fmt.sbprintf(&e.sb, format_str, args[1:])
 				return strings.to_string(e.sb), true

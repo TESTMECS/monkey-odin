@@ -4,3 +4,6 @@ puts(x + y);
 puts(x * y);
 puts(1 + 2.5);
 puts(1.5 + 2);
+
+puts(float("1.5"));
+puts(float(1));
