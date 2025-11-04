@@ -55,10 +55,10 @@ main :: proc() {
 			fmt.print(">> ")
 			// readline
 			line, err := bufio.reader_read_string(&reader, '\n')
-			if err != nil do monkey_err("Error reading input", 1, &sb)
+			if err != nil do monkey_err("Error reading input", 1, &sb, false, err)
 			line = strings.trim_space(line)
 			if line == "exit" do monkey_result(nil, &sb, true) // exit
-			Monkey_Run_String(line, &sb, false, varena)
+			Monkey_Run_String(line, &sb, false, varena) // don't exit
 		} //<<repl
 	case "file":
 		stmts := Monkey_Read_File(os.args[2], &sb, varena)
@@ -71,7 +71,7 @@ main :: proc() {
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
 		//expand macros
 		expanded_program, expand_err := expand_macros(program, varena)
-		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, expand_err)
+		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, true, expand_err)
 		//print expanded program
 		strings.builder_reset(&sb)
 		ast_to_string(expanded_program, &sb)

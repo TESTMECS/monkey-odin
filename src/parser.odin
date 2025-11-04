@@ -20,13 +20,12 @@ Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
 	// Initialize precedences
 	init_precedences()
 
-	p := Parser {
+	return Parser {
 		varena = varena,
 		errors = make([dynamic]string, 0, varena),
-		l      = Lexer_New(input),
-		parse  = parse_program,
+		l = Lexer_New(input),
+		parse = parse_program,
 	}
-	return p
 }
 
 parse_program :: proc(p: ^Parser) -> Ast_Program {
