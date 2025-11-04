@@ -983,10 +983,18 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "indexOf":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get index of element in array">>
+				indexOf(arr, elem)
+				$ arr :: int, int
+				$ elem :: int
+				Usage: indexOf([1,2,3], 2)=>>1<<`
+
+
 				if len(args) != 2 {
 					return eval_new_error(
 							e,
-							"'indexOf' function error: wrong number of arguments, wants='2', got='%d'",
+							"'indexOf' function error: wrong number of arguments, wants='2', got='%d'.%s",
 							len(args),
 						),
 						false
@@ -996,7 +1004,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !ok {
 					return eval_new_error(
 							e,
-							"'indexOf' function error: first argument must be array, got '%v'",
+							"'indexOf' function error: first argument must be array, got '%v'.%s",
 							ObjectType(args[0]),
 						),
 						false
@@ -1042,11 +1050,19 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "sum":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get sum of array">>
+				sum(arr)
+				$ arr :: int, int
+				Usage: sum([1,2,3])=>>6<<`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'sum' function error: wrong number of arguments, wants='1', got='%d'",
+							"'sum' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -1055,8 +1071,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !ok {
 					return eval_new_error(
 							e,
-							"'sum' function error: not supported for argument of type '%v'",
+							"'sum' function error: not supported for argument of type '%v'.%s",
 							ObjectType(args[0]),
+							usage,
 						),
 						false
 				}
@@ -1067,8 +1084,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					if !ok {
 						return eval_new_error(
 								e,
-								"'sum' function error: all elements must be integers, got '%v'",
+								"'sum' function error: all elements must be integers, got '%v'.%s",
 								ObjectType(elem),
+								usage,
 							),
 							false
 					}
@@ -1080,11 +1098,19 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "min":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get min value of array">>
+				min(arr)
+				$ arr :: int, int
+				Usage: min([1,2,3])=>>1<<`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'min' function error: wrong number of arguments, wants='1', got='%d'",
+							"'min' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -1093,8 +1119,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !ok {
 					return eval_new_error(
 							e,
-							"'min' function error: not supported for argument of type '%v'",
+							"'min' function error: not supported for argument of type '%v'.%s",
 							ObjectType(args[0]),
+							usage,
 						),
 						false
 				}
@@ -1102,7 +1129,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if len(arr) == 0 {
 					return eval_new_error(
 							e,
-							"'min' function error: cannot find minimum of empty array",
+							"'min' function error: cannot find minimum of empty array.%s",
+							usage,
 						),
 						false
 				}
@@ -1113,8 +1141,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					if !ok {
 						return eval_new_error(
 								e,
-								"'min' function error: all elements must be integers, got '%v'",
+								"'min' function error: all elements must be integers, got '%v'.%s",
 								ObjectType(elem),
+								usage,
 							),
 							false
 					}
@@ -1133,11 +1162,19 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "max":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get max value of array">>
+				max(arr)
+				$ arr :: int, int
+				Usage: max([1,2,3])=>>3<<`
+
+
 				if len(args) != 1 {
 					return eval_new_error(
 							e,
-							"'max' function error: wrong number of arguments, wants='1', got='%d'",
+							"'max' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
@@ -1146,8 +1183,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if !ok {
 					return eval_new_error(
 							e,
-							"'max' function error: not supported for argument of type '%v'",
+							"'max' function error: not supported for argument of type '%v'.%s",
 							ObjectType(args[0]),
+							usage,
 						),
 						false
 				}
@@ -1155,7 +1193,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				if len(arr) == 0 {
 					return eval_new_error(
 							e,
-							"'max' function error: cannot find maximum of empty array",
+							"'max' function error: cannot find maximum of empty array.%s",
+							usage,
 						),
 						false
 				}
@@ -1165,8 +1204,9 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					if !ok {
 						return eval_new_error(
 								e,
-								"'max' function error: all elements must be integers, got '%v'",
+								"'max' function error: all elements must be integers, got '%v'.%s",
 								ObjectType(elem),
+								usage,
 							),
 							false
 					}
@@ -1185,11 +1225,19 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 	case "args":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get args">>
+				args()
+				$ none
+				Usage: args()=>>["arg1", "arg2"]<<`
+
+
 				if len(args) != 0 {
 					return eval_new_error(
 							e,
-							"'args' function error: wrong number of arguments, wants='0', got='%d'",
+							"'args' function error: wrong number of arguments, wants='0', got='%d'.%s",
 							len(args),
+							usage,
 						),
 						false
 				}
