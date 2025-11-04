@@ -98,7 +98,7 @@ next_token :: proc(p: ^Parser) {
 // Precedence=>>begin
 Precedence :: enum {
 	Lowest, // 0
-	Assign,  // Assignment precedence
+	Assign, // Assignment precedence
 	Equals,
 	Less_Greater,
 	Sum,
@@ -109,43 +109,46 @@ Precedence :: enum {
 }
 
 GetPrecedence: [Token_Type]Precedence
-
+/* 
+ All suitable procedures marked in this way by @(init) will then be called at the start of the program before main is called. The exact order in which all such intialization functions are called is deterministic and hence reliable. The order is determined by a topological sort of the import graph and then in alphabetical file order within the package and then top down within the file.
+ */
+@(init) //wonder if this does bad things.
 init_precedences :: proc() {
 	GetPrecedence = {
-		.Plus         = .Sum,
-		.Minus        = .Sum,
-		.Asterisk     = .Product,
-		.Slash        = .Product,
-		.Less_Than    = .Less_Greater,
-		.Greater_Than = .Less_Greater,
-		.Equal        = .Equals,
-		.Not_Equal    = .Equals,
-		.Assign       = .Assign,  // Assignment has lowest precedence
-		.Left_Paren   = .Call,
-		.Left_Bracket = .Index,
+		.Plus          = .Sum,
+		.Minus         = .Sum,
+		.Asterisk      = .Product,
+		.Slash         = .Product,
+		.Less_Than     = .Less_Greater,
+		.Greater_Than  = .Less_Greater,
+		.Equal         = .Equals,
+		.Not_Equal     = .Equals,
+		.Assign        = .Assign, // Assignment has lowest precedence
+		.Left_Paren    = .Call,
+		.Left_Bracket  = .Index,
 		// Default cases for tokens that don't have precedence
-		.Illegal      = .Lowest,
-		.EOF          = .Lowest,
-		.Identifier   = .Lowest,
-		.Int          = .Lowest,
-		.String       = .Lowest,
-		.Bang         = .Lowest,
-		.Comma        = .Lowest,
-		.Semicolon    = .Lowest,
-		.Colon        = .Lowest,
-		.Right_Paren  = .Lowest,
-		.Left_Brace   = .Lowest,
-		.Right_Brace  = .Lowest,
-		.Right_Bracket= .Lowest,
-		.Function     = .Lowest,
-		.Let          = .Lowest,
-		.True         = .Lowest,
-		.False        = .Lowest,
-		.If           = .Lowest,
-		.Else         = .Lowest,
-		.Return       = .Lowest,
-		.Macro        = .Lowest,
-		.For          = .Lowest,
+		.Illegal       = .Lowest,
+		.EOF           = .Lowest,
+		.Identifier    = .Lowest,
+		.Int           = .Lowest,
+		.String        = .Lowest,
+		.Bang          = .Lowest,
+		.Comma         = .Lowest,
+		.Semicolon     = .Lowest,
+		.Colon         = .Lowest,
+		.Right_Paren   = .Lowest,
+		.Left_Brace    = .Lowest,
+		.Right_Brace   = .Lowest,
+		.Right_Bracket = .Lowest,
+		.Function      = .Lowest,
+		.Let           = .Lowest,
+		.True          = .Lowest,
+		.False         = .Lowest,
+		.If            = .Lowest,
+		.Else          = .Lowest,
+		.Return        = .Lowest,
+		.Macro         = .Lowest,
+		.For           = .Lowest,
 	}
 }
 
@@ -205,7 +208,17 @@ parse_string_literal :: proc(p: ^Parser) -> Node {
 }
 
 parse_integer_literal :: proc(p: ^Parser) -> Node {
-	value, ok := strconv.parse_int(string(p.cur_token.text_slice))
+	// trying to parse as float first.
+	text := string(p.cur_token.text_slice)
+	if strings.contains(text, ".") {
+		value, ok := strconv.parse_f64(text)
+		if !ok {
+			parser_new_error(p, "could not parse %s as float", p.l.input)
+			return nil
+		}
+		return value
+	}
+	value, ok := strconv.parse_int(text)
 	if !ok {
 		parser_new_error(p, "could not parse %s as integer", p.l.input)
 		return nil

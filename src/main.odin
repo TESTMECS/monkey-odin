@@ -40,9 +40,6 @@ main :: proc() {
 		monkey_err(err_msg, 1, &sb)
 	}
 
-	evaluator := Evaluator_New()
-	defer evaluator->free()
-
 	switch os.args[1] {
 	case "repl":
 		reader: bufio.Reader
@@ -52,27 +49,19 @@ main :: proc() {
 			ansi.CSI + ansi.FG_BRIGHT_GREEN + ansi.SGR + "Monkey REPL. Type 'exit' to quit.",
 			ansi.CSI + ansi.RESET + ansi.SGR,
 		)
-		for {
+		for { 	//repl=>>begin
 			fmt.print(">> ")
+			// readline
 			line, err := bufio.reader_read_string(&reader, '\n')
 			if err != nil do monkey_err("Error reading input", 1, &sb)
 			line = strings.trim_space(line)
-			if line == "exit" do monkey_result(nil, &sb, true)
 
-			p := Parser__New__(line)
-			program := p->parse()
-			defer p->free()
-
-			if monkey_parser_has_error(p) do continue
-
-			result, ok := evaluator.eval(&evaluator, program, varena)
-			if !ok do monkey_err("Error evaluating expression", 1, &sb)
-			if ok do monkey_result(result, &sb, false)
-		}
+			if line == "exit" do monkey_result(nil, &sb, true) // exit
+			Monkey_Run_String(line, &sb, false)
+		} //<<repl
 	case "file":
 		file_path := os.args[2]
 		if !os.exists(file_path) do monkey_err("File does not exist", 1, &sb)
-		dbg("file_path=%v", file_path)
 
 		f, err := os.open(file_path, os.O_RDONLY)
 		if err != nil do monkey_err("Error opening file", 1, &sb)
@@ -92,29 +81,7 @@ main :: proc() {
 			str_contents = strings.trim_space(str_contents)
 		}
 		stmts := str_contents
-		dbg("stmts=%v", str_contents)
-
-		p := Parser__New__(stmts)
-		defer p->free()
-
-		program := p->parse()
-		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
-
-		c := Compiler__New__()
-		defer c->free()
-		compile_err := c->compile_program(program)
-		if compile_err != "" do monkey_err("Error compiling file", 1, &sb, compile_err)
-
-		bytecode := c->bytecode()
-
-		vm := Vm_New(bytecode, &c.compiler_state)
-		defer vm->free_vm()
-
-		vm_err := vm->run_vm()
-		if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, &sb, vm_err)
-
-		last_popped := vm->last_popped()
-		monkey_result(last_popped, &sb, true)
+		Monkey_Run_String(str_contents, &sb, true)
 	case "mexpand":
 		file_path := os.args[2]
 		if !os.exists(file_path) do monkey_err("File does not exist", 1, &sb)
@@ -150,6 +117,7 @@ main :: proc() {
 		strings.builder_reset(&sb)
 		ast_to_string(expanded_program, &sb)
 		fmt.println(strings.to_string(sb))
+
 	case "help":
 		fmt.println(HELPMSG)
 	}

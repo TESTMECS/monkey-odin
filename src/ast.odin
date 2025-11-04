@@ -6,6 +6,7 @@ import "core:reflect"
 import "core:strings"
 
 Node :: union {
+	f64,
 	int,
 	bool,
 	string,
@@ -128,7 +129,7 @@ ast_to_string_value :: proc(ast: Node, sb: ^strings.Builder) {
 @(private = "file")
 ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 	#partial switch data in ast {
-	case bool, int, string:
+	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
 
 	case Ast_Program:
@@ -293,7 +294,7 @@ Ast__Copy__ :: proc {
 
 ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 	#partial switch &data in ast {
-	case int, bool:
+	case int, bool, f64:
 		return data
 
 	case string:

@@ -54,6 +54,13 @@ create_number :: proc(l: ^Lexer) -> Token {
 	start := l.pos
 
 	for is_digit(l.ch) do read_char(l)
+	
+	// Handle decimal point for floating point numbers
+	if l.ch == '.' {
+		read_char(l)
+		for is_digit(l.ch) do read_char(l)
+		return GetToken(.Int, l.input, start, l.pos - start) // Still use .Int token, parser will handle float detection
+	}
 
 	return GetToken(.Int, l.input, start, l.pos - start)
 }

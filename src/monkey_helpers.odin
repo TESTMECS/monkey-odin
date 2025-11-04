@@ -6,6 +6,31 @@ import "core:os"
 import "core:strings"
 import "core:terminal/ansi"
 
+
+Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool) {
+	p := Parser__New__(stmts)
+	defer p->free()
+
+	program := p->parse()
+	if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, sb)
+
+	c := Compiler__New__()
+	defer c->free()
+	compile_err := c->compile_program(program)
+	if compile_err != "" do monkey_err("Error compiling file", 1, sb, compile_err)
+
+	bytecode := c->bytecode()
+
+	vm := Vm_New(bytecode, &c.compiler_state)
+	defer vm->free_vm()
+
+	vm_err := vm->run_vm()
+	if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, sb, vm_err)
+
+	last_popped := vm->last_popped()
+	monkey_result(last_popped, sb, exit) //exit:=true
+}
+
 monkey_parser_has_error :: proc(p: Parser) -> bool {
 	if len(p.errors) == 0 do return false
 	log.errorf("parser has %d errors", len(p.errors))

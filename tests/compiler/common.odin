@@ -11,6 +11,7 @@ import "core:testing"
 @(private = "file")
 Compiler_Test_Data :: union {
 	int,
+	f64,
 	string,
 	[]monkey.Instructions,
 }
@@ -92,6 +93,8 @@ test_constants :: proc(
 		switch constant_value in constant {
 		case int:
 			err = test_integer_object(constant_value, actual[i])
+		case f64:
+			err = test_float_object(constant_value, actual[i])
 		case string:
 			err = test_string_object(constant_value, actual[i])
 		case []Instructions:

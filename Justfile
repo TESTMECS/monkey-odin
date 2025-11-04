@@ -30,3 +30,6 @@ alias cp := commit-push
 commit-push MSG:
 	git add . && git commit -m "{{MSG}}" && git push
 
+alias re := repl
+repl:
+	just build && just run repl

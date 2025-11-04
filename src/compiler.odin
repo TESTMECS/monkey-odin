@@ -295,6 +295,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->change_operand(jump_back_pos, condition_start_pos)
 	case int:
 		c->emit(.Cnst, c->add_constant(data)) // returns 0
+	case f64:
+		c->emit(.Cnst, c->add_constant(data)) // returns 0
 	case bool:
 		c->emit(.True if data else .False)
 	case string:

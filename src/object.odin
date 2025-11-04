@@ -44,6 +44,7 @@ ObjectCompiledFunction :: struct {
 
 ObjectBase :: union {
 	int,
+	f64,
 	bool,
 	string,
 	ObjectNil,
@@ -139,7 +140,7 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 	obj := o
 	obj_base := ToObjectBase(obj)
 	#partial switch data in obj_base {
-	case bool, int, string:
+	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
 	case ObjectNil:
 		fmt.sbprint(sb, "(null)")

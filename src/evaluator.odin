@@ -283,6 +283,45 @@ eval_integer_infix_expression :: proc(
 }
 
 @(private = "file")
+eval_float_infix_expression :: proc(
+	e: ^Evaluator,
+	op: string,
+	left: f64,
+	right: f64,
+) -> (
+	ObjectBase,
+	bool,
+) {
+	switch op {
+	case "+":
+		return left + right, true
+
+	case "-":
+		return left - right, true
+
+	case "*":
+		return left * right, true
+
+	case "/":
+		return left / right, true
+
+	case "<":
+		return left < right, true
+
+	case ">":
+		return left > right, true
+
+	case "==":
+		return left == right, true
+
+	case "!=":
+		return left != right, true
+	}
+
+	return eval_new_error(e, "unknown float infix operator '%s'", op), false
+}
+
+@(private = "file")
 eval_string_infix_expression :: proc(
 	e: ^Evaluator,
 	op: string,
@@ -312,6 +351,14 @@ eval_infix_expression :: proc(
 ) {
 	if Ast__Type__(left) == int && Ast__Type__(right) == int {
 		return eval_integer_infix_expression(e, op, left.(int), right.(int))
+	} else if Ast__Type__(left) == f64 && Ast__Type__(right) == f64 {
+		return eval_float_infix_expression(e, op, left.(f64), right.(f64))
+	} else if Ast__Type__(left) == int && Ast__Type__(right) == f64 {
+		// Promote int to f64 and use float operations
+		return eval_float_infix_expression(e, op, f64(left.(int)), right.(f64))
+	} else if Ast__Type__(left) == f64 && Ast__Type__(right) == int {
+		// Promote int to f64 and use float operations
+		return eval_float_infix_expression(e, op, left.(f64), f64(right.(int)))
 	} else if Ast__Type__(left) == string && Ast__Type__(right) == string {
 		return eval_string_infix_expression(e, op, left.(string), right.(string))
 	}
@@ -328,13 +375,22 @@ eval_infix_expression :: proc(
 		case ObjectNil:
 			// always false
 			return false, true
-		case int, string, bool:
+		case int, f64, string, bool:
 			// make sure to compare bools by value
 			if ObjectType(left) == bool && ObjectType(right) == bool {
 				return left.(bool) == right.(bool), true
 			}
 			if ObjectType(left) == int && ObjectType(right) == int {
 				return left.(int) == right.(int), true
+			}
+			if ObjectType(left) == f64 && ObjectType(right) == f64 {
+				return left.(f64) == right.(f64), true
+			}
+			if ObjectType(left) == int && ObjectType(right) == f64 {
+				return f64(left.(int)) == right.(f64), true
+			}
+			if ObjectType(left) == f64 && ObjectType(right) == int {
+				return left.(f64) == f64(right.(int)), true
 			}
 			if ObjectType(left) == string && ObjectType(right) == string {
 				return left.(string) == right.(string), true
@@ -351,12 +407,21 @@ eval_infix_expression :: proc(
 			return eval_new_error(e, "cannot compare arrays with '=='"), false
 		case ObjectNil:
 			return true, true
-		case int, string, bool:
+		case int, f64, string, bool:
 			if ObjectType(left) == bool && ObjectType(right) == bool {
 				return left.(bool) == right.(bool), true
 			}
 			if ObjectType(left) == int && ObjectType(right) == int {
 				return left.(int) == right.(int), true
+			}
+			if ObjectType(left) == f64 && ObjectType(right) == f64 {
+				return left.(f64) == right.(f64), true
+			}
+			if ObjectType(left) == int && ObjectType(right) == f64 {
+				return f64(left.(int)) == right.(f64), true
+			}
+			if ObjectType(left) == f64 && ObjectType(right) == int {
+				return left.(f64) == f64(right.(int)), true
 			}
 			if ObjectType(left) == string && ObjectType(right) == string {
 				return left.(string) == right.(string), true

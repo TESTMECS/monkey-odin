@@ -43,9 +43,11 @@ VM :: struct {
 	last_popped:            proc(v: ^VM) -> ObjectBase,
 	exec_binary_op:         proc(v: ^VM, op: Opcode) -> (err: string),
 	exec_binary_int_op:     proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string),
+	exec_binary_float_op:   proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string),
 	exec_binary_string_op:  proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string),
 	exec_compare_op:        proc(v: ^VM, op: Opcode) -> (err: string),
 	exec_compare_int_op:    proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string),
+	exec_compare_float_op:  proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string),
 	exec_not_op:            proc(v: ^VM) -> (err: string),
 	exec_neg_op:            proc(v: ^VM) -> (err: string),
 	exec_idx_expr:          proc(v: ^VM, operand, index: ObjectBase) -> (err: string),
@@ -90,9 +92,11 @@ Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State) -> VM {
 		stack_top             = stack_top,
 		exec_binary_op        = exec_binary_op,
 		exec_binary_int_op    = exec_binary_int_op,
+		exec_binary_float_op  = exec_binary_float_op,
 		exec_binary_string_op = exec_binary_string_op,
 		exec_compare_op       = exec_compare_op,
 		exec_compare_int_op   = exec_compare_int_op,
+		exec_compare_float_op = exec_compare_float_op,
 		exec_not_op           = exec_not_op,
 		exec_neg_op           = exec_neg_op,
 		exec_idx_expr         = exec_idx_expr,
@@ -257,11 +261,21 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 
 	_, left_is_int := left.(int)
 	_, right_is_int := right.(int)
+	_, left_is_float := left.(f64)
+	_, right_is_float := right.(f64)
 	_, left_is_string := left.(string)
 	_, right_is_string := right.(string)
 
 	if left_is_int && right_is_int {
 		return v->exec_binary_int_op(op, left.(int), right.(int))
+	} else if left_is_float && right_is_float {
+		return v->exec_binary_float_op(op, left.(f64), right.(f64))
+	} else if left_is_int && right_is_float {
+		// Promote int to float
+		return v->exec_binary_float_op(op, f64(left.(int)), right.(f64))
+	} else if left_is_float && right_is_int {
+		// Promote int to float
+		return v->exec_binary_float_op(op, left.(f64), f64(right.(int)))
 	} else if left_is_string && right_is_string {
 		return v->exec_binary_string_op(op, left.(string), right.(string))
 	}
@@ -296,6 +310,26 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 	return v->push_vm(result)
 }
 
+exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
+	result: f64
+
+	#partial switch op {
+	case .Add:
+		result = left + right
+	case .Sub:
+		result = left - right
+	case .Mul:
+		result = left * right
+	case .Div:
+		result = left / right
+	case:
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown float infix operator '%s'", op)
+		return strings.to_string(v.sb)
+	}
+	return v->push_vm(result)
+}
+
 exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
 	varena := virtual.arena_allocator(v.vmem)
 	result: string
@@ -319,9 +353,19 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 
 	right_val, right_is_int := right.(int)
 	left_val, left_is_int := left.(int)
+	right_val_f, right_is_float := right.(f64)
+	left_val_f, left_is_float := left.(f64)
 
 	if right_is_int && left_is_int {
 		return v->exec_compare_int_op(op, left_val, right_val)
+	} else if right_is_float && left_is_float {
+		return v->exec_compare_float_op(op, left_val_f, right_val_f)
+	} else if right_is_int && left_is_float {
+		// Promote int to float
+		return v->exec_compare_float_op(op, left_val_f, f64(right_val))
+	} else if right_is_float && left_is_int {
+		// Promote int to float
+		return v->exec_compare_float_op(op, f64(left_val), right_val_f)
 	}
 	#partial switch op {
 	case .Eq:
@@ -347,6 +391,16 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 			return v->push_vm(left.(string) == right.(string))
 		} else if left_is_bool {
 			return v->push_vm(left.(bool) == right.(bool))
+		} else if left_val_f, left_is_float := left.(f64); left_is_float {
+			if right_val_f, right_is_float := right.(f64); right_is_float {
+				return v->push_vm(left_val_f == right_val_f)
+			} else if right_val, right_is_int := right.(int); right_is_int {
+				return v->push_vm(left_val_f == f64(right_val))
+			}
+		} else if left_val, left_is_int := left.(int); left_is_int {
+			if right_val_f, right_is_float := right.(f64); right_is_float {
+				return v->push_vm(f64(left_val) == right_val_f)
+			}
 		}
 		return v->push_vm(false)
 	case .Neq:
@@ -372,6 +426,16 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 			return v->push_vm(left.(string) != right.(string))
 		} else if left_is_bool {
 			return v->push_vm(left.(bool) != right.(bool))
+		} else if left_val_f, left_is_float := left.(f64); left_is_float {
+			if right_val_f, right_is_float := right.(f64); right_is_float {
+				return v->push_vm(left_val_f != right_val_f)
+			} else if right_val, right_is_int := right.(int); right_is_int {
+				return v->push_vm(left_val_f != f64(right_val))
+			}
+		} else if left_val, left_is_int := left.(int); left_is_int {
+			if right_val_f, right_is_float := right.(f64); right_is_float {
+				return v->push_vm(f64(left_val) != right_val_f)
+			}
 		}
 		return v->push_vm(false)
 	}
@@ -397,6 +461,23 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 	return v->push_vm(result)
 }
 
+exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
+	result: bool
+	#partial switch op {
+	case .Eq:
+		result = left == right
+	case .Neq:
+		result = left != right
+	case .Gt:
+		result = left > right
+	case:
+		strings.builder_reset(&v.sb)
+		fmt.sbprintf(&v.sb, "unknown float infix operator '%s'", op)
+		return strings.to_string(v.sb)
+	}
+	return v->push_vm(result)
+}
+
 exec_not_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	#partial switch operand in o {
@@ -413,9 +494,13 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	operand, ok := o.(int)
 	if !ok {
-		strings.builder_reset(&v.sb)
-		fmt.sbprintf(&v.sb, "unknown operator: '-' on type '%v'", ObjectType(o))
-		return strings.to_string(v.sb)
+		operand_f, ok_f := o.(f64)
+		if !ok_f {
+			strings.builder_reset(&v.sb)
+			fmt.sbprintf(&v.sb, "unknown operator: '-' on type '%v'", ObjectType(o))
+			return strings.to_string(v.sb)
+		}
+		return v->push_vm(-operand_f)
 	}
 	return v->push_vm(-operand)
 }
