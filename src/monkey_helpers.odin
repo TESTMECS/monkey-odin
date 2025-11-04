@@ -8,9 +8,9 @@ import "core:strings"
 import "core:terminal/ansi"
 
 
-Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool) {
-	p := Parser__New__(stmts)
-	defer p->free()
+Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool, varena: mem.Allocator) {
+	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
+	p := Parser_New(stmts, varena)
 
 	program := p->parse()
 	if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, sb)
@@ -29,7 +29,7 @@ Monkey_Run_String :: proc(stmts: string, sb: ^strings.Builder, exit: bool) {
 	if vm_err != "" do monkey_err("Error running file: <<%v>>", 1, sb, vm_err)
 
 	last_popped := vm->last_popped()
-	monkey_result(last_popped, sb, exit) //exit:=true
+	monkey_result(last_popped, sb, exit) // true for file, false for repl.
 }
 
 Monkey_Read_File :: proc(

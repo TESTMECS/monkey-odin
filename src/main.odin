@@ -58,21 +58,21 @@ main :: proc() {
 			if err != nil do monkey_err("Error reading input", 1, &sb)
 			line = strings.trim_space(line)
 			if line == "exit" do monkey_result(nil, &sb, true) // exit
-			Monkey_Run_String(line, &sb, false)
+			Monkey_Run_String(line, &sb, false, varena)
 		} //<<repl
 	case "file":
 		stmts := Monkey_Read_File(os.args[2], &sb, varena)
-		Monkey_Run_String(stmts, &sb, true)
+		Monkey_Run_String(stmts, &sb, true, varena)
 	case "mexpand":
 		stmts := Monkey_Read_File(os.args[2], &sb, varena)
 		// Parse file
-		p := Parser__New__(stmts)
-		defer p->free()
+		p := Parser_New(stmts, varena)
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
 		//expand macros
 		expanded_program, expand_err := expand_macros(program, &v)
 		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, expand_err)
+		//print expanded program
 		strings.builder_reset(&sb)
 		ast_to_string(expanded_program, &sb)
 		fmt.println(strings.to_string(sb))

@@ -4,6 +4,7 @@ package parser_tests
 import monkey "../../src"
 import test_commons "../../tests_commons"
 import "core:log"
+import "core:mem/virtual"
 
 Literal :: union {
 	int,
@@ -123,8 +124,12 @@ prefix_test_case_is_ok :: proc(
 	operand_value: Literal,
 ) -> bool {
 	using monkey
-	p := Parser__New__(input)
-	defer p->free()
+	using tc
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
+	p := Parser_New(input, a)
 
 	program := p->parse()
 	if parser_has_error(p) do return false
@@ -173,8 +178,12 @@ infix_test_case_is_valid :: proc(
 	right_value: Literal,
 ) -> bool {
 	using monkey
-	p := Parser__New__(input)
-	defer p->free()
+	using tc
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
+	p := Parser_New(input, a)
 
 	program := p->parse()
 	if parser_has_error(p) do return false

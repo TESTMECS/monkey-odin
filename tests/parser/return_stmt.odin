@@ -2,11 +2,17 @@ package parser_tests
 
 import monkey "../../src"
 import "core:log"
+import "core:mem/virtual"
 import "core:testing"
 
 @(test)
 test_parsing_return_statement :: proc(t: ^testing.T) {
 	using monkey
+	using tc
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
 	input := `
 	return 5;
 	return 10;
@@ -14,8 +20,7 @@ test_parsing_return_statement :: proc(t: ^testing.T) {
 	`
 
 
-	p := Parser__New__(input)
-	defer p->free()
+	p := Parser_New(input, a)
 
 	program := p->parse()
 	if parser_has_error(p) do return

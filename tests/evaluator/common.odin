@@ -3,6 +3,7 @@ package evaluator_tests
 import monkey "../../src"
 import test_commons "../../tests_commons"
 import "core:log"
+import "core:mem/virtual"
 
 tc :: test_commons
 
@@ -16,8 +17,13 @@ eval_test_get :: proc(
 ) {
 	using monkey
 	using tc
-	p := Parser__New__(input)
-	defer p->free()
+
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
+	p := Parser_New(input, a)
+
 	program := p->parse()
 	if parser_has_error(p) do return nil, Evaluator{}, false
 

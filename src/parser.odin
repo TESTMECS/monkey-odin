@@ -1,7 +1,7 @@
 #+feature dynamic-literals
 package monkey
 import "core:fmt"
-import "core:mem/virtual"
+import "core:mem"
 import "core:strconv"
 import "core:strings"
 
@@ -9,43 +9,31 @@ Parser :: struct {
 	l:          Lexer,
 	cur_token:  Token,
 	peek_token: Token,
+	varena:     mem.Allocator,
 	errors:     [dynamic]string,
-	vmem:       ^virtual.Arena,
 	sb:         strings.Builder,
 	parse:      proc(p: ^Parser) -> Ast_Program,
 	free:       proc(p: ^Parser),
 }
 
-Parser__New__ :: proc(input: string) -> Parser {
-	v: ^virtual.Arena = new(virtual.Arena, context.allocator)
-	arena_err := virtual.arena_init_growing(v)
-	ensure(arena_err == nil)
-	varena := virtual.arena_allocator(v)
-
+Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
 	// Initialize precedences
 	init_precedences()
 
 	p := Parser {
-		vmem   = v,
+		varena = varena,
 		errors = make([dynamic]string, 0, varena),
 		l      = Lexer_New(input),
 		parse  = parse_program,
-		free   = free_parser,
 	}
 	return p
 }
 
-free_parser :: proc(p: ^Parser) {
-	virtual.arena_destroy(p.vmem)
-	free(p.vmem, context.allocator)
-}
-
 parse_program :: proc(p: ^Parser) -> Ast_Program {
-	varena := virtual.arena_allocator(p.vmem)
 	next_token(p)
 	next_token(p)
 
-	program := make(Ast_Program, 0, 16, varena)
+	program := make(Ast_Program, 0, 16, p.varena)
 	defer delete(program)
 
 	for p.cur_token.type != .EOF {
@@ -237,10 +225,9 @@ parse_array_literal :: proc(p: ^Parser) -> Node {
 }
 
 parse_hash_table_literal :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	result := Ast_Hash_Table {
-		pairs = make([dynamic]kvpair, 0, varena),
-		table = make(map[string]Node, varena),
+		pairs = make([dynamic]kvpair, 0, p.varena),
+		table = make(map[string]Node, p.varena),
 	}
 
 	next_token(p)
@@ -295,20 +282,18 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 } // end << Literals
 // Expressions=>>begin
 parse_prefix_expression :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	op := string(p.cur_token.text_slice)
 
 	next_token(p)
 
 	operand_expr := parse_expression(p, .Prefix)
 	if operand_expr == nil do return nil
-	operand := new_clone(operand_expr, varena)
+	operand := new_clone(operand_expr, p.varena)
 
 	return Ast_Prefix{op = op, operand = operand}
 }
 
 parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	op := string(p.cur_token.text_slice)
 	prec := cur_precedence(p)
 
@@ -317,8 +302,8 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	right := parse_expression(p, prec)
 	if right == nil do return nil
 
-	new_right := new_clone(right, varena)
-	new_left := new_clone(left, varena)
+	new_right := new_clone(right, p.varena)
+	new_left := new_clone(left, p.varena)
 
 	return Ast_Infix{op = op, left = new_left, right = new_right}
 }
@@ -332,7 +317,6 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node {
 }
 
 parse_if_expression :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	next_token(p)
 
 	condition_expr := parse_expression(p, .Lowest)
@@ -348,7 +332,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node {
 		if !expect_peek(p, .Left_Brace) do return nil
 		orelse = parse_block_statement(p)
 	}
-	condition := new_clone(condition_expr, varena)
+	condition := new_clone(condition_expr, p.varena)
 
 	return Ast_If{condition = condition, then = then, orelse = orelse}
 }
@@ -366,8 +350,7 @@ parse_function_literal :: proc(p: ^Parser) -> Node {
 }
 
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
-	varena := virtual.arena_allocator(p.vmem)
-	identifiers := make([dynamic]Ast_Identifier, 0, 16, varena)
+	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
 
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
@@ -390,8 +373,7 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 }
 
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
-	varena := virtual.arena_allocator(p.vmem)
-	args := make([dynamic]Node, 0, 16, varena)
+	args := make([dynamic]Node, 0, 16, p.varena)
 	defer delete(args)
 
 	if peek_token_is(p, end) {
@@ -419,22 +401,20 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 }
 
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
-	f := new_clone(function, varena)
+	f := new_clone(function, p.varena)
 	return Ast_Call{function = f, arguments = arguments}
 }
 
 parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	next_token(p)
 	index := parse_expression(p, .Lowest)
 
 	if !expect_peek(p, .Right_Bracket) do return nil
 
-	new_op := new_clone(operand, varena)
-	new_index := new_clone(index, varena)
+	new_op := new_clone(operand, p.varena)
+	new_index := new_clone(index, p.varena)
 
 	return Ast_Index{operand = new_op, index = new_index}
 }
@@ -461,7 +441,6 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	return left_expr
 }
 parse_macro_expression :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	if !expect_peek(p, .Left_Paren) do return nil
 
 	parameters := parse_function_parameters(p)
@@ -472,7 +451,6 @@ parse_macro_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Macro{parameters = parameters, body = body}
 }
 parse_for_expression :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	next_token(p)
 
 	cond_expr := parse_expression(p, .Lowest)
@@ -481,13 +459,12 @@ parse_for_expression :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
 
-	condition := new_clone(cond_expr, varena)
+	condition := new_clone(cond_expr, p.varena)
 
 	return Ast_For{cond = condition, body = body}
 } // end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
@@ -496,29 +473,26 @@ parse_let_statement :: proc(p: ^Parser) -> Node {
 
 	value_expr := parse_expression(p, .Lowest)
 	if value_expr == nil do return nil
-	value := new_clone(value_expr, varena)
+	value := new_clone(value_expr, p.varena)
 
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return Ast_Let{name = name, value = value}
 }
 
 parse_return_statement :: proc(p: ^Parser) -> Node {
-	varena := virtual.arena_allocator(p.vmem)
-
 	next_token(p)
 
 	return_value_expr := parse_expression(p, .Lowest)
 	if return_value_expr == nil do return nil
 
 	if peek_token_is(p, .Semicolon) do next_token(p)
-	return_value := new_clone(return_value_expr, varena)
+	return_value := new_clone(return_value_expr, p.varena)
 
 	return Ast_Ret{return_value = return_value}
 }
 
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
-	varena := virtual.arena_allocator(p.vmem)
-	block := make(Ast_Block, 0, 16, varena)
+	block := make(Ast_Block, 0, 16, p.varena)
 
 	next_token(p)
 

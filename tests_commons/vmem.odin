@@ -1,9 +1,11 @@
 package test_commons
 import "core:mem/virtual"
+
 Vmem :: struct {
 	a:    ^virtual.Arena,
 	free: proc(this: ^Vmem),
 }
+
 new_vmem :: proc() -> Vmem {
 	arena: ^virtual.Arena = new(virtual.Arena, context.allocator)
 	err := virtual.arena_init_growing(arena)

@@ -5,6 +5,7 @@ import test_commons "../../tests_commons"
 import "core:fmt"
 import "core:log"
 import "core:mem"
+import "core:mem/virtual"
 import "core:reflect"
 import "core:testing"
 
@@ -26,9 +27,14 @@ tc :: test_commons
 
 run_compiler_tests :: proc(t: ^testing.T, tests: []Compiler_Test_Case) {
 	using monkey
+	using tc
+
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
 	for test_case, i in tests {
-		p := Parser__New__(test_case.input)
-		defer p->free()
+		p := Parser_New(test_case.input, a)
 
 		program := p->parse()
 		if len(program) == 0 || len(p.errors) != 0 {

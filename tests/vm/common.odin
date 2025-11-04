@@ -3,6 +3,7 @@ package vm_tests
 import monkey "../../src"
 import test_commons "../../tests_commons"
 import "core:log"
+import "core:mem/virtual"
 import "core:testing"
 
 tc :: test_commons
@@ -15,9 +16,13 @@ VM_Test_Cases :: struct {
 run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 	using monkey
 	using tc
+
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
 	for test_case, i in tests {
-		p := Parser__New__(test_case.input)
-		defer p->free()
+		p := Parser_New(test_case.input, a)
 
 		program := p->parse()
 		if parser_has_error(p) do return

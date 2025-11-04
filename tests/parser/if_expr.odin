@@ -2,18 +2,23 @@ package parser_tests
 
 import monkey "../../src"
 import "core:log"
+import "core:mem/virtual"
 import "core:testing"
 
 @(test)
 test_parse_if_expression :: proc(t: ^testing.T) {
 	using monkey
+	using tc
+	v := new_vmem()
+	a := virtual.arena_allocator(v.a)
+	defer v->free()
+
 	input := `
 	if true { 10 } else { 20 }
 	`
 
 
-	p := Parser__New__(input)
-	defer p->free()
+	p := Parser_New(input, a)
 
 	program := p->parse()
 	if parser_has_error(p) do return
