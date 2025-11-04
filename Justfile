@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "builtins/args.monkey"
+test_file := "math/fib.monkey"
 
 default: build test
 

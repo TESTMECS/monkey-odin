@@ -12,7 +12,8 @@ hi def link mNumber Number
 hi def link mBoolean Boolean
 
 " BuilinFn
-syn match mBuiltinFn "print\|puts\|first\|last\|copy\|open\|close\|read"
+syn match mBuiltinFn "print\|puts\|first\|last\|copy\|open\|close\|read\|bool\|int\|float\|str\|typeof\|"
+syn match mBuiltinFn "choose\|rand\|hash\|len\|args\|sum\|min\|max\|reverse\|sort\|slice\|indexOf\|"
 hi def link mBuiltinFn Function
 
 " Statement
@@ -20,7 +21,7 @@ syn keyword mConditional if else
 syn keyword mRepeat while
 syn match mOperator '+\|-\|*\|/'
 syn match mOperator '==\|!=\|<\|>'
-syn keyword mKeyword fn return import let macro
+syn keyword mKeyword fn return import let macro for
 
 hi def link mConditional Conditional
 hi def link mRepeat Repeat
