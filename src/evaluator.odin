@@ -75,7 +75,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		return eval_if_expression(e, data, current_env)
 
 	case Ast_Function:
-		fn := new(ObjectFunction, e.varena) //$ heavy allocation
+		fn := new(ObjectFunction, e.varena)
 
 		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.varena)
 		Ast__Copy__(&data.parameters, &fn.parameters, e.varena)
@@ -357,10 +357,8 @@ eval_infix_expression :: proc(
 		     ObjectFunction:
 			if ObjectType(right) == ObjectArray do return eval_new_error(e, "cannot compare arrays with '=='"), false
 		case ObjectNil:
-			// always false
 			return false, true
 		case int, f64, string, bool:
-			// make sure to compare bools by value
 			if ObjectType(left) == bool && ObjectType(right) == bool {
 				return left.(bool) == right.(bool), true
 			}

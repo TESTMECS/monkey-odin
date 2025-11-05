@@ -543,8 +543,6 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 	#partial switch fn in callee {
 	case ObjectCompiledFunction:
-		if DEBUG_VM do fmt.println("EXEC_CALL, fn=", fn)
-
 		if num_args != fn.num_parameters {
 			strings.builder_reset(&v.sb)
 			fmt.sbprintf(
@@ -593,13 +591,11 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		return v->push_vm(result)
 
 	case ObjectMacro:
-		// Macros should be expanded during compilation, not executed at runtime
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
 		return strings.to_string(v.sb)
 
 	case ObjectQuote:
-		// Quote objects should be handled during compilation
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(
 			&v.sb,
@@ -607,7 +603,6 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		)
 		return strings.to_string(v.sb)
 	}
-
 	strings.builder_reset(&v.sb)
 	fmt.sbprintf(&v.sb, "not a function: '%v'", ObjectType(callee))
 	return strings.to_string(v.sb)
@@ -651,7 +646,6 @@ push_frame :: proc(v: ^VM, f: Frame) {
 }
 
 exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string) {
-	// Check types using type assertions
 	_, operand_is_array := operand.(ObjectArray)
 	_, operand_is_ht := operand.(ObjectHashTable)
 	_, index_is_int := index.(int)
@@ -660,11 +654,10 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 	if operand_is_array && index_is_int {
 		return v->exec_arr_set_idx(operand.(ObjectArray), index.(int), value)
 	} else if operand_is_ht && index_is_string {
-		// For hash table assignment
 		ht := operand.(ObjectHashTable)
 		key_str := index.(string)
 		ht[strings.clone(key_str, v.varena)] = value
-		return v->push_vm(value) // Return the assigned value
+		return v->push_vm(value)
 	}
 
 	strings.builder_reset(&v.sb)
@@ -692,6 +685,6 @@ exec_arr_set_idx :: proc(
 		return strings.to_string(v.sb)
 	}
 	arr[index] = value
-	return v->push_vm(value) // Return the assigned value
+	return v->push_vm(value)
 }
 

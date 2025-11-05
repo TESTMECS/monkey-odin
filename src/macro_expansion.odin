@@ -21,14 +21,11 @@ expand_macros :: proc(
 	if macro_rec <= 0 {
 		return program, ""
 	}
-
-	// First pass: define all macros
 	macros := make(map[string]ObjectMacro, varena)
 
 	for stmt in program {
 		if let_stmt, ok := stmt.(Ast_Let); ok {
 			if macro_lit, ok := let_stmt.value^.(Ast_Macro); ok {
-				// This is a macro definition
 				macro_obj := ObjectMacro {
 					parameters = macro_lit.parameters,
 					body       = macro_lit.body,
@@ -41,15 +38,12 @@ expand_macros :: proc(
 
 	// Second pass: expand macro calls
 	expanded_program := make(Ast_Program, 0, len(program), varena)
-
 	for stmt in program {
 		if let_stmt, ok := stmt.(Ast_Let); ok {
 			if _, is_macro := macros[let_stmt.name]; is_macro {
-				// Skip macro definitions in the expanded program
 				continue
 			}
 		}
-
 		expanded_stmt, err := expand_node(stmt, macros, varena)
 		if err != "" do return nil, err
 		append(&expanded_program, expanded_stmt)
@@ -170,10 +164,7 @@ expand_node :: proc(
 			},
 			""
 
-
-
 	case:
-		// For literals and other nodes, return as-is
 		return node, ""
 	}
 
@@ -188,7 +179,6 @@ expand_macro_call :: proc(
 	Node,
 	string,
 ) {
-	// Check argument count
 	if len(args) != len(macro.parameters) {
 		return nil, fmt.tprintf(
 			"wrong number of arguments: want=%d, got=%d",
@@ -197,7 +187,6 @@ expand_macro_call :: proc(
 		)
 	}
 
-	// Create extended environment for macro evaluation
 	extended_env := Env_New(nil, varena)
 
 	// Bind arguments to parameters
@@ -208,8 +197,6 @@ expand_macro_call :: proc(
 		extended_env.set(&extended_env, param.value, arg_obj)
 	}
 
-	// Evaluate macro body with extended environment
-	// For now, we'll do a simple quote/unquote expansion
 	result, err := evaluate_macro_body(macro.body, &extended_env, varena)
 	if err != "" do return nil, err
 
@@ -237,9 +224,6 @@ evaluate_macro_body :: proc(
 	Node,
 	string,
 ) {
-	// For now, we'll handle simple quote expressions
-	// In a full implementation, this would be a proper evaluator
-	// Just looks for unquote calls and expands them
 	for stmt in body {
 		if call, ok := stmt.(Ast_Call); ok {
 			if ident, ok := call.function^.(Ast_Identifier); ok {
@@ -252,7 +236,6 @@ evaluate_macro_body :: proc(
 			}
 		}
 	}
-
 	return nil, "macro body must contain a quote expression"
 }
 
@@ -268,7 +251,6 @@ expand_unquote_calls :: proc(
 	case Ast_Call:
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "unquote" && len(data.arguments) > 0 {
-				// Evaluate the unquoted argument
 				if ident_arg, ok := data.arguments[0].(Ast_Identifier); ok {
 					if obj, ok := env.get(env, ident_arg.value); ok {
 						if int_val, ok := obj.(int); ok {
@@ -276,8 +258,6 @@ expand_unquote_calls :: proc(
 						}
 					}
 				} else if infix_expr, ok := data.arguments[0].(Ast_Infix); ok {
-					// Handle unquote of expressions like unquote(5+8)
-					// For now, just evaluate the expression
 					return evaluate_simple_expression(infix_expr, env, varena)
 				}
 			}
@@ -286,7 +266,6 @@ expand_unquote_calls :: proc(
 		// Check if this is an unquote call - if so, handle it and don't recurse further
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "unquote" && len(data.arguments) > 0 {
-				// Evaluate the unquoted argument
 				if ident_arg, ok := data.arguments[0].(Ast_Identifier); ok {
 					if obj, ok := env.get(env, ident_arg.value); ok {
 						if int_val, ok := obj.(int); ok {
@@ -294,14 +273,11 @@ expand_unquote_calls :: proc(
 						}
 					}
 				} else if infix_expr, ok := data.arguments[0].(Ast_Infix); ok {
-					// Handle unquote of expressions like unquote(5+8)
-					// For now, just evaluate the expression
 					return evaluate_simple_expression(infix_expr, env, varena)
 				}
 			}
 		}
 
-		// Recursively expand unquote calls in function and arguments
 		expanded_function, err := expand_unquote_calls(data.function^, env, varena)
 		if err != "" do return nil, err
 
@@ -334,34 +310,30 @@ expand_unquote_calls :: proc(
 	case Ast_For:
 		expanded_condition, cond_err := expand_unquote_calls(data.cond^, env, varena)
 		if cond_err != "" do return nil, cond_err
-		
+
 		expanded_body := make(Ast_Block, 0, len(data.body), varena)
 		for stmt in data.body {
 			expanded_stmt, stmt_err := expand_unquote_calls(stmt, env, varena)
 			if stmt_err != "" do return nil, stmt_err
 			append(&expanded_body, expanded_stmt)
 		}
-		
-		return Ast_For {
-				cond = new_clone(expanded_condition, varena),
-				body = expanded_body,
-			},
-			""
+
+		return Ast_For{cond = new_clone(expanded_condition, varena), body = expanded_body}, ""
 
 	case Ast_If:
 		expanded_condition, cond_err := expand_unquote_calls(data.condition^, env, varena)
 		if cond_err != "" do return nil, cond_err
-		
+
 		expanded_then, then_err := expand_unquote_calls(data.then, env, varena)
 		if then_err != "" do return nil, then_err
-		
+
 		expanded_orelse: Ast_Block
 		if data.orelse != nil {
 			expanded_orelse_node, orelse_err := expand_unquote_calls(data.orelse, env, varena)
 			if orelse_err != "" do return nil, orelse_err
 			expanded_orelse = expanded_orelse_node.(Ast_Block)
 		}
-		
+
 		return Ast_If {
 				condition = new_clone(expanded_condition, varena),
 				then = expanded_then.(Ast_Block),
@@ -370,7 +342,6 @@ expand_unquote_calls :: proc(
 			""
 
 	case:
-		// For literals and other nodes, return as-is
 		return node, ""
 	}
 	return node, ""
@@ -384,7 +355,6 @@ evaluate_simple_expression :: proc(
 	Node,
 	string,
 ) {
-	// For now, just handle simple integer arithmetic
 	if left_int, ok := expr.left^.(int); ok {
 		if right_int, ok := expr.right^.(int); ok {
 			switch expr.op {
@@ -408,15 +378,12 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 	case Ast_Call:
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "quote" && len(data.arguments) > 0 {
-				// Just return the quoted argument as-is
 				return data.arguments[0], ""
 			} else if ident.value == "unquote" && len(data.arguments) > 0 {
-				// For unquote without a macro context, just return the argument
 				return data.arguments[0], ""
 			}
 		}
 
-		// Recursively process function and arguments
 		expanded_function, err := evaluate_remaining_quotes(data.function^, varena)
 		if err != "" do return nil, err
 

@@ -1,5 +1,4 @@
 package monkey
-
 Lexer :: struct {
 	input:      []u8,
 	pos:        int,
@@ -7,7 +6,6 @@ Lexer :: struct {
 	ch:         u8,
 	next_token: proc(l: ^Lexer) -> Token,
 }
-
 Lexer_New :: proc(input: string) -> Lexer {
 	l := Lexer {
 		ch         = 0,
@@ -43,38 +41,30 @@ skip_whitespace :: proc(l: ^Lexer) {
 @(private = "file")
 create_identifier :: proc(l: ^Lexer) -> Token {
 	start := l.pos
-
-	read_char(l) // Read the first character (already verified to be a letter)
+	read_char(l)
 	for is_letter(l.ch) || is_digit(l.ch) do read_char(l)
-
 	return GetToken(.Identifier, l.input, start, l.pos - start)
 }
 
 @(private = "file")
 create_number :: proc(l: ^Lexer) -> Token {
 	start := l.pos
-
 	for is_digit(l.ch) do read_char(l)
-
-	// Handle decimal point for floating point numbers
 	if l.ch == '.' {
 		read_char(l)
 		for is_digit(l.ch) do read_char(l)
-		return GetToken(.Int, l.input, start, l.pos - start) // Still use .Int token, parser will handle float detection
+		return GetToken(.Int, l.input, start, l.pos - start)
 	}
-
 	return GetToken(.Int, l.input, start, l.pos - start)
 }
 
 @(private = "file")
 create_string :: proc(l: ^Lexer) -> Token {
 	start := l.pos + 1
-
 	for {
 		read_char(l)
 		if l.ch == '"' || l.ch == 0 do break
 	}
-
 	return GetToken(.String, l.input, start, l.pos - start)
 }
 
