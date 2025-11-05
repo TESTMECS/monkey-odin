@@ -1,7 +1,7 @@
 # default configuration
-test_dir := "./tests/monkey-src/"
+test_dir := "./examples/"
 exe := "./monkey-odin.out"
-test_file := "builtins/macro.monkey"
+test_file := "bubble_sort.monkey"
 
 default: build test
 
