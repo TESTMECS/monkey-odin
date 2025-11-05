@@ -18,6 +18,11 @@ expand_macros :: proc(
 	Node,
 	string,
 ) {
+	// Check if macro expansion is limited by BANANAS env var
+	if macro_rec <= 0 {
+		return program, ""
+	}
+
 	// First pass: define all macros
 	macros := make(map[string]ObjectMacro, varena)
 
@@ -60,6 +65,10 @@ expand_macros :: proc(
 		append(&final_program, final_stmt)
 	}
 
+	// Recursive macro expansion with limit
+	if macro_rec > 1 {
+		return expand_macros(final_program, macro_rec - 1, varena)
+	}
 
 	return final_program, ""
 }

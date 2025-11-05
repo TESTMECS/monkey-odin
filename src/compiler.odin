@@ -49,9 +49,9 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
-Compiler_New :: proc(varena: mem.Allocator, cli_args: []string) -> Compiler {
+Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {
 	return Compiler {
-		compiler_state = Compiler_State_New(varena, cli_args),
+		compiler_state = Compiler_State_New(varena, cli_args, mexpand_rec),
 		scopes_idx = 0,
 		compile_program = compile_program,
 		compile = compile,
@@ -305,7 +305,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 // Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
 	err = ""
-	expanded_program, e1 := expand_macros(program, c.varena)
+	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
 	if e1 != "" {
 		err = compiler_error(c, "macro expansion error: %s", e1)
 		return

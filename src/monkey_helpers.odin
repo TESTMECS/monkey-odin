@@ -23,7 +23,7 @@ Monkey_Run_String :: proc(
 		monkey_err("Error parsing file", 1, sb, exit, p.errors)
 		return
 	}
-	c := Compiler_New(varena, cli_args)
+	c := Compiler_New(varena, cli_args, mexpand_rec)
 	compile_err := c->compile_program(program, mexpand_rec) // pass in macro constant here.
 	if compile_err != "" {
 		monkey_err("Error compiling file", 1, sb, exit, compile_err)

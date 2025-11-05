@@ -11,9 +11,10 @@ Compiler_State :: struct {
 	scopes:        [dynamic]Compilation_Scope,
 	cli_arguments: []string,
 	sb:            strings.Builder,
+	mexpand_rec:   int,
 }
 
-Compiler_State_New :: proc(varena: mem.Allocator, cli_args: []string) -> Compiler_State {
+Compiler_State_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler_State {
 	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena)
 	main_scope: Compilation_Scope
 	main_scope_instructions := make(Instructions, 0, varena)
@@ -27,6 +28,7 @@ Compiler_State_New :: proc(varena: mem.Allocator, cli_args: []string) -> Compile
 		symbol_table = Symbol_Table_New(varena),
 		scopes = scopes,
 		varena = varena,
+		mexpand_rec = mexpand_rec,
 	}
 }
 
