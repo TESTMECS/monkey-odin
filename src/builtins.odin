@@ -7,8 +7,17 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 		return b_choose
 	case "rand":
 		return b_rand
+	// str
 	case "hash":
 		return b_hash
+	case "join":
+		return b_join
+	case "split":
+		return b_split
+	case "lower":
+		return b_lower
+	case "upper":
+		return b_upper
 	// Arr
 	case "len":
 		return b_len
@@ -41,7 +50,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 		return b_typeof
 	case "arr":
 		return b_arr
-
 	// hashmap
 	case "keys":
 		return b_keys
@@ -49,7 +57,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 		return b_values
 	case "has":
 		return b_has
-
+	case "map":
+		return b_map
 	//math
 	case "abs":
 		return b_abs

@@ -50,6 +50,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 				$ str
 				Usage: upper("hello")=>>"HELLO"<<`
 
+
 	if len(args) != 1 {
 		return eval_new_error(
 				e,
@@ -62,7 +63,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 	#partial switch arg in args[0] {
 	case string:
-		return strings.upper(arg), true
+		return strings.to_upper(arg), true
 	}
 
 	return eval_new_error(
@@ -81,6 +82,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 				$ str
 				Usage: lower("HELLO")=>>"hello"<<`
 
+
 	if len(args) != 1 {
 		return eval_new_error(
 				e,
@@ -93,7 +95,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 	#partial switch arg in args[0] {
 	case string:
-		return strings.lower(arg), true
+		return strings.to_lower(arg), true
 	}
 
 	return eval_new_error(
@@ -112,6 +114,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 				$ str
 				$ delimiter :: str
 				Usage: split("a,b,c", ",")=>>["a", "b", "c"]<<`
+
 
 	if len(args) != 2 {
 		return eval_new_error(
@@ -144,11 +147,10 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	parts := strings.split(str, delimiter)
-	result := make([dynamic]ObjectBase, len(parts), e.varena)
+	result := make([dynamic]ObjectBase, 0, e.varena)
 	for part in parts {
-		append(&result, part)
+		append(&result, ObjectBase(part))
 	}
 
 	return ObjectArray(result), true
@@ -161,6 +163,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				$ arr :: array of str
 				$ delimiter :: str
 				Usage: join(["a", "b", "c"], ",")=>>"a,b,c"<<`
+
 
 	if len(args) != 2 {
 		return eval_new_error(
@@ -196,18 +199,18 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 	str_parts := make([]string, len(arr), e.varena)
 	for i, item in arr {
-		str, ok := item.(string)
+		str, ok := i.(string)
 		if !ok {
 			return eval_new_error(
 					e,
 					"'join' function error: array elements must be strings, got '%v' at index %d.%s",
-					ObjectType(item),
+					ObjectType(i),
 					i,
 					usage,
 				),
 				false
 		}
-		str_parts[i] = str
+		str_parts[item] = str
 	}
 
 	return strings.join(str_parts, delimiter), true
