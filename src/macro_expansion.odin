@@ -18,7 +18,6 @@ expand_macros :: proc(
 	Node,
 	string,
 ) {
-	// Check if macro expansion is limited by BANANAS env var
 	if macro_rec <= 0 {
 		return program, ""
 	}
@@ -171,44 +170,10 @@ expand_node :: proc(
 			},
 			""
 
-	case Ast_If:
-		expanded_condition, cond_err := expand_node(data.condition^, macros, varena)
-		if cond_err != "" do return nil, cond_err
-		expanded_then, then_err := expand_node(data.then, macros, varena)
-		if then_err != "" do return nil, then_err
 
-		expanded_orelse: Ast_Block
-		if data.orelse != nil {
-			expanded_orelse_node, orelse_err := expand_node(data.orelse, macros, varena)
-			if orelse_err != "" do return nil, orelse_err
-			expanded_orelse = expanded_orelse_node.(Ast_Block)
-		}
-
-		return Ast_If {
-				condition = new_clone(expanded_condition, varena),
-				then = expanded_then.(Ast_Block),
-				orelse = expanded_orelse,
-			},
-			""
-
-	case Ast_Function:
-		expanded_body, err := expand_node(data.body, macros, varena)
-		if err != "" do return nil, err
-		return Ast_Function{parameters = data.parameters, body = expanded_body.(Ast_Block)}, ""
-
-	case Ast_Index:
-		expanded_operand, operand_err := expand_node(data.operand^, macros, varena)
-		if operand_err != "" do return nil, operand_err
-		expanded_index, index_err := expand_node(data.index^, macros, varena)
-		if index_err != "" do return nil, index_err
-		return Ast_Index {
-				operand = new_clone(expanded_operand, varena),
-				index = new_clone(expanded_index, varena),
-			},
-			""
 
 	case:
-		// For literals (int, bool, string) and identifiers, return as-is
+		// For literals and other nodes, return as-is
 		return node, ""
 	}
 
@@ -318,6 +283,24 @@ expand_unquote_calls :: proc(
 			}
 		}
 
+		// Check if this is an unquote call - if so, handle it and don't recurse further
+		if ident, ok := data.function^.(Ast_Identifier); ok {
+			if ident.value == "unquote" && len(data.arguments) > 0 {
+				// Evaluate the unquoted argument
+				if ident_arg, ok := data.arguments[0].(Ast_Identifier); ok {
+					if obj, ok := env.get(env, ident_arg.value); ok {
+						if int_val, ok := obj.(int); ok {
+							return int_val, ""
+						}
+					}
+				} else if infix_expr, ok := data.arguments[0].(Ast_Infix); ok {
+					// Handle unquote of expressions like unquote(5+8)
+					// For now, just evaluate the expression
+					return evaluate_simple_expression(infix_expr, env, varena)
+				}
+			}
+		}
+
 		// Recursively expand unquote calls in function and arguments
 		expanded_function, err := expand_unquote_calls(data.function^, env, varena)
 		if err != "" do return nil, err
@@ -348,10 +331,49 @@ expand_unquote_calls :: proc(
 			},
 			""
 
+	case Ast_For:
+		expanded_condition, cond_err := expand_unquote_calls(data.cond^, env, varena)
+		if cond_err != "" do return nil, cond_err
+		
+		expanded_body := make(Ast_Block, 0, len(data.body), varena)
+		for stmt in data.body {
+			expanded_stmt, stmt_err := expand_unquote_calls(stmt, env, varena)
+			if stmt_err != "" do return nil, stmt_err
+			append(&expanded_body, expanded_stmt)
+		}
+		
+		return Ast_For {
+				cond = new_clone(expanded_condition, varena),
+				body = expanded_body,
+			},
+			""
+
+	case Ast_If:
+		expanded_condition, cond_err := expand_unquote_calls(data.condition^, env, varena)
+		if cond_err != "" do return nil, cond_err
+		
+		expanded_then, then_err := expand_unquote_calls(data.then, env, varena)
+		if then_err != "" do return nil, then_err
+		
+		expanded_orelse: Ast_Block
+		if data.orelse != nil {
+			expanded_orelse_node, orelse_err := expand_unquote_calls(data.orelse, env, varena)
+			if orelse_err != "" do return nil, orelse_err
+			expanded_orelse = expanded_orelse_node.(Ast_Block)
+		}
+		
+		return Ast_If {
+				condition = new_clone(expanded_condition, varena),
+				then = expanded_then.(Ast_Block),
+				orelse = expanded_orelse,
+			},
+			""
+
 	case:
 		// For literals and other nodes, return as-is
 		return node, ""
 	}
+	return node, ""
 }
 
 evaluate_simple_expression :: proc(
