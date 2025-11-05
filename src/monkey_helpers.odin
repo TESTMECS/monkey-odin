@@ -17,32 +17,27 @@ Monkey_Run_String :: proc(
 	mexpand_rec := 1,
 ) {
 	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
-	// Parse the program string
 	p := Parser_New(stmts, varena)
 	program := p->parse()
 	if monkey_parser_has_error(p) {
 		monkey_err("Error parsing file", 1, sb, exit, p.errors)
 		return
 	}
-	// Compile
 	c := Compiler_New(varena, cli_args)
 	compile_err := c->compile_program(program, mexpand_rec) // pass in macro constant here.
 	if compile_err != "" {
 		monkey_err("Error compiling file", 1, sb, exit, compile_err)
 		return
 	}
-	// bytecode
 	bytecode := c->bytecode()
-	//vm start with state
 	vm := Vm_New(bytecode, &c.compiler_state, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" {
 		monkey_err("Error running file: <<%v>>", 1, sb, exit, vm_err)
 		return
 	}
-	// Get Last Popped Object
 	last_popped := vm->last_popped()
-	monkey_result(last_popped, sb, exit) // true for file, false for repl.
+	monkey_result(last_popped, sb, exit)
 }
 
 Monkey_Read_File :: proc(
