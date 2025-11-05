@@ -245,7 +245,10 @@ eval_integer_infix_expression :: proc(
 
 	case "<":
 		return left < right, true
-
+	case "<=":
+		return left <= right, true
+	case ">=":
+		return left >= right, true
 	case ">":
 		return left > right, true
 
@@ -287,6 +290,12 @@ eval_float_infix_expression :: proc(
 
 	case ">":
 		return left > right, true
+
+	case "<=":
+		return left <= right, true
+
+	case ">=":
+		return left >= right, true
 
 	case "==":
 		return left == right, true

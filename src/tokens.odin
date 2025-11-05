@@ -13,6 +13,8 @@ Token_Type :: enum {
 	Asterisk,
 	Slash,
 	Less_Than,
+	Greater_Than_Equal,
+	Less_Than_Equal,
 	Greater_Than,
 	Equal,
 	Not_Equal,

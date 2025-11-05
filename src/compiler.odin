@@ -133,6 +133,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.Gt)
 			return
 		}
+		if data.op == "<=" {
+			if err = c->compile(data.right^); err != "" do return
+			if err = c->compile(data.left^); err != "" do return
+			c->emit(.Gte)
+			return
+		}
 		if data.op == "=" {
 			#partial switch left in data.left^ {
 			case Ast_Identifier:
@@ -143,10 +149,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 					err = compiler_error(c, "identifier '%s' is not declared", left.value)
 					return
 				}
-				// Store the value (pops from stack)
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
-				// For assignment expressions, push the assigned value back on stack
-				// We need to get the value again since Set popped it
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return // array
@@ -176,6 +179,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.Div)
 		case ">":
 			c->emit(.Gt)
+		case ">=":
+			c->emit(.Gte)
+		case "<":
+			c->emit(.Lt)  // Note: This will need to be added to opcodes
+		case "<=":
+			c->emit(.Lte)
 		case "==":
 			c->emit(.Eq)
 		case "!=":

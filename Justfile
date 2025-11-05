@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./tests/monkey-src/"
 exe := "./monkey-odin.out"
-test_file := "builtins/minmax.monkey"
+test_file := "gte.monkey"
 
 default: build test
 

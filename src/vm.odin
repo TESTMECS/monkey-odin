@@ -161,7 +161,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			frame := v->pop_frame()
 			v.sp = frame.base_pointer - 1
 			if err = v->push_vm(NULL); err != "" do return
-		case .Eq, .Neq, .Gt:
+		case .Eq, .Neq, .Gt, .Lt, .Gte, .Lte:
 			if err = v->exec_compare_op(op); err != "" do return
 		case .Not:
 			if err = v->exec_not_op(); err != "" do return
@@ -439,6 +439,12 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 		result = left != right
 	case .Gt:
 		result = left > right
+	case .Lt:
+		result = left < right
+	case .Gte:
+		result = left >= right
+	case .Lte:
+		result = left <= right
 	case:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "unknown integer infix operator '%s'", op)
@@ -456,6 +462,12 @@ exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err
 		result = left != right
 	case .Gt:
 		result = left > right
+	case .Lt:
+		result = left < right
+	case .Gte:
+		result = left >= right
+	case .Lte:
+		result = left <= right
 	case:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "unknown float infix operator '%s'", op)

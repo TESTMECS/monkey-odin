@@ -121,9 +121,17 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case '*':
 		tok = token_from_current_char(l, .Asterisk)
 	case '<':
-		tok = token_from_current_char(l, .Less_Than)
+		if peek_char(l) == '=' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.Less_Than_Equal, l.input, start, 2)
+		} else do tok = token_from_current_char(l, .Less_Than)
 	case '>':
-		tok = token_from_current_char(l, .Greater_Than)
+		if peek_char(l) == '=' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.Greater_Than_Equal, l.input, start, 2)
+		} else do tok = token_from_current_char(l, .Greater_Than)
 	case ';':
 		tok = token_from_current_char(l, .Semicolon)
 	case ':':
