@@ -7,7 +7,6 @@ import "core:strings"
 
 DEBUG :: false
 
-// Compiler=>>begin
 Emitted_Instruction :: struct {
 	op_code: Opcode,
 	pos:     int,
@@ -27,7 +26,13 @@ Compilation_Scope :: struct {
 Compiler :: struct {
 	using compiler_state:         Compiler_State,
 	scopes_idx:                   int,
-	compile_program:              proc(c: ^Compiler, node: Ast_Program) -> (err: string),
+	compile_program:              proc(
+		c: ^Compiler,
+		node: Ast_Program,
+		mexpand_rec := 1,
+	) -> (
+		err: string
+	),
 	compile:                      proc(c: ^Compiler, node: Node) -> (err: string),
 	emit:                         proc(c: ^Compiler, op: Opcode, operands: ..int) -> int,
 	bytecode:                     proc(c: ^Compiler) -> Bytecode,
@@ -91,6 +96,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 		}
 	case Ast_Ret:
+		//
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)
 	case Ast_Identifier:
@@ -115,6 +121,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				return
 			}
 		} else {
+			//
 			if symbol.scope == .Builtin {
 				builtin_fn := find_builtin_fn(data.value)
 				if builtin_fn == nil {
@@ -127,22 +134,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Infix:
-		if data.op == "<" {
-			if err = c->compile(data.right^); err != "" do return
-			if err = c->compile(data.left^); err != "" do return
-			c->emit(.Gt)
-			return
-		}
-		if data.op == "<=" {
-			if err = c->compile(data.right^); err != "" do return
-			if err = c->compile(data.left^); err != "" do return
-			c->emit(.Gte)
-			return
-		}
+		//
 		if data.op == "=" {
 			#partial switch left in data.left^ {
+			// Assignment
 			case Ast_Identifier:
-				// Simple variable assignment: compile right side, then store
 				if err = c->compile(data.right^); err != "" do return
 				symbol, ok := c.symbol_table->resolve(left.value)
 				if !ok {
@@ -151,6 +147,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				}
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
+			// Index assignment
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return // array
 				if err = c->compile(left.index^); err != "" do return // index
@@ -166,6 +163,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 			return
 		}
+		// Ops
 		if err = c->compile(data.left^); err != "" do return
 		if err = c->compile(data.right^); err != "" do return
 		switch data.op {
@@ -182,7 +180,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case ">=":
 			c->emit(.Gte)
 		case "<":
-			c->emit(.Lt) // Note: This will need to be added to opcodes
+			c->emit(.Lt)
 		case "<=":
 			c->emit(.Lte)
 		case "==":
@@ -194,6 +192,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			return
 		}
 	case Ast_Prefix:
+		// Not, Neg
 		if err = c->compile(data.operand^); err != "" do return
 		switch data.op {
 		case "!":
@@ -249,26 +248,24 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.index^); err != "" do return
 		c->emit(.Idx)
 	case Ast_Function:
+		// Function
 		c->enter_scope()
 		for param in data.parameters {
 			c.symbol_table->define(param.value, c.varena)
 		}
 		if err = c->compile(data.body); err != "" do return
-		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return()
-		if !c->last_instruction_is(.Ret_V) && !c->last_instruction_is(.Ret) do c->emit(.Ret_V if len(c->current_instructions()) > 0 else .Ret)
+		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return() // implicit return
+		if !c->last_instruction_is(.Ret_V) && !c->last_instruction_is(.Ret) do c->emit(.Ret_V if len(c->current_instructions()) > 0 else .Ret) // explicit
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
-
 		// Create a deep copy of instructions for the function
 		instr_copy := make(Instructions, len(instructions), c.varena)
 		copy(instr_copy[:], instructions[:])
-
 		compiled_fn := ObjectCompiledFunction {
 			instructions   = instr_copy,
 			num_locals     = num_locals,
 			num_parameters = len(data.parameters),
 		}
-
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
 		if err = c->compile(data.function^); err != "" do return
@@ -277,33 +274,26 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Call, len(data.arguments))
 	case Ast_Macro:
-		// Macros are handled during expansion, so we shouldn't reach here
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
 	case Ast_For:
+		// for
 		condition_start_pos := len(c->current_instructions())
-
 		if err = c->compile(data.cond^); err != "" do return
-
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
-
 		for s in data.body {
 			if err = c->compile(s); err != "" do return
 		}
-
-		// Jump back to condition evaluation
-		jump_back_pos := c->emit(.Jmp, 9999)
-
+		jump_back_pos := c->emit(.Jmp, 9999) // jump back to condition evaluation
 		// Set the jump target for Jmp_If_Not (to after the loop)
 		after_loop_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, after_loop_pos)
-
 		// Set the jump target for Jmp (back to condition evaluation start)
 		c->change_operand(jump_back_pos, condition_start_pos)
 	case int:
-		c->emit(.Cnst, c->add_constant(data)) // returns 0
+		c->emit(.Cnst, c->add_constant(data))
 	case f64:
-		c->emit(.Cnst, c->add_constant(data)) // returns 0
+		c->emit(.Cnst, c->add_constant(data))
 	case bool:
 		c->emit(.True if data else .False)
 	case string:
@@ -313,17 +303,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	return
 } // end <<Compiler
 // Compiler_helpers=>>begin
-compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
+compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
 	err = ""
-
-	// Expand macros before compilation TWICE
-	expanded_program, expand_err := expand_macros(program, c.varena)
-	expanded_program, _ = expand_macros(expanded_program.(Ast_Program), c.varena)
-	if expand_err != "" {
-		err = compiler_error(c, "macro expansion error: %s", expand_err)
+	expanded_program, e1 := expand_macros(program, c.varena)
+	if e1 != "" {
+		err = compiler_error(c, "macro expansion error: %s", e1)
 		return
 	}
-
 	for stmt in expanded_program.(Ast_Program) {
 		if err = c->compile(stmt); err != "" do return
 		if Ast_IsExpr(stmt) {

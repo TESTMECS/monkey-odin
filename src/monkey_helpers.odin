@@ -14,6 +14,7 @@ Monkey_Run_String :: proc(
 	exit: bool,
 	varena: mem.Allocator,
 	cli_args: []string,
+	mexpand_rec := 1,
 ) {
 	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
 	// Parse the program string
@@ -25,7 +26,7 @@ Monkey_Run_String :: proc(
 	}
 	// Compile
 	c := Compiler_New(varena, cli_args)
-	compile_err := c->compile_program(program)
+	compile_err := c->compile_program(program, mexpand_rec) // pass in macro constant here.
 	if compile_err != "" {
 		monkey_err("Error compiling file", 1, sb, exit, compile_err)
 		return
@@ -70,7 +71,7 @@ Monkey_Read_File :: proc(
 		if idx := strings.index_byte(str_contents, '\n'); idx >= 0 {
 			shebang_line := str_contents[:idx]
 			str_contents = str_contents[idx + 1:]
-			
+
 			// Parse arguments from shebang line
 			// Look for "--" to extract arguments after it
 			if double_dash_idx := strings.index(shebang_line, "--"); double_dash_idx >= 0 {

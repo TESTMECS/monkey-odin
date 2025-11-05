@@ -47,6 +47,7 @@ main :: proc() {
 		reader: bufio.Reader
 		bufio.reader_init(&reader, os.stream_from_handle(os.stdin), bufio.DEFAULT_BUF_SIZE, varena)
 		cli_args := os.args[2:] // added as constants in the compiler
+		mexpand_rec := 2
 
 		fmt.println(
 			ansi.CSI + ansi.FG_BRIGHT_GREEN + ansi.SGR + "Monkey REPL. Type 'exit' to quit.",
@@ -59,7 +60,7 @@ main :: proc() {
 			if err != nil do monkey_err("Error reading input", 1, &sb, false, err)
 			line = strings.trim_space(line)
 			if line == "exit" do monkey_result(nil, &sb, true) // exit
-			Monkey_Run_String(line, &sb, false, varena, cli_args) // don't exit
+			Monkey_Run_String(line, &sb, false, varena, cli_args, mexpand_rec) // don't exit
 		} //<<repl
 	case "file":
 		stmts, shebang_args := Monkey_Read_File(os.args[2], &sb, varena)

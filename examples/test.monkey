@@ -1,3 +1,8 @@
 #!/usr/bin/env monkey -- "hello"
 
-puts(arr(hash("monkey")))
+let my_macro = macro() {
+	quote(unquote(1+1) + unquote(2+2))
+}
+
+my_macro();
+
