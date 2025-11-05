@@ -44,6 +44,7 @@ expand_macros :: proc(program: Ast_Program, varena: mem.Allocator) -> (Node, str
 		append(&expanded_program, expanded_stmt)
 	}
 
+
 	// Third pass: evaluate any remaining quote/unquote calls
 	final_program := make(Ast_Program, 0, len(expanded_program), varena)
 	for stmt in expanded_program {
@@ -51,6 +52,7 @@ expand_macros :: proc(program: Ast_Program, varena: mem.Allocator) -> (Node, str
 		if err != "" do return nil, err
 		append(&final_program, final_stmt)
 	}
+
 
 	return final_program, ""
 }

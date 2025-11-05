@@ -182,7 +182,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case ">=":
 			c->emit(.Gte)
 		case "<":
-			c->emit(.Lt)  // Note: This will need to be added to opcodes
+			c->emit(.Lt) // Note: This will need to be added to opcodes
 		case "<=":
 			c->emit(.Lte)
 		case "==":
@@ -316,8 +316,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 compile_program :: proc(c: ^Compiler, program: Ast_Program) -> (err: string) {
 	err = ""
 
-	// Expand macros before compilation
+	// Expand macros before compilation TWICE
 	expanded_program, expand_err := expand_macros(program, c.varena)
+	expanded_program, _ = expand_macros(expanded_program.(Ast_Program), c.varena)
 	if expand_err != "" {
 		err = compiler_error(c, "macro expansion error: %s", expand_err)
 		return
