@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./examples/"
 exe := "./monkey-odin.out"
-test_file := "builtins/str.monkey"
+test_file := "builtins/map.monkey"
 
 default: build test
 

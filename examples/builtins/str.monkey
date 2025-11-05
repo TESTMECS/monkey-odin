@@ -7,4 +7,8 @@ puts(lower("HELLO")) # hello
 
 puts(upper("hello")) # HELLO
 
+let arr = split("a, b, c", ",");
 
+puts(arr);
+
+puts(join(args(), " ")) # "hash upper lower split join"
