@@ -38,24 +38,9 @@ test_main :: proc(t: ^testing.T) {
 			continue
 		}
 		file_str, _ := Monkey_Read_File(info.fullpath, &sb, varena)
-		Monkey_Run_String(file_str, &sb, false, varena, []string{""})
+		_ = Monkey_Run_String(file_str, &sb, false, varena, []string{""})
 		num_run += 1
 	}
 	log.infof("ran %d examples", num_run)
-
-	// for file in files {
-	// 	log.info(file.name)
-	// 	if !strings.ends_with(file.name, ".monkey") {
-	// 		continue
-	// 	}
-	// 	strings.builder_reset(&sb)
-	// 	strings.write_string(&sb, EXAMPLES_DIR)
-	// 	strings.write_string(&sb, file.name)
-	//
-	// 	file_path := strings.to_string(sb)
-	// 	file_str, _ := Monkey_Read_File(file_path, &sb, varena)
-	// 	Monkey_Run_String(file_str, &sb, true, varena, []string{""})
-	// 	break
-	// }
 }
 

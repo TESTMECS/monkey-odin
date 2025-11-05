@@ -78,7 +78,7 @@ main :: proc() {
 				append(&all_args, arg)
 			}
 		}
-		Monkey_Run_String(stmts, &sb, true, varena, all_args[:], mexpand_rec)
+		_ = Monkey_Run_String(stmts, &sb, true, varena, all_args[:], mexpand_rec)
 	case "mexpand":
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
 		// Parse file

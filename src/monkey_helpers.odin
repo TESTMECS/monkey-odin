@@ -15,29 +15,30 @@ Monkey_Run_String :: proc(
 	varena: mem.Allocator,
 	cli_args: []string,
 	mexpand_rec := 1,
-) {
+) -> Object {
 	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
 	p := Parser_New(stmts, varena)
 	program := p->parse()
 	if monkey_parser_has_error(p) {
 		monkey_err("Error parsing file", 1, sb, exit, p.errors)
-		return
+		return nil
 	}
 	c := Compiler_New(varena, cli_args, mexpand_rec)
 	compile_err := c->compile_program(program, mexpand_rec) // pass in macro constant here.
 	if compile_err != "" {
 		monkey_err("Error compiling file", 1, sb, exit, compile_err)
-		return
+		return nil
 	}
 	bytecode := c->bytecode()
 	vm := Vm_New(bytecode, &c.compiler_state, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" {
 		monkey_err("Error running file: <<%v>>", 1, sb, exit, vm_err)
-		return
+		return nil
 	}
 	last_popped := vm->last_popped()
-	monkey_result(last_popped, sb, exit)
+	obj := monkey_result(last_popped, sb, exit)
+	return obj
 }
 
 Monkey_Read_File :: proc(
@@ -108,7 +109,12 @@ monkey_err :: proc(msg: string, status: int, sb: ^strings.Builder, exit := true,
 	if exit do os.exit(status)
 }
 
-monkey_result :: proc(return_object: Object, sb: ^strings.Builder, exit: bool, xtra: ..any) {
+monkey_result :: proc(
+	return_object: Object,
+	sb: ^strings.Builder,
+	exit: bool,
+	xtra: ..any,
+) -> Object {
 	strings.builder_reset(sb)
 
 	fmt.sbprintf(sb, "=>>")
@@ -119,8 +125,7 @@ monkey_result :: proc(return_object: Object, sb: ^strings.Builder, exit: bool, x
 
 	fmt.println(strings.to_string(sb^))
 	if exit do os.exit(0)
-
-	return
+	return obj
 }
 
 monkey_print_help :: proc(sb: ^strings.Builder) {

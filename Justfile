@@ -30,6 +30,7 @@ run ARGS:
 alias ta := test-all
 test-all:
 	odin test ./tests -all-packages
+	odin test ./tests/examples 
 	
 alias c := clean
 clean:
