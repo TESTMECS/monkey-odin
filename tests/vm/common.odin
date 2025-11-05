@@ -26,7 +26,7 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 		program := p->parse()
 		if parser_has_error(p) do return
 
-		compiler := Compiler_New(a)
+		compiler := Compiler_New(a, []string{""})
 		err := compiler->compile_program(program)
 		if err != "" {
 			log.errorf("test [%d] has failed, compiler has error: %s", i, err)
