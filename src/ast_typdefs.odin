@@ -96,12 +96,11 @@ Ast_Macro :: struct {
 
 Ast_Type_Value :: reflect.union_variant_typeid
 
-// @public
 Ast_IsExpr :: proc(ast: Node) -> bool {
 	t := Ast__Type__(ast)
 	return t != Node && t != Ast_Let && t != Ast_Ret
 }
-// @procgroup
+
 Ast__Type__ :: proc {
 	Ast_Type_Value,
 	ast_type_pointer,

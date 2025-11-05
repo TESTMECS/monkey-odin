@@ -1,6 +1,7 @@
 package monkey
 import "core:fmt"
 import "core:strings"
+
 b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Print obj">>

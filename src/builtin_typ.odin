@@ -27,8 +27,8 @@ b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	return strings.to_string(e.sb), true
 }
 
-// str to arr
 b_arr :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+	// Str to arr
 	if len(args) != 1 {
 		return eval_new_error(
 				e,

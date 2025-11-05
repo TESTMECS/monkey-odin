@@ -1,4 +1,5 @@
 package monkey
+
 b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Sort arr">>
