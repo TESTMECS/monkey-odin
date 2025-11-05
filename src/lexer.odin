@@ -44,7 +44,8 @@ skip_whitespace :: proc(l: ^Lexer) {
 create_identifier :: proc(l: ^Lexer) -> Token {
 	start := l.pos
 
-	for is_letter(l.ch) do read_char(l)
+	read_char(l) // Read the first character (already verified to be a letter)
+	for is_letter(l.ch) || is_digit(l.ch) do read_char(l)
 
 	return GetToken(.Identifier, l.input, start, l.pos - start)
 }
