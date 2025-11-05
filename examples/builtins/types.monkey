@@ -3,16 +3,20 @@
 # Strings
 let my_str = args()[0];
 printf("typeof(my_str): %s", typeof(my_str));
+
 # Booleans
 let cond = bool(args()[1]);
 if (cond) {
+
   # Integers
 	let my_int = int(args()[2]);
 	puts(my_int*10);
+
 	# Floats
 	let my_float = float(args()[3]);
 	printf("The only digits of pi i know are %0.8f", my_float);
 }
+
 # Arrays
 let my_arr = arr(args()[4]);
 puts(typeof(my_arr));
@@ -24,6 +28,7 @@ for ( i < len(my_arr) ) {
 	i = i + 1;
 }
 puts(my_arr);
+
 # Maps
 let my_arr2 = arr(args()[5]);
 let my_map = map(my_arr2, my_arr);

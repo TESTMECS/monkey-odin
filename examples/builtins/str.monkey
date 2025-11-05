@@ -1,8 +1,10 @@
-#!/usr/bin/env monkey
+#!/usr/bin/env monkey -- hash upper lower split join
 
 let str1 = "hello";
-let str2 = typeof(str1);
-str2;
+puts(hash(str1));
 
-let str3 = "hello";
+puts(lower("HELLO")) # hello
+
+puts(upper("hello")) # HELLO
+
 
