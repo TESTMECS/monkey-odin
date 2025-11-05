@@ -32,11 +32,11 @@ test_compile_boolean_expressions :: proc(t: ^testing.T) {
 		},
 		{
 			"1 < 2",
-			{2, 1},
+			{1, 2},
 			{
 				make_instructions(a, .Cnst, 0),
 				make_instructions(a, .Cnst, 1),
-				make_instructions(a, .Gt),
+				make_instructions(a, .Lt),
 				make_instructions(a, .Pop),
 			},
 		},
