@@ -10,7 +10,14 @@ Macro_Expansion_Result :: struct {
 	error:    string,
 }
 
-expand_macros :: proc(program: Ast_Program, varena: mem.Allocator) -> (Node, string) {
+expand_macros :: proc(
+	program: Ast_Program,
+	macro_rec := 1,
+	varena: mem.Allocator,
+) -> (
+	Node,
+	string,
+) {
 	// First pass: define all macros
 	macros := make(map[string]ObjectMacro, varena)
 

@@ -7,13 +7,11 @@ import "core:log"
 import "core:mem"
 import "core:strings"
 
-// Evaluator=>>begin
 Evaluator :: struct {
 	_env:   Environment,
 	varena: mem.Allocator,
 	sb:     strings.Builder,
 	args:   []string,
-	//eval method
 	eval:   proc(
 		e: ^Evaluator,
 		node: Ast_Program,
@@ -34,7 +32,7 @@ eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	err := strings.to_string(e.sb)
 	str_clone := strings.clone(err, e.varena)
 	return str_clone
-} // end <<Evaluator
+}
 
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
