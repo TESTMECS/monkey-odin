@@ -1,5 +1,5 @@
-# Monkey Compiler in Odin.
-Compiler and interpreter for the Monkey programming language.
+# Monkey.
+WIP Compiler impl for the Monkey programming language.
 
 # demo.monkey 
 ```monkey
