@@ -73,9 +73,6 @@ puts(a);
 ```
 
 # In progress:
-## Fix macros:
-- Some macros are not being expanded correctly.
-- Step 1 is to add some more functionality to the CLI so mexpand can get AST pre and post expansion.
 ## Foeach loop:
 - For looping over arrays and maps.
 ## Class:
