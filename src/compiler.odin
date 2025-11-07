@@ -320,7 +320,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 	err = ""
 	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
 	if e1 != "" {
-		err = compiler_error(c, "macro expansion error: ", e1)
+		err = compiler_error(c, "macro expansion error:", e1)
 		return
 	}
 	for stmt in expanded_program.(Ast_Program) {
