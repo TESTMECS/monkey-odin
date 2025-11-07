@@ -128,5 +128,6 @@ p3->inspect();
 
 let p2 = point2d();
 p2->new(1.2, 2.3);
-p2->inspect(); // prints x, y, then "printing z", then null
+p2->inspect(); // prints x, y, then "printing z", then null bc inspect is inherited
+let a = p2->add(point2d(1.2, 2.3)); // correctly doubles the current point
 ```
