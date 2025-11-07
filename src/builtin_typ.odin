@@ -178,6 +178,8 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 		return value, true
 	case int:
 		return f64(arg), true
+	case f64:
+		return arg, true
 	}
 
 	return eval_new_error(

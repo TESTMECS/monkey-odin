@@ -7,7 +7,6 @@ import "core:os"
 import "core:strings"
 import "core:terminal/ansi"
 
-
 Monkey_Run_String :: proc(
 	stmts: string,
 	sb: ^strings.Builder,
@@ -20,20 +19,20 @@ Monkey_Run_String :: proc(
 	p := Parser_New(stmts, varena)
 	program := p->parse()
 	if monkey_parser_has_error(p) {
-		monkey_err("Error parsing file", 1, sb, exit, p.errors)
+		monkey_err("Error parsing file: ", 1, sb, exit, p.errors)
 		return nil
 	}
 	c := Compiler_New(varena, cli_args, mexpand_rec)
 	compile_err := c->compile_program(program, mexpand_rec) // pass in macro constant here.
 	if compile_err != "" {
-		monkey_err("Error compiling file", 1, sb, exit, compile_err)
+		monkey_err("Error compiling file: ", 1, sb, exit, compile_err)
 		return nil
 	}
 	bytecode := c->bytecode()
 	vm := Vm_New(bytecode, &c.compiler_state, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" {
-		monkey_err("Error running file: <<%v>>", 1, sb, exit, vm_err)
+		monkey_err("Error running file: ", 1, sb, exit, vm_err)
 		return nil
 	}
 	last_popped := vm->last_popped()
@@ -50,10 +49,10 @@ Monkey_Read_File :: proc(
 	cli_args: []string,
 ) {
 	// Read file path and return its string contents.
-	if !os.exists(file_path) do monkey_err("File does not exist", 1, sb)
+	if !os.exists(file_path) do monkey_err("File does not exist: ", 1, sb)
 
 	f, err := os.open(file_path, os.O_RDONLY)
-	if err != nil do monkey_err("Error opening file", 1, sb)
+	if err != nil do monkey_err("Error opening file: ", 1, sb)
 	defer os.close(f)
 
 	contents, ok := os.read_entire_file_from_handle(f)

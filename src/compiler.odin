@@ -73,7 +73,7 @@ Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1
 
 compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
 	strings.builder_reset(&c.sb)
-	fmt.sbprintf(&c.sb, "compiler error: %s", msg, args)
+	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
 	err = strings.to_string(c.sb)
 	return
 }
@@ -82,6 +82,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
 	case Ast_Let:
+		//
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
 		if is_function {
@@ -100,6 +101,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)
 	case Ast_Identifier:
+		//
 		if symbol, ok := c.symbol_table->resolve(data.value); !ok {
 			// Check if this is a builtin that hasn't been defined yet
 			builtin_fn := find_builtin_fn(data.value)
@@ -121,7 +123,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				return
 			}
 		} else {
-			//
 			if symbol.scope == .Builtin {
 				builtin_fn := find_builtin_fn(data.value)
 				if builtin_fn == nil {
@@ -142,7 +143,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				if err = c->compile(data.right^); err != "" do return
 				symbol, ok := c.symbol_table->resolve(left.value)
 				if !ok {
-					err = compiler_error(c, "identifier '%s' is not declared", left.value)
+					err = compiler_error(c, "identifier '%s' is not declared: ", left.value)
 					return
 				}
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
@@ -204,6 +205,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			return
 		}
 	case Ast_If:
+		//
 		if err = c->compile(data.condition^); err != "" do return
 
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
@@ -226,6 +228,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		after_orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Block:
+		//
 		for s in data {
 			if err = c->compile(s); err != "" do return
 			if Ast_IsExpr(s) {
@@ -233,17 +236,20 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Array:
+		//
 		for el in data {
 			if err = c->compile(el); err != "" do return
 		}
 		c->emit(.Arr, len(data))
 	case Ast_Hash_Table:
+		//
 		for pair in data.pairs {
 			if err = c->compile(pair.key); err != "" do return
 			if err = c->compile(pair.value); err != "" do return
 		}
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
+		//
 		if err = c->compile(data.operand^); err != "" do return
 		if err = c->compile(data.index^); err != "" do return
 		c->emit(.Idx)
@@ -268,16 +274,18 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
+		//
 		if err = c->compile(data.function^); err != "" do return
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return
 		}
 		c->emit(.Call, len(data.arguments))
 	case Ast_Macro:
+		//
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
 	case Ast_For:
-		// for
+		//
 		condition_start_pos := len(c->current_instructions())
 		if err = c->compile(data.cond^); err != "" do return
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
@@ -291,12 +299,16 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// Set the jump target for Jmp (back to condition evaluation start)
 		c->change_operand(jump_back_pos, condition_start_pos)
 	case int:
+		//
 		c->emit(.Cnst, c->add_constant(data))
 	case f64:
+		//
 		c->emit(.Cnst, c->add_constant(data))
 	case bool:
+		//
 		c->emit(.True if data else .False)
 	case string:
+		//
 		str_clone, _ := strings.clone(data, c.varena)
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
@@ -304,10 +316,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 } // end <<Compiler
 // Compiler_helpers=>>begin
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
+	//
 	err = ""
 	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
 	if e1 != "" {
-		err = compiler_error(c, "macro expansion error: %s", e1)
+		err = compiler_error(c, "macro expansion error: ", e1)
 		return
 	}
 	for stmt in expanded_program.(Ast_Program) {

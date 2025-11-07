@@ -71,4 +71,9 @@ for( i < len(a) ) {
 }
 puts(a);
 ```
+# TODO:
+- Better error handling as i work through this.
 
+- fix macros
+- foeach loop
+- class
