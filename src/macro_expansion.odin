@@ -18,6 +18,7 @@ expand_macros :: proc(
 	Node,
 	string,
 ) {
+	// main function we call
 	if macro_rec <= 0 {
 		return program, ""
 	}
@@ -74,6 +75,7 @@ expand_node :: proc(
 	Node,
 	string,
 ) {
+	// calls expand recursively on expressions.
 	#partial switch data in node {
 	case Ast_Call:
 		if ident, ok := data.function^.(Ast_Identifier); ok {
@@ -81,8 +83,6 @@ expand_node :: proc(
 				return expand_macro_call(macro, data.arguments, varena)
 			}
 		}
-
-		// Not a macro call, expand arguments recursively
 		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
 		for arg in data.arguments {
 			expanded_arg, err := expand_node(arg, macros, varena)
@@ -196,14 +196,13 @@ expand_macro_call :: proc(
 		if err != "" do return nil, err
 		extended_env.set(&extended_env, param.value, arg_obj)
 	}
-
 	result, err := evaluate_macro_body(macro.body, &extended_env, varena)
 	if err != "" do return nil, err
-
 	return result, ""
 }
 
 eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, string) {
+	e := Evaluator_New(varena) // temp evaluator for macro expansion
 	#partial switch data in node {
 	case int:
 		return data, ""
@@ -211,6 +210,17 @@ eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, s
 		return data, ""
 	case string:
 		return strings.clone(data, varena), ""
+	case Ast_Prefix:
+		operand, _ := eval_node_to_object(data.operand^, varena)
+		eyo, _ := eval_prefix_expression(&e, data.op, ToObjectBase(operand))
+		return eyo, ""
+	case Ast_Infix:
+		left, err := eval_node_to_object(data.left^, varena)
+		if err != "" do return nil, err
+		right, errr := eval_node_to_object(data.right^, varena)
+		if errr != "" do return nil, err
+		obj, _ := eval_infix_expression(&e, data.op, left, right)
+		return obj, ""
 	case Ast_Array:
 		arr := make([dynamic]ObjectBase, 0, len(data), varena)
 		for elem in data {
@@ -222,6 +232,7 @@ eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, s
 	case:
 		return nil, "unsupported node type for macro argument"
 	}
+	return nil, "unsupported node type for macro argument"
 }
 
 evaluate_macro_body :: proc(

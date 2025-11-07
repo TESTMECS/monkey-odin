@@ -55,12 +55,10 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	// expressions=>>begin
 	case Ast_Identifier:
 		return eval_identifier(e, data, current_env)
-
 	case Ast_Prefix:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
 		return eval_prefix_expression(e, data.op, ToObjectBase(operand))
-
 	case Ast_Infix:
 		left, ok := eval(e, data.left^, current_env)
 		if !ok do return left, false
@@ -176,7 +174,6 @@ eval_block_statements :: proc(
 	return result, true
 } // end <<statements
 // expressions=>>begin
-@(private = "file")
 eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> ObjectBase {
 	#partial switch data in operand {
 	case bool:
@@ -189,7 +186,6 @@ eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> Obj
 	return false
 }
 
-@(private = "file")
 eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (ObjectBase, bool) {
 	value, ok := operand.(int)
 	if !ok do return eval_new_error(e, "unknown operator: '-' on type '%v'", ObjectType(operand)), false
@@ -197,7 +193,6 @@ eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (O
 	return -value, true
 }
 
-@(private = "file")
 eval_prefix_expression :: proc(
 	e: ^Evaluator,
 	op: string,
@@ -323,7 +318,6 @@ eval_string_infix_expression :: proc(
 	return strings.to_string(e.sb), true
 }
 
-@(private = "file")
 eval_infix_expression :: proc(
 	e: ^Evaluator,
 	op: string,

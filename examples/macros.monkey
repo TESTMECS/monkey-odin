@@ -2,6 +2,7 @@
 let show_value = macro(x) {
 	quote(puts(unquote(x)))
 };
+
 let check_positive = macro(x) {
 	quote(if (unquote(x) > 0) { puts("positive") } else { puts("zero or negative") })
 };

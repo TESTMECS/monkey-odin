@@ -271,7 +271,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
-		//
 		if err = c->compile(data.function^); err != "" do return
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return

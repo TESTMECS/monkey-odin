@@ -71,9 +71,41 @@ for( i < len(a) ) {
 }
 puts(a);
 ```
-# TODO:
-- Better error handling as i work through this.
 
-- fix macros
-- foeach loop
-- class
+# In progress:
+## Fix macros:
+- Some macros are not being expanded correctly.
+- Step 1 is to add some more functionality to the CLI so mexpand can get AST pre and post expansion.
+## Foeach loop:
+- For looping over arrays and maps.
+## Class:
+- Additional class data types.
+- Syntax:
+```monkey
+let point3d = class() {
+    let new = fn(self, x, y, z) {
+        self.x = x;
+        self.y = y;
+        self.z = z;
+    };
+    let inspect = fn(self) {
+        puts(self.x);
+        puts(self.y);
+
+        puts("printing z");
+        puts(self.z);
+    };
+}
+let point2d = class(point3d) { // inherit from point3d
+    let x = 1;
+    let y = 2;
+};
+
+let p3 = point3d();
+p3->new(1.2, 2.3, 3.4);
+p3->inspect();
+
+let p2 = point2d();
+p2->new(1.2, 2.3);
+p2->inspect(); // prints x, y, then "printing z", then null
+```
