@@ -114,6 +114,7 @@ init_precedences :: proc() {
 		.Not_Equal          = .Equals,
 		.Assign             = .Assign, // Assignment has lowest precedence
 		.Left_Paren         = .Call,
+		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
 		// Default cases for tokens that don't have precedence
 		.Illegal            = .Lowest,
@@ -136,7 +137,6 @@ init_precedences :: proc() {
 		.If                 = .Lowest,
 		.Else               = .Lowest,
 		.Return             = .Lowest,
-		.Macro              = .Lowest,
 		.For                = .Lowest,
 	}
 }

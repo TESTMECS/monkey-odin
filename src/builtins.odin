@@ -1,5 +1,4 @@
 package monkey
-
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
 	// Math

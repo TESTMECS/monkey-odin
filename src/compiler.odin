@@ -136,7 +136,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 	case Ast_Infix:
-		//
 		if data.op == "=" {
 			#partial switch left in data.left^ {
 			// Assignment

@@ -397,7 +397,11 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 	case Ast_Call:
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "quote" && len(data.arguments) > 0 {
-				return data.arguments[0], ""
+				// For quote, convert the AST argument to its string representation
+				sb := strings.builder_make(varena)
+				ast_to_string(data.arguments[0], &sb)
+				ast_string := strings.to_string(sb)
+				return ast_string, ""
 			} else if ident.value == "unquote" && len(data.arguments) > 0 {
 				return data.arguments[0], ""
 			}
