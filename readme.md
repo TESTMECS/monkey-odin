@@ -95,10 +95,25 @@ let point3d = class() {
         puts("printing z");
         puts(self.z);
     };
+    let add = fn(self, other) {
+        self.x = self.x + other.x;
+        self.y = self.y + other.y;
+        self.z = self.z + other.z;
+        return self;
+    };
 }
 let point2d = class(point3d) { // inherit from point3d
-    let x = 1;
-    let y = 2;
+    let new = fn(self, x, y) {
+        self.x = x;
+        self.y = y;
+    };
+    // inspect is automatically inherited from point3d->inspect()
+    // But lets say we want to override it or provide another implementation
+    let add = fn(self, other) {
+        self.x = self.x + other.x;
+        self.y = self.y + other.y;
+        return self;
+    };
 };
 
 let p3 = point3d();
