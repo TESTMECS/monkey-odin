@@ -101,6 +101,9 @@ let point3d = class() {
         self.z = self.z + other.z;
         return self;
     };
+    let sayHi = fn(self) {
+        puts("Hi!");
+    };
 }
 let point2d = class(point3d) { // inherit from point3d
     let new = fn(self, x, y) {
@@ -114,6 +117,9 @@ let point2d = class(point3d) { // inherit from point3d
         self.y = self.y + other.y;
         return self;
     };
+    let sayHi = fn(self) {
+        point3d->sayHi(); // we can also just use the parent class method
+    }
 };
 
 let p3 = point3d();
