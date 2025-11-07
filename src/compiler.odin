@@ -50,6 +50,7 @@ Compiler :: struct {
 }
 
 Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {
+	//
 	return Compiler {
 		compiler_state = Compiler_State_New(varena, cli_args, mexpand_rec),
 		scopes_idx = 0,
@@ -112,21 +113,21 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				if !ok {
 					err = compiler_error(
 						c,
-						"failed to resolve builtin '%s' after defining it",
+						"failed to resolve builtin after defining it",
 						data.value,
 					)
 					return
 				}
 				c->emit(.Cnst, c->add_constant(builtin_fn))
 			} else {
-				err = compiler_error(c, "identifier '%s' is not declared", data.value)
+				err = compiler_error(c, "identifier is not declared", data.value)
 				return
 			}
 		} else {
 			if symbol.scope == .Builtin {
 				builtin_fn := find_builtin_fn(data.value)
 				if builtin_fn == nil {
-					err = compiler_error(c, "builtin function '%s' not found", data.value)
+					err = compiler_error(c, "builtin function not found", data.value)
 					return
 				}
 				c->emit(.Cnst, c->add_constant(builtin_fn))
@@ -143,7 +144,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				if err = c->compile(data.right^); err != "" do return
 				symbol, ok := c.symbol_table->resolve(left.value)
 				if !ok {
-					err = compiler_error(c, "identifier '%s' is not declared: ", left.value)
+					err = compiler_error(c, "identifier is not declared: ", left.value)
 					return
 				}
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
@@ -155,11 +156,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				if err = c->compile(data.right^); err != "" do return // value
 				c->emit(.SetIdx)
 			case:
-				err = compiler_error(
-					c,
-					"assignment to '%v' is not supported",
-					Ast__Type__(data.left^),
-				)
+				err = compiler_error(c, "assignment to is not supported", Ast__Type__(data.left^))
 				return
 			}
 			return
@@ -189,7 +186,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "!=":
 			c->emit(.Neq)
 		case:
-			err = compiler_error(c, "unknown infix operator '%s'", data.op)
+			err = compiler_error(c, "unknown infix operator", data.op)
 			return
 		}
 	case Ast_Prefix:
@@ -201,7 +198,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		case "-":
 			c->emit(.Neg)
 		case:
-			err = compiler_error(c, "unknown prefix operator '%s'", data.op)
+			err = compiler_error(c, "unknown prefix operator", data.op)
 			return
 		}
 	case Ast_If:

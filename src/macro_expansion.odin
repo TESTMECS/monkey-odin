@@ -211,6 +211,14 @@ eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, s
 		return data, ""
 	case string:
 		return strings.clone(data, varena), ""
+	case Ast_Array:
+		arr := make([dynamic]ObjectBase, 0, len(data), varena)
+		for elem in data {
+			arr_elem, err := eval_node_to_object(elem, varena)
+			if err != "" do return nil, err
+			append(&arr, arr_elem)
+		}
+		return ObjectArray(arr), ""
 	case:
 		return nil, "unsupported node type for macro argument"
 	}
