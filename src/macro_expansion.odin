@@ -268,20 +268,6 @@ expand_unquote_calls :: proc(
 ) {
 	#partial switch data in node {
 	case Ast_Call:
-		if ident, ok := data.function^.(Ast_Identifier); ok {
-			if ident.value == "unquote" && len(data.arguments) > 0 {
-				if ident_arg, ok := data.arguments[0].(Ast_Identifier); ok {
-					if obj, ok := env.get(env, ident_arg.value); ok {
-						if int_val, ok := obj.(int); ok {
-							return int_val, ""
-						}
-					}
-				} else if infix_expr, ok := data.arguments[0].(Ast_Infix); ok {
-					return evaluate_simple_expression(infix_expr, env, varena)
-				}
-			}
-		}
-
 		// Check if this is an unquote call - if so, handle it and don't recurse further
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "unquote" && len(data.arguments) > 0 {
@@ -289,6 +275,8 @@ expand_unquote_calls :: proc(
 					if obj, ok := env.get(env, ident_arg.value); ok {
 						if int_val, ok := obj.(int); ok {
 							return int_val, ""
+						} else if str_val, ok := obj.(string); ok {
+							return str_val, ""
 						}
 					}
 				} else if infix_expr, ok := data.arguments[0].(Ast_Infix); ok {
