@@ -14,6 +14,12 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_lower
 	case "upper":
 		return b_upper
+	case "match":
+		return b_match
+	case "replace":
+		return b_replace
+	case "contains":
+		return b_contains
 	// Arr
 	case "len":
 		return b_len
