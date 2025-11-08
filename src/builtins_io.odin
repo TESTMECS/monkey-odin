@@ -1,5 +1,6 @@
 package monkey
 import "core:fmt"
+import "core:os"
 import "core:strings"
 
 b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
@@ -127,5 +128,40 @@ b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	dbg(strings.to_string(e.sb)) // also print for multiple statements.
 
 	return strings.to_string(e.sb), true
+}
+
+b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
+	usage := `
+				"read file"
+				readf(file)
+				$ file :: str
+				Usage: readf("file.txt")=>>"line1\nline2\n"<<`
+
+
+	if len(args) != 1
+	{
+		return eval_new_error(
+				e,
+				"'readf' function error: wrong number of arguments, wants='1', got='%d'.%s",
+				len(args),
+				usage,
+			),
+			false
+	}
+	file, ok := args[0].(string)
+	if !ok
+	{
+		return eval_new_error(
+				e,
+				"'readf' function error: not supported for argument of type '%v'.%s",
+				ObjectType(args[0]),
+				usage,
+			),
+			false
+	}
+	file_content, okk := os.read_entire_file(file)
+	if !okk do return eval_new_error(e, "'readf' function error: cannot read file '%s'.%s", file, usage), false
+	return string(file_content), true
 }
 

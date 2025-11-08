@@ -3,17 +3,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 {
 	switch name
 	{
-	// Math
-	case "choose":
-		return b_choose
-	case "rand":
-		return b_rand
-	case "sin":
-		return b_sin
-	case "cos":
-		return b_cos
-	case "tan":
-		return b_tan
 	// str
 	case "hash":
 		return b_hash
@@ -77,6 +66,16 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_min
 	case "max":
 		return b_max
+	case "choose":
+		return b_choose
+	case "rand":
+		return b_rand
+	case "sin":
+		return b_sin
+	case "cos":
+		return b_cos
+	case "tan":
+		return b_tan
 	// io
 	case "args":
 		return b_args
@@ -84,6 +83,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_puts
 	case "printf":
 		return b_printf
+	case "readf":
+		return b_readf
 	// quotes
 	case "quote":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
