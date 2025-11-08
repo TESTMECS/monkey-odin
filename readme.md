@@ -120,7 +120,6 @@ let my_sin = sin(float(0));
 let my_cos = cos(float(0));
 let my_tan = tan(float(0));
 ```
-# Status
-- Classes instantiation works, but not yet with inheritance. Next TODO
+# now: 
 - Readability of Compiler and VM and tests are quite dogwater.
 
