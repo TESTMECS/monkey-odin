@@ -19,25 +19,30 @@ let fibonacci = fn(x) {
 };
 puts(fibonacci(5));
 # classes
-class Point2d() {
-	let new = fn(self, x, y) {
-		self.x = x;
-		self.y = y;
-		return self;
+class Animal() {
+	let speak = fn(self) {
+		puts("Animal sound");
 	};
-	let add = fn(self, other) {
-		puts("adding");
-		puts(other.x)
-		self.x = self.x + other.x;
-		self.y = self.y + other.y;
+	let whoami = fn(self) {
+		printf("I am who I am");
 	};
-};
-# Instantiation
-let p = Point2d();
-p@new(1, 2);
-let p2 = Point2d();
-p2@new(1, 2);
-p@add(p2);
+	let num_eyes = fn(self) {
+		puts("I see all");
+	}
+}
+
+class Dog(Animal) {
+	let speak = fn(self) {
+		puts("Dog barks!");
+	};
+	let num_eyes = fn(self, num) {
+		printf("I have %d eyes", num);
+	}
+}
+let dog = Dog(); # Instantiation
+dog@speak(); # =>> Dog barks!
+dog@whoami(); # =>> I am who I am
+dog@num_eyes(2); # =>> I have 2 eyes, Super method DOES NOT override on parameters only name ie. dog@num_eyes() =>> err
 # p.x; # =>2
 # for loops
 let i = 0;
