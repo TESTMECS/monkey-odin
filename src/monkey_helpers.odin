@@ -18,7 +18,7 @@ Monkey_Run_String :: proc(
 	// string -> ast -> compiler -> bytecode -> vm -> checks last popped object.
 	p := Parser_New(stmts, varena)
 	program := p->parse()
-	// dbg("program: %v", program)
+	dbg("program: %v", program)
 	if monkey_parser_has_error(p) {
 		monkey_err("Error parsing file: ", 1, sb, exit, p.errors)
 		return nil

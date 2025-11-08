@@ -214,6 +214,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					}
 				} else {
 					// Hash table iteration
+					// TODO: KEYS, VALUES
 					#partial switch ht in iter.collection^ {
 					case ObjectHashTable:
 						if iter.index < len(iter.keys) {

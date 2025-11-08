@@ -83,65 +83,47 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
 	case Ast_Class:
-		// For now, create a simple class placeholder
-		// TODO: Implement full class compilation with method tables
 		methods := make(ObjectHashTable)
 		class_obj := ObjectClass {
 			name       = data.name,
 			methods    = methods,
 			superclass = nil,
 		}
-
 		// Store the class as a constant and emit it
 		class_const_idx := c->add_constant(class_obj)
 		c->emit(.Cnst, class_const_idx)
-
 		// Define the class name in the current scope
 		symbol := c.symbol_table->define(data.name, c.varena)
 		c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 	case Ast_Foreach:
-		// Compile the expression to iterate over (array or hash table)
 		if err = c->compile(data.expr^); err != "" do return
 
-		// Initialize iterator - creates iterator and leaves it on stack
-		iter_pos := c->emit(.Iter_Init) // no operands needed
+		iter_pos := c->emit(.Iter_Init)
 
-		// Define the iteration variable in current scope
 		symbol := c.symbol_table->define(data.itervar, c.varena)
-		// fmt.printf("Foreach: defined variable '%s' with scope %v, index %d\n", data.itervar, symbol.scope, symbol.index)
 
-		// Loop start
 		loop_start_pos := len(c->current_instructions())
 
-		// Check if iterator has next element
-		c->emit(.Iter_Next) // iterator is at stack top
-		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999) // jump to end if no next
+		c->emit(.Iter_Next)
+		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
 
-		// Get current value from iterator
-		c->emit(.Iter_Get) // get current value, leaves it on stack
+		c->emit(.Iter_Get)
 
-		// Store the value in the iteration variable
 		c->emit(.Set_L if symbol.scope == .Local else .Set_G, symbol.index)
 
-		// Compile loop body
 		for stmt in data.body {
 			if err = c->compile(stmt); err != "" do return
-			// Pop expression results from loop body to keep stack clean
 			if Ast_IsExpr(stmt) {
 				c->emit(.Pop)
 			}
 		}
 
-		// Jump back to loop start
 		c->emit(.Jmp, loop_start_pos)
 
-		// Set jump target for exiting loop
 		after_loop_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, after_loop_pos)
 
-		// Clean up iterator from stack
 		c->emit(.Pop)
-	// fmt.printf("Foreach: completed compilation, final cleanup pop added\n")
 	case Ast_Let:
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
