@@ -381,6 +381,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 }
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
+	fmt.printf("emit: %v\n", op)
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)

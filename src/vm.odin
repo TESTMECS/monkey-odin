@@ -177,6 +177,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			#partial switch iter in iterator {
 			case ObjectIterator:
 				has_next := false
+
 				if iter.is_array {
 					// Array iteration
 					#partial switch arr in iter.collection {
@@ -205,12 +206,14 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				if iter.is_array {
 					// Array iteration
 					#partial switch arr in iter.collection {
+
 					case ObjectArray:
 						if iter.index < len(arr) {
 							value = arr[iter.index]
 							iter.index += 1
 						}
 					}
+
 				} else {
 					// Hash table iteration
 					#partial switch ht in iter.collection {
