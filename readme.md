@@ -8,6 +8,8 @@ Work in progress !!
 # io
 let arr = args(); # =>>["1", "2", "3", "T", "24"]
 printf("args[1]='%d'", int(args()[2]));
+let str_of_file = readf("tests.txt");
+let res = writef("tests.txt", "hello BANANAS")
 
 # fn
 let fibonacci = fn(x) {
@@ -79,6 +81,16 @@ let my_str = "monkey BANANAS";
 let my_str2 = upper(my_str);
 let my_str3 = lower(my_str2);
 puts(split(my_str3, " ")); # =>>["monkey", "BANANAS"]
+
+# regex
+let cap = match("hello monkey", "hello (.*)")
+puts(cap); # =>> "monkey"
+
+let new_str = replace("hello monkey", "hello (.*)", "BANANAS")
+puts(new_str);
+
+let test = contains("hello monkey", "monkey")
+puts(test);
 
 # arr
 let my_arr = args(); # =>>["1", "2", "3"]
