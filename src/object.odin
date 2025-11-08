@@ -42,6 +42,13 @@ ObjectCompiledFunction :: struct {
 	num_parameters: int,
 }
 
+// Placeholder before iter opcodes
+ObjectRange :: struct {
+	from:        int,
+	to:          int,
+	isInclusive: bool,
+}
+
 ObjectBase :: union {
 	int,
 	f64,
@@ -55,6 +62,7 @@ ObjectBase :: union {
 	ObjectCompiledFunction,
 	ObjectMacro,
 	ObjectQuote,
+	ObjectRange,
 }
 
 ObjectReturn :: distinct ObjectBase
@@ -171,7 +179,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 		fmt.sbprint(sb, "(macro)")
 	case ObjectQuote:
 		fmt.sbprint(sb, "(quote)")
-
+	case ObjectRange:
+		fmt.sbprint(sb, "(range)")
 	}
 }
 

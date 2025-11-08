@@ -116,6 +116,7 @@ init_precedences :: proc() {
 		.Left_Paren         = .Call,
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
+		.Dot                = .Call,
 		// Default cases for tokens that don't have precedence
 		.Illegal            = .Lowest,
 		.EOF                = .Lowest,
@@ -138,6 +139,10 @@ init_precedences :: proc() {
 		.Else               = .Lowest,
 		.Return             = .Lowest,
 		.For                = .Lowest,
+		.Foreach            = .Lowest,
+		.Class              = .Lowest,
+		.Self               = .Lowest,
+		.In                 = .Lowest,
 	}
 }
 
@@ -170,6 +175,9 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.If           = parse_if_expression,
 	.Macro        = parse_macro_expression,
 	.For          = parse_for_expression,
+	.Foreach      = parse_foreach_expression,
+	.Class        = parse_class_expression,
+	.Self         = parse_self_expression,
 }
 
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
@@ -186,6 +194,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Assign             = parse_infix_expression,
 	.Left_Paren         = parse_call_expression,
 	.Left_Bracket       = parse_index_expression,
+	.Dot                = parse_dot_expression,
 }
 // end <<Expressions_types
 
@@ -422,6 +431,23 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	return Ast_Index{operand = new_op, index = new_index}
 }
 
+parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
+	next_token(p)
+	
+	if !current_token_is(p, .Identifier) {
+		parser_new_error(p, "expected identifier after '.', got '%s' instead.", p.cur_token.type)
+		return nil
+	}
+	
+	property := Ast_Identifier{value = string(p.cur_token.text_slice)}
+	new_left := new_clone(left, p.varena)
+	property_node := Node(property)
+	new_property := new_clone(property_node, p.varena)
+	
+	// For now, treat dot access as index expression with string key
+	return Ast_Index{operand = new_left, index = new_property}
+}
+
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
 
@@ -465,7 +491,58 @@ parse_for_expression :: proc(p: ^Parser) -> Node {
 	condition := new_clone(cond_expr, p.varena)
 
 	return Ast_For{cond = condition, body = body}
-} // end <<Expressions
+}
+parse_foreach_expression :: proc(p: ^Parser) -> Node {
+	next_token(p)
+	if !expect_peek(p, .Identifier) do return nil
+	name := string(p.cur_token.text_slice)
+	if !expect_peek(p, .In) do return nil
+	next_token(p)
+	expr := parse_expression(p, .Lowest)
+	if expr == nil do return nil
+	new_expr := new_clone(expr, p.varena)
+	if !expect_peek(p, .Left_Brace) do return nil
+	body := parse_block_statement(p)
+	return Ast_Foreach{itervar = name, expr = new_expr, body = body}
+}
+parse_class_expression :: proc(p: ^Parser) -> Node {
+	// Parse class name
+	if !expect_peek(p, .Identifier) do return nil
+	name := string(p.cur_token.text_slice)
+
+	// Parse optional superclass
+	super: [dynamic]Ast_Identifier
+	if peek_token_is(p, .Left_Paren) {
+		next_token(p)
+		super = parse_super_class(p)
+	}
+
+	if !expect_peek(p, .Left_Brace) do return nil
+	body := parse_block_statement(p)
+
+	return Ast_Class{name = name, super = super, body = body}
+}
+parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
+	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
+	//empty
+	if peek_token_is(p, .Right_Paren) {
+		next_token(p)
+		return identifiers
+	}
+	next_token(p)
+	append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+	for peek_token_is(p, .Comma) {
+		next_token(p)
+		next_token(p)
+		append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
+	}
+	if !expect_peek(p, .Right_Paren) do return nil
+	return identifiers
+}
+parse_self_expression :: proc(p: ^Parser) -> Node {
+	return Ast_Identifier{value = "self"}
+}
+// end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
@@ -507,6 +584,26 @@ parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
 
 	return block
 }
+parse_class_statement :: proc(p: ^Parser) -> Node {
+	// Parse class name
+	if !expect_peek(p, .Identifier) do return nil
+	name := string(p.cur_token.text_slice)
+
+	// Parse optional superclass
+	super: [dynamic]Ast_Identifier
+	if peek_token_is(p, .Left_Paren) {
+		next_token(p)
+		super = parse_super_class(p)
+	}
+
+	if !expect_peek(p, .Left_Brace) do return nil
+	body := parse_block_statement(p)
+
+	if peek_token_is(p, .Semicolon) do next_token(p)
+
+	return Ast_Class{name = name, super = super, body = body}
+}
+
 parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
 	if peek_token_is(p, .Semicolon) do next_token(p)
@@ -519,6 +616,8 @@ parse_statement :: proc(p: ^Parser) -> Node {
 		return parse_let_statement(p)
 	case .Return:
 		return parse_return_statement(p)
+	case .Class:
+		return parse_class_statement(p)
 	}
 	return parse_expression_statement(p)
 } // end <<Statements

@@ -21,6 +21,8 @@ Node :: union {
 	Ast_Index,
 	Ast_Macro,
 	Ast_For,
+	Ast_Foreach,
+	Ast_Class,
 }
 
 Ast_Program :: distinct [dynamic]Node
@@ -52,6 +54,18 @@ Ast_Function :: struct {
 Ast_Let :: struct {
 	name:  string,
 	value: ^Node,
+}
+
+Ast_Foreach :: struct {
+	itervar: string,
+	expr:    ^Node, // arr or map
+	body:    Ast_Block,
+}
+
+Ast_Class :: struct {
+	name:  string,
+	super: [dynamic]Ast_Identifier,
+	body:  Ast_Block,
 }
 
 Ast_Ret :: struct {
@@ -98,7 +112,7 @@ Ast_Type_Value :: reflect.union_variant_typeid
 
 Ast_IsExpr :: proc(ast: Node) -> bool {
 	t := Ast__Type__(ast)
-	return t != Node && t != Ast_Let && t != Ast_Ret
+	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class
 }
 
 Ast__Type__ :: proc {

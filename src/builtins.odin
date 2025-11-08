@@ -133,8 +133,101 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					),
 					false
 			}
-	}
+	case "iter":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"iter through range til false">>
+				iter(range)`
 
+
+				if len(args) != 1 {
+					return eval_new_error(
+							e,
+							"'iter' function error: wrong number of arguments, wants='1', got='%d'.%s",
+							len(args),
+							usage,
+						),
+						false
+				}
+				range, ok := args[0].(ObjectRange)
+				arr := make([dynamic]ObjectBase, 0, e.varena)
+				for i in range.from ..= range.to {
+					if !range.isInclusive && i == range.to {
+						break
+					}
+					obj := ObjectBase(i)
+					append(&arr, obj)
+				}
+				return ObjectArray(arr), true
+			}
+	case "range":
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+				usage := `
+				"Get range">>
+				range(start, end, inc)
+				$ obj :: int, int, bool
+				Usage: range(1,10, true)=>>[1,2,3,4,5,6,7,8,9,10]<<`
+
+
+				if len(args) != 3 {
+					return eval_new_error(
+							e,
+							"'range' function error: wrong number of arguments, wants='3', got='%d'.%s",
+							len(args),
+							usage,
+						),
+						false
+				}
+				start, start_ok := args[0].(int)
+				if !start_ok {
+					return eval_new_error(
+							e,
+							"'range' function error: start index must be integer, got '%v'.%s",
+							ObjectType(args[0]),
+							usage,
+						),
+						false
+				}
+				end, end_ok := args[1].(int)
+				if !end_ok {
+					return eval_new_error(
+							e,
+							"'range' function error: end index must be integer, got '%v'.%s",
+							ObjectType(args[1]),
+							usage,
+						),
+						false
+				}
+				inc, inc_ok := args[2].(bool)
+				if !inc_ok {
+					return eval_new_error(
+							e,
+							"'range' function error: increment must be boolean, got '%v'.%s",
+							ObjectType(args[2]),
+							usage,
+						),
+						false
+				}
+
+				if start > end {
+					return eval_new_error(
+							e,
+							"'range' function error: invalid range [%d, %d].%s",
+							start,
+							end,
+							usage,
+						),
+						false
+				}
+				obj := ObjectRange {
+					from        = start,
+					to          = end,
+					isInclusive = inc,
+				}
+				return obj, true
+			}
+
+	}
 	return nil
 }
 

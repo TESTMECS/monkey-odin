@@ -31,6 +31,10 @@ test_lexer :: proc(t: ^testing.T) {
 							[]
 							:
               # comment
+							foreach 
+							in
+							class
+							self
 	`
 
 
@@ -136,6 +140,11 @@ test_lexer :: proc(t: ^testing.T) {
 
 		//
 		{.Colon, ":"},
+		//
+		{.Foreach, "foreach"},
+		{.In, "in"},
+		{.Class, "class"},
+		{.Self, "self"},
 
 		// end of file
 		{.EOF, ""},

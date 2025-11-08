@@ -73,8 +73,13 @@ puts(a);
 ```
 
 # In progress:
-## Foeach loop:
-- For looping over arrays and maps.
+## Ranges:
+- Syntax:
+```monkey
+foreach x in [1,2,3] {}
+foreach k,v in {"a": 1, "b": 2} {}
+foreach x in range(1,10,true) {}
+```
 ## Class:
 - Additional class data types.
 - Syntax:

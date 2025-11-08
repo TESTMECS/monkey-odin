@@ -36,6 +36,13 @@ Token_Type :: enum {
 	Return,
 	Macro,
 	For,
+	// Iter
+	Foreach,
+	In,
+	// Class
+	Class,
+	Self,
+	Dot,
 }
 
 Token :: struct {
@@ -67,6 +74,14 @@ UpdateKwType :: proc(tok: ^Token) {
 		tok.type = .Macro
 	case "for":
 		tok.type = .For
+	case "foreach":
+		tok.type = .Foreach
+	case "in":
+		tok.type = .In
+	case "class":
+		tok.type = .Class
+	case "self":
+		tok.type = .Self
 	}
 }
 
