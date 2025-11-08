@@ -3,7 +3,8 @@
 # io
 let arr = args(); # =>>["1", "2", "3", "T", "24"]
 printf("args[1]='%d'", int(args()[2]));
-
+# let str_of_file = readf("tests.txt");
+# let res = writef("tests.txt", "hello BANANAS")
 # fn
 let fibonacci = fn(x) {
   if (x == 0) {
@@ -60,12 +61,12 @@ let check_positive = macro(x) {
 }
 check_positive(5);                   # prints: positive  
 check_positive(0);                   # prints: zero or negative
-#
+
 # types
 let my_num = 12;
 let my_float = 12.0;
 let bool = bool(args()[1]);
-#
+
 # str
 let my_str = "monkey BANANAS";
 let my_str2 = upper(my_str);
@@ -80,7 +81,7 @@ puts(new_str);
 
 let test = contains("hello monkey", "monkey")
 puts(test);
-#
+
 # arr
 let my_arr = args(); # =>>["1", "2", "3"]
 let arr2 = ["a", "b", "c"];
@@ -101,5 +102,7 @@ let my_has = has(map, "a"); # =>true
 # math
 let my_rand = rand();
 let my_hash = hash(my_str);
-
+let my_sin = sin(float(0));
+let my_cos = cos(float(0));
+let my_tan = tan(float(0));
 

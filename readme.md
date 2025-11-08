@@ -112,6 +112,9 @@ let my_has = has(map, "a"); # =>true
 # math
 let my_rand = rand();
 let my_hash = hash(my_str);
+let my_sin = sin(float(0));
+let my_cos = cos(float(0));
+let my_tan = tan(float(0));
 ```
 # Status
 - Classes instantiation works, but not yet with inheritance. Next TODO
