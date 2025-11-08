@@ -37,10 +37,8 @@ Token_Type :: enum
 	Return,
 	Macro,
 	For,
-	// Iter
 	Foreach,
 	In,
-	// Class
 	Class,
 	Self,
 	Dot,

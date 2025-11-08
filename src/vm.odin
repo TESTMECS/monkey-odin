@@ -131,6 +131,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 		case .New_Instance:
 			class_obj := v->pop_vm()
 			#partial switch &cls in class_obj
+
+
 			
 			{
 			case ObjectClass:
@@ -150,6 +152,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 		case .Iter_Init:
 			collection := v->pop_vm()
 			#partial switch coll in collection
+
+
 			
 			{
 			case ObjectArray:
@@ -183,6 +187,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 		case .Iter_Next:
 			iterator := v->stack_top()
 			#partial switch iter in iterator
+
+
 			
 			{
 			case ObjectIterator:
@@ -191,6 +197,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 				{
 					// Array iteration
 					#partial switch arr in iter.collection^
+
+
 					
 					{
 					case ObjectArray:
@@ -210,6 +218,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 		case .Iter_Get:
 			iterator := v->stack_top()
 			#partial switch &iter in iterator
+
+
 			
 			{
 			case ObjectIterator:
@@ -218,6 +228,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 				{
 					// Array iteration
 					#partial switch &arr in iter.collection^
+
+
 					
 					{
 					case ObjectArray:
@@ -235,6 +247,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 					// Hash table iteration
 					// NOTE: only does Values, no support for `foreach k,v in d` , but can use `for k in keys(d)`
 					#partial switch ht in iter.collection^
+
+
 					
 					{
 					case ObjectHashTable:
@@ -268,6 +282,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 			method := v->pop_vm()
 			class_obj := v->pop_vm()
 			#partial switch &cls in class_obj
+
+
 			
 			{
 			case ObjectClass:
@@ -292,6 +308,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 			instance := v->pop_vm()
 
 			#partial switch inst in instance
+
+
 			
 			{
 			case ^ObjectInstance:
@@ -324,6 +342,8 @@ run_vm :: proc(v: ^VM) -> (err: string)
 			instance := v->pop_vm()
 
 			#partial switch inst in instance
+
+
 			
 			{
 			case ^ObjectInstance:
@@ -806,6 +826,8 @@ exec_not_op :: proc(v: ^VM) -> (err: string)
 {
 	o := v->pop_vm()
 	#partial switch operand in o
+
+
 	
 	{
 	case bool:
@@ -878,7 +900,6 @@ exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string)
 
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 {
-	if DEBUG_VM do fmt.printf("DEBUG: exec_call called with num_args=%d, sp=%d\n", num_args, v.sp)
 	if v.sp - 1 - int(num_args) < 0
 	{
 		err = "stack underflow in function call"
@@ -887,22 +908,13 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 
 	callee_idx := v.sp - 1 - int(num_args)
 	callee := v.stack[callee_idx]
-	if DEBUG_VM do fmt.printf("DEBUG: callee_idx=%d, callee type=%T\n", callee_idx, callee)
-	if DEBUG_VM
-	{
-		fmt.printf("DEBUG: Stack layout:\n")
-		for i in 0 ..< v.sp
-		{
-			fmt.printf("  [%d]: %T\n", i, v.stack[i])
-		}
-	}
 
 	#partial switch fn in callee
+
+
 	
 	{
 	case ObjectCompiledFunction:
-		if DEBUG_VM do fmt.printf("DEBUG: ObjectCompiledFunction, num_parameters=%d, num_locals=%d\n", fn.num_parameters, fn.num_locals)
-
 		// Check for implicit self method call: p@foo()
 		// Stack layout: [..., self, method, args...]
 		is_method_call := false
@@ -943,7 +955,6 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 				)
 				return strings.to_string(v.sb)
 			}
-
 			// Arguments are already contiguous, starting after the function.
 			base_ptr := callee_idx + 1
 			frame := frame(fn.instructions[:], base_ptr)
@@ -951,18 +962,13 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 			v.sp = base_ptr + fn.num_locals
 		}
 		return ""
-
 	case ObjectBuilinFunction:
-		if DEBUG_VM do fmt.println("EXEC_CALL, builtin fn=", fn)
-
 		args := make([dynamic]ObjectBase, 0, v.varena)
-
 		// Extract arguments from stack
 		for i := v.sp - int(num_args); i < v.sp; i += 1
 		{
 			append(&args, v.stack[i])
 		}
-
 		// Create a temporary evaluator-like interface for the builtin
 		temp_evaluator := Evaluator \
 		{
@@ -970,7 +976,6 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 			sb     = v.sb,
 			args   = v.compiler_state.cli_arguments,
 		}
-
 		// Call builtin function
 		result, ok := fn(&temp_evaluator, args)
 		if !ok
@@ -979,27 +984,19 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 			fmt.sbprintf(&v.sb, "builtin function error: %v", result)
 			return strings.to_string(v.sb)
 		}
-
 		// Pop function and arguments from stack
 		v.sp -= int(num_args) + 1
-
 		// Push result
 		return v->push_vm(result)
-
 	case ObjectMacro:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
 		return strings.to_string(v.sb)
-
 	case ObjectClass:
 		// Class instantiation: Class(args) -> create new instance
-		if DEBUG_VM do fmt.println("EXEC_CALL, class=", callee)
-
-		// Create a copy of the class object that will persist
 		class_obj := callee.(ObjectClass)
 		persistent_class := new(ObjectClass, v.varena)
 		persistent_class^ = class_obj
-
 		// Create new instance with empty fields
 		fields := make(ObjectHashTable)
 		instance_ptr := new(ObjectInstance, v.varena)
@@ -1008,16 +1005,12 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
 			class  = persistent_class,
 			fields = fields,
 		}
-
 		// Pop arguments from stack (they're not used for basic instantiation)
 		v.sp -= int(num_args)
-
 		// Pop class object from stack
 		v.sp -= 1
-
 		// Push the new instance
 		return v->push_vm(instance_ptr)
-
 	case ObjectQuote:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(

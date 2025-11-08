@@ -19,9 +19,7 @@ Parser :: struct
 
 Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser
 {
-	// Initialize precedences
 	init_precedences()
-
 	return Parser {
 		varena = varena,
 		errors = make([dynamic]string, 0, varena),
@@ -110,10 +108,7 @@ Precedence :: enum
 }
 
 GetPrecedence: [Token_Type]Precedence
-/* 
- All suitable procedures marked in this way by @(init) will then be called at the start of the program before main is called. The exact order in which all such intialization functions are called is deterministic and hence reliable. The order is determined by a topological sort of the import graph and then in alphabetical file order within the package and then top down within the file.
- */
-@(init) //wonder if this does bad things.
+
 init_precedences :: proc()
 {
 	GetPrecedence = \
