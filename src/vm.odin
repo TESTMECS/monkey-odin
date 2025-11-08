@@ -119,7 +119,25 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		ins = v->current_frame().instructions
 		op = Opcode(ins[ip])
 
-		#partial switch op {
+		switch op {
+		case .New_Instance:
+			unimplemented("new instance")
+		case .Iter_Init:
+			unimplemented("iter init")
+		case .Iter_Next:
+			unimplemented("iter next")
+		case .Iter_Get:
+			unimplemented("iter get")
+		case .Get_Method:
+			unimplemented("get method")
+		case .Set_Method:
+			unimplemented("set method")
+		case .Super_Call:
+			unimplemented("super call")
+		case .Get_Field:
+			unimplemented("get field")
+		case .Set_Field:
+			unimplemented("get/set field")
 		case .Cnst:
 			const_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2

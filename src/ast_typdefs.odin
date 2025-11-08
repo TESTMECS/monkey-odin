@@ -56,6 +56,7 @@ Ast_Let :: struct {
 	value: ^Node,
 }
 
+//New
 Ast_Foreach :: struct {
 	itervar: string,
 	expr:    ^Node, // arr or map
@@ -67,6 +68,7 @@ Ast_Class :: struct {
 	super: [dynamic]Ast_Identifier,
 	body:  Ast_Block,
 }
+//
 
 Ast_Ret :: struct {
 	return_value: ^Node,

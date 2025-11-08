@@ -82,8 +82,11 @@ compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) 
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
+	case Ast_Class:
+		unimplemented("class")
+	case Ast_Foreach:
+		unimplemented("foreach")
 	case Ast_Let:
-		//
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
 		if is_function {
