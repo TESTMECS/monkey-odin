@@ -8,19 +8,22 @@ NULL :: ObjectNil{}
 
 ObjectNil :: struct {}
 
-ObjectFunction :: struct {
+ObjectFunction :: struct
+{
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 	env:        ^Environment,
 }
 
-ObjectMacro :: struct {
+ObjectMacro :: struct
+{
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 	env:        ^Environment,
 }
 
-ObjectQuote :: struct {
+ObjectQuote :: struct
+{
 	node: Node,
 }
 
@@ -36,40 +39,46 @@ ObjectBuilinFunction :: #type proc(
 
 ObjectArray :: distinct [dynamic]ObjectBase
 
-ObjectCompiledFunction :: struct {
+ObjectCompiledFunction :: struct
+{
 	instructions:   Instructions,
 	num_locals:     int,
 	num_parameters: int,
 }
 
 // Iterator for foreach loops
-ObjectIterator :: struct {
+ObjectIterator :: struct
+{
 	collection: ^ObjectBase, // The array or hash table being iterated
-	index:      int,         // Current index for arrays, or state for hash tables
+	index:      int, // Current index for arrays, or state for hash tables
 	keys:       [dynamic]string, // Cached keys for hash table iteration
-	is_array:   bool,        // True for arrays, false for hash tables
+	is_array:   bool, // True for arrays, false for hash tables
 }
 
 // Class-related objects
-ObjectClass :: struct {
+ObjectClass :: struct
+{
 	name:       string,
 	methods:    ObjectHashTable, // Method name -> compiled function
-	superclass: ^ObjectClass,    // Inheritance support
+	superclass: ^ObjectClass, // Inheritance support
 }
 
-ObjectInstance :: struct {
+ObjectInstance :: struct
+{
 	class:  ^ObjectClass,
 	fields: ObjectHashTable, // Field name -> value
 }
 
 // Placeholder before iter opcodes
-ObjectRange :: struct {
+ObjectRange :: struct
+{
 	from:        int,
 	to:          int,
 	isInclusive: bool,
 }
 
-ObjectBase :: union {
+ObjectBase :: union
+{
 	int,
 	f64,
 	bool,
@@ -90,24 +99,29 @@ ObjectBase :: union {
 
 ObjectReturn :: distinct ObjectBase
 
-Object :: union {
+Object :: union
+{
 	ObjectBase,
 	ObjectReturn,
 }
 
-ToObjectBase :: proc {
+ToObjectBase :: proc
+{
 	to_object_base_val,
 	to_object_base_ptr,
 }
 
 @(private = "file")
-to_object_base_val :: proc(obj: Object) -> ObjectBase {
+to_object_base_val :: proc(obj: Object) -> ObjectBase
+{
 	obj := obj
 	return to_object_base_ptr(&obj)
 }
 @(private = "file")
-to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase {
-	switch data in obj {
+to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase
+{
+	switch data in obj
+	{
 	case ObjectBase:
 		return data
 	case ObjectReturn:
@@ -115,8 +129,10 @@ to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase {
 	}
 	unreachable()
 }
-object_is_truthy :: proc(obj: ObjectBase) -> bool {
-	#partial switch o in obj {
+object_is_truthy :: proc(obj: ObjectBase) -> bool
+{
+	#partial switch o in obj
+	{
 	case bool:
 		return o
 	case ObjectNil:
@@ -127,50 +143,60 @@ object_is_truthy :: proc(obj: ObjectBase) -> bool {
 	unreachable()
 }
 
-ObjectIsReturn :: proc {
+ObjectIsReturn :: proc
+{
 	object_is_return_ptr,
 	object_is_return_val,
 }
 
 @(private = "file")
-object_is_return_ptr :: proc(o: ^Object) -> bool {
+object_is_return_ptr :: proc(o: ^Object) -> bool
+{
 	return reflect.union_variant_typeid(o^) == ObjectReturn
 }
 @(private = "file")
-object_is_return_val :: proc(o: Object) -> bool {
+object_is_return_val :: proc(o: Object) -> bool
+{
 	return reflect.union_variant_typeid(o) == ObjectReturn
 }
 
-ObjectType :: proc {
+ObjectType :: proc
+{
 	object_type_val,
 	object_type_ptr,
 }
 
 @(private = "file")
-object_type_val :: proc(o: Object) -> typeid {
+object_type_val :: proc(o: Object) -> typeid
+{
 	return reflect.union_variant_typeid(ToObjectBase(o))
 }
 
-object_type_ptr :: proc(o: ^Object) -> typeid {
+object_type_ptr :: proc(o: ^Object) -> typeid
+{
 	return reflect.union_variant_typeid(ToObjectBase(o^))
 }
 
-ObjectInspect :: proc {
+ObjectInspect :: proc
+{
 	object_inspect_ptr,
 	object_inspect_val,
 }
 
 @(private = "file")
-object_inspect_val :: proc(o: Object, sb: ^strings.Builder) {
+object_inspect_val :: proc(o: Object, sb: ^strings.Builder)
+{
 	obj := o
 	object_inspect_ptr(&obj, sb)
 }
 
 @(private = "file")
-object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
+object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder)
+{
 	obj := o
 	obj_base := ToObjectBase(obj)
-	#partial switch data in obj_base {
+	#partial switch data in obj_base
+	{
 	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
 	case ObjectNil:
@@ -181,7 +207,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 		fmt.sbprint(sb, "(builtin)")
 	case ObjectArray:
 		fmt.sbprint(sb, "[")
-		for item, i in data {
+		for item, i in data
+		{
 			ObjectInspect(item, sb)
 			if i < len(data) - 1 do fmt.sbprint(sb, ", ")
 		}
@@ -189,7 +216,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 	case ObjectHashTable:
 		fmt.sbprint(sb, "{ ")
 		i := 0
-		for key, value in data {
+		for key, value in data
+		{
 			fmt.sbprintf(sb, "%s:", key)
 			ObjectInspect(value, sb)
 			if i < len(data) - 1 do fmt.sbprint(sb, ", ")

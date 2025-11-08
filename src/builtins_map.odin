@@ -1,6 +1,7 @@
 package monkey
 
-b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
 	usage := `
 				"Get keys of hash table">>
 				keys(hash_table)
@@ -8,7 +9,8 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				Usage: keys({"a": 1, "b": 2})=>>["a", "b"]<<`
 
 
-	if len(args) != 1 {
+	if len(args) != 1
+	{
 		return eval_new_error(
 				e,
 				"'keys' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -19,7 +21,8 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 
 	hash_table, ok := args[0].(ObjectHashTable)
-	if !ok {
+	if !ok
+	{
 		return eval_new_error(
 				e,
 				"'keys' function error: not supported for argument of type '%v'.%s",
@@ -31,14 +34,16 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 	keys_arr := make([dynamic]ObjectBase, 0, e.varena)
 
-	for key, _ in hash_table {
+	for key, _ in hash_table
+	{
 		append(&keys_arr, key)
 	}
 
 	return ObjectArray(keys_arr), true
 }
 
-b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
 	usage := `
 				"Get values of hash table">>
 				values(hash_table)
@@ -46,7 +51,8 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: values({"a": 1, "b": 2})=>>[1, 2]<<`
 
 
-	if len(args) != 1 {
+	if len(args) != 1
+	{
 		return eval_new_error(
 				e,
 				"'values' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -57,7 +63,8 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	hash_table, ok := args[0].(ObjectHashTable)
-	if !ok {
+	if !ok
+	{
 		return eval_new_error(
 				e,
 				"'values' function error: not supported for argument of type '%v'.%s",
@@ -69,14 +76,16 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 	values_arr := make([dynamic]ObjectBase, 0, e.varena)
 
-	for _, value in hash_table {
+	for _, value in hash_table
+	{
 		append(&values_arr, value)
 	}
 
 	return ObjectArray(values_arr), true
 }
 
-b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
 	usage := `
 				"Check if hash table has key">>
 				has(hash_table, key)
@@ -85,7 +94,8 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				Usage: has({"a": 1, "b": 2}, "a")=>>true<<`
 
 
-	if len(args) != 2 {
+	if len(args) != 2
+	{
 		return eval_new_error(
 				e,
 				"'has' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -96,7 +106,8 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 
 	hash_table, ok := args[0].(ObjectHashTable)
-	if !ok {
+	if !ok
+	{
 		return eval_new_error(
 				e,
 				"'has' function error: first argument must be hash table, got '%v'.%s",
@@ -107,7 +118,8 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 
 	key_str, key_ok := args[1].(string)
-	if !key_ok {
+	if !key_ok
+	{
 		return eval_new_error(
 				e,
 				"'has' function error: hash table keys must be strings, got '%v'.%s",
@@ -121,7 +133,8 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	return exists, true
 }
 
-b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
 	usage := `
 				"Create hash table from two arrays">>
 				map(keys, values)
@@ -129,7 +142,9 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				$ values :: array of any
 				Usage: map(["a", "b"], [1, 2])=>>{"a": 1, "b": 2}<<`
 
-	if len(args) != 2 {
+
+	if len(args) != 2
+	{
 		return eval_new_error(
 				e,
 				"'map' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -140,7 +155,8 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 
 	keys_arr, keys_ok := args[0].(ObjectArray)
-	if !keys_ok {
+	if !keys_ok
+	{
 		return eval_new_error(
 				e,
 				"'map' function error: first argument must be array, got '%v'.%s",
@@ -151,7 +167,8 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 
 	values_arr, values_ok := args[1].(ObjectArray)
-	if !values_ok {
+	if !values_ok
+	{
 		return eval_new_error(
 				e,
 				"'map' function error: second argument must be array, got '%v'.%s",
@@ -161,7 +178,8 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			false
 	}
 
-	if len(keys_arr) != len(values_arr) {
+	if len(keys_arr) != len(values_arr)
+	{
 		return eval_new_error(
 				e,
 				"'map' function error: arrays must have same length, keys='%d', values='%d'.%s",
@@ -174,9 +192,11 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 	result := make(map[string]ObjectBase, e.varena)
 
-	for i in 0..<len(keys_arr) {
+	for i in 0 ..< len(keys_arr)
+	{
 		key_str, key_ok := keys_arr[i].(string)
-		if !key_ok {
+		if !key_ok
+		{
 			return eval_new_error(
 					e,
 					"'map' function error: all keys must be strings, got '%v' at index %d.%s",

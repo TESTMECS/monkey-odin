@@ -10,7 +10,8 @@ import "core:strings"
 
 Instructions :: [dynamic]byte
 
-Opcode :: enum byte {
+Opcode :: enum byte
+{
 	Cnst,
 	Arr,
 	Ht,
@@ -53,12 +54,14 @@ Opcode :: enum byte {
 	Iter_Get,
 }
 
-Definition :: struct {
+Definition :: struct
+{
 	name:           string,
 	operand_widths: []int,
 }
 
-Definition__Map__ := [Opcode]Definition {
+Definition__Map__ := [Opcode]Definition \
+{
 	.Cnst         = {"OpConstant", {2}},
 	.Arr          = {"OpArray", {2}},
 	.Ht           = {"OpHashTable", {2}},
@@ -101,40 +104,48 @@ Definition__Map__ := [Opcode]Definition {
 	.Iter_Get     = {"OpIterGet", {}},
 }
 
-lookup :: proc(op: Opcode) -> (Definition, bool) {
+lookup :: proc(op: Opcode) -> (Definition, bool)
+{
 	def := Definition__Map__[Opcode(op)]
 	if def.name == "" do return Definition{}, false
 	return def, true
 }
 
-make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int) -> Instructions {
+make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int) -> Instructions
+{
 	def, ok := lookup(op)
 	if !ok do return {}
 
 
 	inst_len := 1
-	if len(def.operand_widths) > 0 {
-		for w in def.operand_widths {
+	if len(def.operand_widths) > 0
+	{
+		for w in def.operand_widths
+		{
 			inst_len += w
 		}
 	}
 	instruction, err := make(Instructions, 0, allocator)
-	if err != nil {
+	if err != nil
+	{
 		log.errorf("making instruction failed with: %v", err)
 		return {}
 	}
 
 	errr := resize(&instruction, inst_len)
-	if errr != nil {
+	if errr != nil
+	{
 		log.errorf("resizing instruction failed with: %v", err)
 		return {}
 	}
 	instruction[0] = byte(op)
 
 	offset := 1
-	for o, i in operands {
+	for o, i in operands
+	{
 		width := def.operand_widths[i]
-		switch width {
+		switch width
+		{
 		case 2:
 			inst_clone := instruction[offset:]
 			endian.put_u16(inst_clone, .Big, u16(o))
@@ -147,10 +158,12 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 }
 
 @(private = "file")
-format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []int) {
+format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []int)
+{
 	operand_count := len(def.operand_widths)
 
-	if len(operands) != operand_count {
+	if len(operands) != operand_count
+	{
 		fmt.sbprintf(
 			sb,
 			"invalid number of operands, expected='%d', got='%d'",
@@ -160,7 +173,8 @@ format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []in
 		return
 	}
 
-	switch operand_count {
+	switch operand_count
+	{
 	case 0:
 		fmt.sbprint(sb, def.name)
 		return
@@ -172,12 +186,15 @@ format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []in
 	fmt.sbprintfln(sb, "ERROR: unhandled operand_count for %s", def.name)
 }
 
-instructions_to_string :: proc(instructions: Instructions, allocator: mem.Allocator) -> string {
+instructions_to_string :: proc(instructions: Instructions, allocator: mem.Allocator) -> string
+{
 	sb := strings.builder_make(allocator)
 	i := 0
-	for i < len(instructions) {
+	for i < len(instructions)
+	{
 		def, ok := lookup(Opcode(instructions[i]))
-		if !ok {
+		if !ok
+		{
 			fmt.sbprintf(&sb, "unknown opcode '%d'", instructions[i])
 			continue
 		}
@@ -197,12 +214,15 @@ read_operands :: proc(
 ) -> (
 	[]int,
 	int,
-) {
+)
+{
 	operands := make([]int, len(def.operand_widths), allocator)
 	offset := 0
 
-	for width, i in def.operand_widths {
-		switch width {
+	for width, i in def.operand_widths
+	{
+		switch width
+		{
 		case 2:
 			operands[i] = int(read_u16(instructions[offset:]))
 		case 1:
@@ -213,13 +233,15 @@ read_operands :: proc(
 	return operands, offset
 }
 
-read_u16 :: proc(ins: []byte) -> u16 {
+read_u16 :: proc(ins: []byte) -> u16
+{
 	res, _ := endian.get_u16(ins, .Big)
 
 	return res
 }
 
-read_u8 :: proc(ins: []byte) -> u8 {
+read_u8 :: proc(ins: []byte) -> u8
+{
 	return u8(ins[0])
 }
 

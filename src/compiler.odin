@@ -8,23 +8,27 @@ import "core:strings"
 
 DEBUG :: true
 
-Emitted_Instruction :: struct {
+Emitted_Instruction :: struct
+{
 	op_code: Opcode,
 	pos:     int,
 }
 
-Bytecode :: struct {
+Bytecode :: struct
+{
 	instructions: []byte,
 	constants:    []ObjectBase,
 }
 
-Compilation_Scope :: struct {
+Compilation_Scope :: struct
+{
 	instructions:         Instructions,
 	last_instruction:     ^Emitted_Instruction,
 	previous_instruction: ^Emitted_Instruction,
 }
 
-Compiler :: struct {
+Compiler :: struct
+{
 	using compiler_state:         Compiler_State,
 	scopes_idx:                   int,
 	compile_program:              proc(
@@ -50,7 +54,8 @@ Compiler :: struct {
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
 
-Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {
+Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler
+{
 	//
 	return Compiler {
 		compiler_state = Compiler_State_New(varena, cli_args, mexpand_rec),
@@ -73,27 +78,33 @@ Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1
 	}
 }
 
-compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
+compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string)
+{
 	strings.builder_reset(&c.sb)
 	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
 	err = strings.to_string(c.sb)
 	return
 }
 
-compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
+compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
+{
 	err = ""
-	#partial switch data in ast {
+	#partial switch data in ast
+	{
 	case Ast_Class:
 		superclass: ^ObjectClass = nil // TODO: Handle inheritance, right now we are not handling the lookup in the symbol table correctly.
 		methods := make(ObjectHashTable)
 		// Compile class body and collect methods
-		for stmt in data.body {
-			if let_stmt, is_let := stmt.(Ast_Let); is_let {
+		for stmt in data.body
+		{
+			if let_stmt, is_let := stmt.(Ast_Let); is_let
+			{
 				// Compile the method function
 				if err = c->compile(let_stmt.value^); err != "" do return
 				// The compiled function should be the last thing emitted
 				// Get the constant index of the compiled function
-				if c->last_instruction_is(.Cnst) {
+				if c->last_instruction_is(.Cnst)
+				{
 					last_instr := c.scopes[c.scopes_idx].last_instruction
 					const_idx, _ := endian.get_u16(
 						c->current_instructions()[last_instr.pos + 1:],
@@ -105,7 +116,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			}
 		}
 		// if DEBUG do fmt.printf("DEBUG: superclass object is '%v'\n", superclass)
-		class_obj := ObjectClass {
+		class_obj := ObjectClass \
+		{
 			name       = data.name,
 			methods    = methods,
 			superclass = superclass,
@@ -132,9 +144,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 		c->emit(.Set_L if symbol.scope == .Local else .Set_G, symbol.index)
 
-		for stmt in data.body {
+		for stmt in data.body
+		{
 			if err = c->compile(stmt); err != "" do return
-			if Ast_IsExpr(stmt) {
+			if Ast_IsExpr(stmt)
+			{
 				c->emit(.Pop)
 			}
 		}
@@ -148,12 +162,15 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Let:
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
-		if is_function {
+		if is_function
+		{
 			// For function literals, define the name first so it can be used recursively
 			symbol := c.symbol_table->define(data.name, c.varena)
 			if err = c->compile(data.value^); err != "" do return
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
-		} else {
+		}
+		 else
+		{
 			// For non-function values, use the normal approach
 			if err = c->compile(data.value^); err != "" do return
 			symbol := c.symbol_table->define(data.name, c.varena)
@@ -165,14 +182,17 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Ret_V)
 	case Ast_Identifier:
 		//
-		if symbol, ok := c.symbol_table->resolve(data.value); !ok {
+		if symbol, ok := c.symbol_table->resolve(data.value); !ok
+		{
 			// Check if this is a builtin that hasn't been defined yet
 			builtin_fn := find_builtin_fn(data.value)
-			if builtin_fn != nil {
+			if builtin_fn != nil
+			{
 				// Add this builtin to the symbol table
 				c.symbol_table->define_builtin(data.value, len(c.symbol_table.store))
 				symbol, ok = c.symbol_table->resolve(data.value)
-				if !ok {
+				if !ok
+				{
 					err = compiler_error(
 						c,
 						"failed to resolve builtin after defining it",
@@ -181,30 +201,41 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 					return
 				}
 				c->emit(.Cnst, c->add_constant(builtin_fn))
-			} else {
+			}
+			 else
+			{
 				err = compiler_error(c, "identifier is not declared", data.value)
 				return
 			}
-		} else {
-			if symbol.scope == .Builtin {
+		}
+		 else
+		{
+			if symbol.scope == .Builtin
+			{
 				builtin_fn := find_builtin_fn(data.value)
-				if builtin_fn == nil {
+				if builtin_fn == nil
+				{
 					err = compiler_error(c, "builtin function not found", data.value)
 					return
 				}
 				c->emit(.Cnst, c->add_constant(builtin_fn))
-			} else {
+			}
+			 else
+			{
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 			}
 		}
 	case Ast_Infix:
-		if data.op == "=" {
-			#partial switch left in data.left^ {
+		if data.op == "="
+		{
+			#partial switch left in data.left^
+			{
 			// Assignment
 			case Ast_Identifier:
 				if err = c->compile(data.right^); err != "" do return
 				symbol, ok := c.symbol_table->resolve(left.value)
-				if !ok {
+				if !ok
+				{
 					err = compiler_error(c, "identifier is not declared: ", left.value)
 					return
 				}
@@ -215,7 +246,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				if err = c->compile(left.operand^); err != "" do return // object (self)
 
 				// Handle field access vs array indexing for assignment
-				switch idx_type in left.index^ {
+				switch idx_type in left.index^
+				{
 				case Ast_Identifier:
 					// Field access: object.field = value - treat field name as string constant
 					idx := left.index.(Ast_Identifier)
@@ -261,7 +293,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// Ops
 		if err = c->compile(data.left^); err != "" do return
 		if err = c->compile(data.right^); err != "" do return
-		switch data.op {
+		switch data.op
+		{
 		case "+":
 			c->emit(.Add)
 		case "-":
@@ -289,7 +322,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Prefix:
 		// Not, Neg
 		if err = c->compile(data.operand^); err != "" do return
-		switch data.op {
+		switch data.op
+		{
 		case "!":
 			c->emit(.Not)
 		case "-":
@@ -312,9 +346,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, orelse_pos)
 
-		if data.orelse == nil {
+		if data.orelse == nil
+		{
 			c->emit(.Nil)
-		} else {
+		}
+		 else
+		{
 			if err = c->compile(data.orelse); err != "" do return
 			if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		}
@@ -323,21 +360,25 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Block:
 		//
-		for s in data {
+		for s in data
+		{
 			if err = c->compile(s); err != "" do return
-			if Ast_IsExpr(s) {
+			if Ast_IsExpr(s)
+			{
 				c->emit(.Pop)
 			}
 		}
 	case Ast_Array:
 		//
-		for el in data {
+		for el in data
+		{
 			if err = c->compile(el); err != "" do return
 		}
 		c->emit(.Arr, len(data))
 	case Ast_Hash_Table:
 		//
-		for pair in data.pairs {
+		for pair in data.pairs
+		{
 			if err = c->compile(pair.key); err != "" do return
 			if err = c->compile(pair.value); err != "" do return
 		}
@@ -347,7 +388,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.operand^); err != "" do return
 
 		// Handle field access vs array indexing
-		switch idx_type in data.index^ {
+		switch idx_type in data.index^
+		{
 		case Ast_Identifier:
 			// Field access: object.field - treat field name as string constant
 			idx := data.index.(Ast_Identifier)
@@ -387,7 +429,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Function:
 		// Function
 		c->enter_scope()
-		for param in data.parameters {
+		for param in data.parameters
+		{
 			c.symbol_table->define(param.value, c.varena)
 		}
 		if err = c->compile(data.body); err != "" do return
@@ -398,7 +441,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// Create a deep copy of instructions for the function
 		instr_copy := make(Instructions, len(instructions), c.varena)
 		copy(instr_copy[:], instructions[:])
-		compiled_fn := ObjectCompiledFunction {
+		compiled_fn := ObjectCompiledFunction \
+		{
 			instructions   = instr_copy,
 			num_locals     = num_locals,
 			num_parameters = len(data.parameters),
@@ -407,10 +451,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Call:
 		// Check if this is a method call from @ syntax
 		// Method calls have: function is identifier, first argument is an identifier (object), and function is not a builtin/global
-		if fn_node, ok := data.function^.(Ast_Identifier); ok && len(data.arguments) > 0 {
+		if fn_node, ok := data.function^.(Ast_Identifier); ok && len(data.arguments) > 0
+		{
 			// Check if first argument is an identifier (object)
 			first_arg_is_identifier := false
-			switch arg_type in data.arguments[0] {
+			switch arg_type in data.arguments[0]
+			{
 			case Ast_Identifier:
 				first_arg_is_identifier = true
 			case:
@@ -442,7 +488,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			// Check if function is a builtin
 			builtin_fn := find_builtin_fn(fn_node.value)
 
-			if first_arg_is_identifier && builtin_fn == nil {
+			if first_arg_is_identifier && builtin_fn == nil
+			{
 				// Method call: obj@method(args) - compiled as method call with object as first arg
 				// Compile the object (first argument)
 				if err = c->compile(data.arguments[0]); err != "" do return
@@ -451,24 +498,31 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				c->emit(.Get_Method, c->add_constant(fn_node.value))
 
 				// Compile remaining arguments (if any)
-				for i in 1 ..< len(data.arguments) {
+				for i in 1 ..< len(data.arguments)
+				{
 					if err = c->compile(data.arguments[i]); err != "" do return
 				}
 
 				// Call the method with object as first argument + additional arguments
 				c->emit(.Call, len(data.arguments))
-			} else {
+			}
+			 else
+			{
 				// Regular function call
 				if err = c->compile(data.function^); err != "" do return
-				for arg in data.arguments {
+				for arg in data.arguments
+				{
 					if err = c->compile(arg); err != "" do return
 				}
 				c->emit(.Call, len(data.arguments))
 			}
-		} else {
+		}
+		 else
+		{
 			// Regular function call
 			if err = c->compile(data.function^); err != "" do return
-			for arg in data.arguments {
+			for arg in data.arguments
+			{
 				if err = c->compile(arg); err != "" do return
 			}
 			c->emit(.Call, len(data.arguments))
@@ -479,15 +533,19 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.object^); err != "" do return
 
 		// Get the method from the object
-		if method_ident, ok := data.method^.(Ast_Identifier); ok {
+		if method_ident, ok := data.method^.(Ast_Identifier); ok
+		{
 			c->emit(.Get_Method, c->add_constant(method_ident.value))
-		} else {
+		}
+		 else
+		{
 			err = "method name must be identifier"
 			return
 		}
 
 		// Compile arguments
-		for arg in data.arguments {
+		for arg in data.arguments
+		{
 			if err = c->compile(arg); err != "" do return
 		}
 
@@ -505,7 +563,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		condition_start_pos := len(c->current_instructions())
 		if err = c->compile(data.cond^); err != "" do return
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
-		for s in data.body {
+		for s in data.body
+		{
 			if err = c->compile(s); err != "" do return
 		}
 		jump_back_pos := c->emit(.Jmp, 9999) // jump back to condition evaluation
@@ -531,35 +590,42 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	return
 } // end <<Compiler
 // Compiler_helpers=>>begin
-compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
+compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string)
+{
 	//
 	err = ""
 	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
-	if e1 != "" {
+	if e1 != ""
+	{
 		err = compiler_error(c, "macro expansion error:", e1)
 		return
 	}
-	for stmt in expanded_program.(Ast_Program) {
+	for stmt in expanded_program.(Ast_Program)
+	{
 		if err = c->compile(stmt); err != "" do return
-		if Ast_IsExpr(stmt) {
+		if Ast_IsExpr(stmt)
+		{
 			c->emit(.Pop)
 		}
 	}
 	return
 }
 
-emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
+emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int
+{
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
 	return pos
 }
 
-bytecode :: proc(c: ^Compiler) -> Bytecode {
+bytecode :: proc(c: ^Compiler) -> Bytecode
+{
 	return {instructions = c->current_instructions()[:], constants = c.compiler_state.constants[:]}
 }
 
-enter_scope :: proc(c: ^Compiler) {
+enter_scope :: proc(c: ^Compiler)
+{
 	scope := Compilation_Scope{}
 	instr := make(Instructions, 0, c.varena)
 	scope.instructions = instr
@@ -569,7 +635,8 @@ enter_scope :: proc(c: ^Compiler) {
 	c.symbol_table = Symbol_Table_New(c.varena, outer = symbol_clone)
 }
 
-leave_scope :: proc(c: ^Compiler) -> ^Instructions {
+leave_scope :: proc(c: ^Compiler) -> ^Instructions
+{
 	instructions := c->current_instructions()
 	pop(&c.scopes)
 	c.scopes_idx = len(c.scopes) - 1
@@ -577,11 +644,13 @@ leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	return instructions
 }
 
-current_instructions :: proc(c: ^Compiler) -> ^Instructions {
+current_instructions :: proc(c: ^Compiler) -> ^Instructions
+{
 	return &c.scopes[c.scopes_idx].instructions
 }
 
-set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
+set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int)
+{
 	prev := c.scopes[c.scopes_idx].last_instruction
 	last := new(Emitted_Instruction, c.varena)
 	last.op_code = op
@@ -590,16 +659,19 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	c.scopes[c.scopes_idx].last_instruction = last
 }
 
-add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
+add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int
+{
 	pos := len(c->current_instructions())
 	n, err := append(c->current_instructions(), ..instructions)
-	if err != nil {
+	if err != nil
+	{
 		log.errorf("appending instructions to scope %v failed with: %v", c.scopes[0], err)
 	}
 	return pos
 }
 
-replace_last_pop_with_return :: proc(c: ^Compiler) {
+replace_last_pop_with_return :: proc(c: ^Compiler)
+{
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
 
 	c->replace_instructions(last_pop, make_instructions(c.varena, .Ret_V)[:])
@@ -607,29 +679,35 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 }
 
-add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
+add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int
+{
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
 
-remove_last_pop :: proc(c: ^Compiler) {
+remove_last_pop :: proc(c: ^Compiler)
+{
 	ordered_remove(c->current_instructions(), c.scopes[c.scopes_idx].last_instruction.pos)
 	c.scopes[c.scopes_idx].last_instruction = c.scopes[c.scopes_idx].previous_instruction
 }
 
-last_instruction_is :: proc(c: ^Compiler, op: Opcode) -> bool {
+last_instruction_is :: proc(c: ^Compiler, op: Opcode) -> bool
+{
 	if len(c->current_instructions()) == 0 do return false
 	return c.scopes[c.scopes_idx].last_instruction.op_code == op
 }
 
-replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte) {
+replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte)
+{
 	ins := c->current_instructions()
-	for i := 0; i < len(new_instructions); i += 1 {
+	for i := 0; i < len(new_instructions); i += 1
+	{
 		ins[pos + i] = new_instructions[i]
 	}
 }
 
-change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
+change_operand :: proc(c: ^Compiler, pos: int, new_operand: int)
+{
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])

@@ -5,13 +5,15 @@ import "core:mem"
 import "core:reflect"
 import "core:strings"
 
-Frame :: struct {
+Frame :: struct
+{
 	instructions: []byte,
 	ip:           int,
 	base_pointer: int,
 }
 
-frame :: proc(instructions: []byte, base_pointer: int) -> Frame {
+frame :: proc(instructions: []byte, base_pointer: int) -> Frame
+{
 	return Frame{instructions, -1, base_pointer}
 }
 
@@ -23,7 +25,8 @@ MAX_FRAMES :: 1024
 
 DEBUG_VM :: false
 
-VM :: struct {
+VM :: struct
+{
 	varena:                 mem.Allocator,
 	compiler_state:         ^Compiler_State,
 	constants:              []ObjectBase,
@@ -67,8 +70,10 @@ VM :: struct {
 	push_frame:             proc(v: ^VM, f: Frame),
 }
 
-Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State, varena: mem.Allocator) -> VM {
-	vm := VM {
+Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State, varena: mem.Allocator) -> VM
+{
+	vm := VM \
+	{
 		compiler_state        = compiler_state,
 		stack                 = make([]ObjectBase, STACK_SIZE, varena),
 		frames                = make([]Frame, MAX_FRAMES, varena),
@@ -107,27 +112,33 @@ Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State, varena: mem.
 	return vm
 }
 
-run_vm :: proc(v: ^VM) -> (err: string) {
+run_vm :: proc(v: ^VM) -> (err: string)
+{
 	ip: int
 	ins: []byte
 	op: Opcode
 
-	for v->current_frame().ip < len(v->current_frame().instructions) - 1 {
+	for v->current_frame().ip < len(v->current_frame().instructions) - 1
+	{
 		v->current_frame().ip += 1
 
 		ip = v->current_frame().ip
 		ins = v->current_frame().instructions
 		op = Opcode(ins[ip])
 
-		switch op {
+		switch op
+		{
 		case .New_Instance:
 			class_obj := v->pop_vm()
-			#partial switch &cls in class_obj {
+			#partial switch &cls in class_obj
+			
+			{
 			case ObjectClass:
 				// Create new instance with empty fields
 				fields := make(ObjectHashTable)
 				instance := new(ObjectInstance, v.varena)
-				instance^ = ObjectInstance {
+				instance^ = ObjectInstance \
+				{
 					class  = &cls,
 					fields = fields,
 				}
@@ -138,10 +149,13 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			}
 		case .Iter_Init:
 			collection := v->pop_vm()
-			#partial switch coll in collection {
+			#partial switch coll in collection
+			
+			{
 			case ObjectArray:
 				// Create iterator for array
-				iter := ObjectIterator {
+				iter := ObjectIterator \
+				{
 					collection = &collection,
 					index      = 0,
 					is_array   = true,
@@ -150,10 +164,12 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			case ObjectHashTable:
 				// Create iterator for hash table - extract keys first
 				keys := make([dynamic]string, v.varena)
-				for key, _ in coll {
+				for key, _ in coll
+				{
 					append(&keys, key)
 				}
-				iter := ObjectIterator {
+				iter := ObjectIterator \
+				{
 					collection = &collection,
 					index      = 0,
 					keys       = keys,
@@ -166,16 +182,23 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			}
 		case .Iter_Next:
 			iterator := v->stack_top()
-			#partial switch iter in iterator {
+			#partial switch iter in iterator
+			
+			{
 			case ObjectIterator:
 				has_next := false
-				if iter.is_array {
+				if iter.is_array
+				{
 					// Array iteration
-					#partial switch arr in iter.collection^ {
+					#partial switch arr in iter.collection^
+					
+					{
 					case ObjectArray:
 						has_next = iter.index < len(arr)
 					}
-				} else {
+				}
+				 else
+				{
 					// Hash table iteration
 					has_next = iter.index < len(iter.keys)
 				}
@@ -186,26 +209,37 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			}
 		case .Iter_Get:
 			iterator := v->stack_top()
-			#partial switch &iter in iterator {
+			#partial switch &iter in iterator
+			
+			{
 			case ObjectIterator:
 				value := ObjectBase(NULL)
-				if iter.is_array {
+				if iter.is_array
+				{
 					// Array iteration
-					#partial switch &arr in iter.collection^ {
+					#partial switch &arr in iter.collection^
+					
+					{
 					case ObjectArray:
-						if iter.index < len(arr) {
+						if iter.index < len(arr)
+						{
 							value = arr[iter.index]
 							updated_iter := iter
 							updated_iter.index += 1
 							v.stack[v.sp - 1] = updated_iter
 						}
 					}
-				} else {
+				}
+				 else
+				{
 					// Hash table iteration
 					// NOTE: only does Values, no support for `foreach k,v in d` , but can use `for k in keys(d)`
-					#partial switch ht in iter.collection^ {
+					#partial switch ht in iter.collection^
+					
+					{
 					case ObjectHashTable:
-						if iter.index < len(iter.keys) {
+						if iter.index < len(iter.keys)
+						{
 							key := iter.keys[iter.index]
 							value = ht[key]
 							updated_iter := iter
@@ -226,13 +260,16 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			v->current_frame().ip += 2
 			method_name_obj := v.constants[method_name_idx]
 			method_name, ok := method_name_obj.(string)
-			if !ok {
+			if !ok
+			{
 				err = fmt.sbprintf(&v.sb, "set method: method name must be string")
 				return
 			}
 			method := v->pop_vm()
 			class_obj := v->pop_vm()
-			#partial switch &cls in class_obj {
+			#partial switch &cls in class_obj
+			
+			{
 			case ObjectClass:
 				cls.methods[method_name] = method
 				if err = v->push_vm(method); err != "" do return
@@ -250,16 +287,22 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			field_name_obj := v.constants[field_name_idx]
 			field_name, ok := field_name_obj.(string)
 
-			if !ok {err = fmt.sbprintf(&v.sb, "get field: field name must be string"); return}
+			if !ok
+			{err = fmt.sbprintf(&v.sb, "get field: field name must be string"); return}
 			instance := v->pop_vm()
 
-			#partial switch inst in instance {
+			#partial switch inst in instance
+			
+			{
 			case ^ObjectInstance:
-				if value, exists := inst.fields[field_name]; exists {
+				if value, exists := inst.fields[field_name]; exists
+				{
 					// if DEBUG_VM do fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
 					if err = v->push_vm(value); err != "" do return
 					// if DEBUG_VM do fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
-				} else {
+				}
+				 else
+				{
 					// Field not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
 				}
@@ -274,12 +317,15 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 			field_name_obj := v.constants[field_name_idx]
 			field_name, ok := field_name_obj.(string)
-			if !ok {err = fmt.sbprintf(&v.sb, "set field: field name must be string"); return}
+			if !ok
+			{err = fmt.sbprintf(&v.sb, "set field: field name must be string"); return}
 
 			value := v->pop_vm()
 			instance := v->pop_vm()
 
-			#partial switch inst in instance {
+			#partial switch inst in instance
+			
+			{
 			case ^ObjectInstance:
 				inst.fields[field_name] = value
 				if err = v->push_vm(value); err != "" do return
@@ -294,23 +340,32 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 			method_name_obj := v.constants[method_name_idx]
 			method_name, ok := method_name_obj.(string)
-			if !ok {err = fmt.sbprintf(&v.sb, "get method: method name must be string"); return}
+			if !ok
+			{err = fmt.sbprintf(&v.sb, "get method: method name must be string"); return}
 
 			obj := v->pop_vm()
 			// if DEBUG_VM do fmt.printf("DEBUG: Get_Method looking for '%s' on object %v (type %T)\n", method_name, obj, obj)
 
-			if obj_class, ok := obj.(ObjectClass); ok {
-				if method, method_ok := obj_class.methods[method_name]; method_ok {
+			if obj_class, ok := obj.(ObjectClass); ok
+			{
+				if method, method_ok := obj_class.methods[method_name]; method_ok
+				{
 					// For class method calls, push the method only, instance seperate
 					if err = v->push_vm(method); err != "" do return
-				} else {
+				}
+				 else
+				{
 					if err = v->push_vm(NULL); err != "" do return
 				}
-			} else if obj_instance, ok := obj.(^ObjectInstance); ok {
+			}
+			 else if obj_instance, ok := obj.(^ObjectInstance); ok
+			{
 				class := obj_instance.class
 				method_found := false
-				for class != nil {
-					if method, method_ok := class.methods[method_name]; method_ok {
+				for class != nil
+				{
+					if method, method_ok := class.methods[method_name]; method_ok
+					{
 						// For instance method calls, we need self as first parameter. So push the instance back, then the method
 						if err = v->push_vm(obj_instance); err != "" do return // self
 						if err = v->push_vm(method); err != "" do return // method
@@ -319,8 +374,11 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					}
 					class = class.superclass // Handles lookup in superclasses when actually implemented, right now just breaks since super is nil
 				}
-				if !method_found {if err = v->push_vm(NULL); err != "" do return}
-			} else {
+				if !method_found
+				{if err = v->push_vm(NULL); err != "" do return}
+			}
+			 else
+			{
 				err = fmt.sbprintf(&v.sb, "get method: expected class or instance, got %v", obj)
 				return
 			}
@@ -380,7 +438,8 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			v->current_frame().ip += 2
 
 			cond := v->pop_vm()
-			if !object_is_truthy(cond) {
+			if !object_is_truthy(cond)
+			{
 				v->current_frame().ip = pos - 1
 			}
 		case .Set_G:
@@ -417,17 +476,21 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	return ""
 }
 
-stack_top :: proc(v: ^VM) -> ObjectBase {
+stack_top :: proc(v: ^VM) -> ObjectBase
+{
 	if v.sp == 0 do return nil
 	return v.stack[v.sp - 1]
 }
 
-current_frame :: proc(v: ^VM) -> ^Frame {
+current_frame :: proc(v: ^VM) -> ^Frame
+{
 	return &v.frames[v.frames_idx - 1]
 }
 
-push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
-	if v.sp >= STACK_SIZE {
+push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string)
+{
+	if v.sp >= STACK_SIZE
+	{
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "stack overflow")
 		return strings.to_string(v.sb)
@@ -437,18 +500,21 @@ push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 	return ""
 }
 
-pop_vm :: proc(v: ^VM) -> ObjectBase {
+pop_vm :: proc(v: ^VM) -> ObjectBase
+{
 	o := v.stack[v.sp - 1]
 	v.sp -= 1
 	return o
 }
 
-last_popped :: proc(v: ^VM) -> ObjectBase {
+last_popped :: proc(v: ^VM) -> ObjectBase
+{
 	if v.sp < 0 do return nil
 	return v.stack[v.sp]
 }
 
-exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
+exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string)
+{
 	right := v->pop_vm()
 	left := v->pop_vm()
 
@@ -459,17 +525,26 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	_, left_is_string := left.(string)
 	_, right_is_string := right.(string)
 
-	if left_is_int && right_is_int {
+	if left_is_int && right_is_int
+	{
 		return v->exec_binary_int_op(op, left.(int), right.(int))
-	} else if left_is_float && right_is_float {
+	}
+	 else if left_is_float && right_is_float
+	{
 		return v->exec_binary_float_op(op, left.(f64), right.(f64))
-	} else if left_is_int && right_is_float {
+	}
+	 else if left_is_int && right_is_float
+	{
 		// Promote int to float
 		return v->exec_binary_float_op(op, f64(left.(int)), right.(f64))
-	} else if left_is_float && right_is_int {
+	}
+	 else if left_is_float && right_is_int
+	{
 		// Promote int to float
 		return v->exec_binary_float_op(op, left.(f64), f64(right.(int)))
-	} else if left_is_string && right_is_string {
+	}
+	 else if left_is_string && right_is_string
+	{
 		return v->exec_binary_string_op(op, left.(string), right.(string))
 	}
 	strings.builder_reset(&v.sb)
@@ -483,10 +558,12 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	return strings.to_string(v.sb)
 }
 
-exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
+exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string)
+{
 	result: int
 
-	#partial switch op {
+	#partial switch op
+	{
 	case .Add:
 		result = left + right
 	case .Sub:
@@ -503,10 +580,12 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 	return v->push_vm(result)
 }
 
-exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
+exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string)
+{
 	result: f64
 
-	#partial switch op {
+	#partial switch op
+	{
 	case .Add:
 		result = left + right
 	case .Sub:
@@ -523,10 +602,12 @@ exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err:
 	return v->push_vm(result)
 }
 
-exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
+exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string)
+{
 	result: string
 
-	#partial switch op {
+	#partial switch op
+	{
 	case .Add:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "%s%s", left, right)
@@ -539,7 +620,8 @@ exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -
 	return v->push_vm(result)
 }
 
-exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
+exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string)
+{
 	right := v->pop_vm()
 	left := v->pop_vm()
 
@@ -548,18 +630,26 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right_val_f, right_is_float := right.(f64)
 	left_val_f, left_is_float := left.(f64)
 
-	if right_is_int && left_is_int {
+	if right_is_int && left_is_int
+	{
 		return v->exec_compare_int_op(op, left_val, right_val)
-	} else if right_is_float && left_is_float {
+	}
+	 else if right_is_float && left_is_float
+	{
 		return v->exec_compare_float_op(op, left_val_f, right_val_f)
-	} else if right_is_int && left_is_float {
+	}
+	 else if right_is_int && left_is_float
+	{
 		// Promote int to float
 		return v->exec_compare_float_op(op, left_val_f, f64(right_val))
-	} else if right_is_float && left_is_int {
+	}
+	 else if right_is_float && left_is_int
+	{
 		// Promote int to float
 		return v->exec_compare_float_op(op, f64(left_val), right_val_f)
 	}
-	#partial switch op {
+	#partial switch op
+	{
 	case .Eq:
 		_, left_is_array := left.(ObjectArray)
 		_, left_is_ht := left.(ObjectHashTable)
@@ -577,20 +667,33 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		   left_is_compiled ||
 		   left_is_function ||
 		   left_is_macro ||
-		   left_is_quote {
+		   left_is_quote
+		{
 			return v->push_vm(false)
-		} else if left_is_string {
+		}
+		 else if left_is_string
+		{
 			return v->push_vm(left.(string) == right.(string))
-		} else if left_is_bool {
+		}
+		 else if left_is_bool
+		{
 			return v->push_vm(left.(bool) == right.(bool))
-		} else if left_val_f, left_is_float := left.(f64); left_is_float {
-			if right_val_f, right_is_float := right.(f64); right_is_float {
+		}
+		 else if left_val_f, left_is_float := left.(f64); left_is_float
+		{
+			if right_val_f, right_is_float := right.(f64); right_is_float
+			{
 				return v->push_vm(left_val_f == right_val_f)
-			} else if right_val, right_is_int := right.(int); right_is_int {
+			}
+			 else if right_val, right_is_int := right.(int); right_is_int
+			{
 				return v->push_vm(left_val_f == f64(right_val))
 			}
-		} else if left_val, left_is_int := left.(int); left_is_int {
-			if right_val_f, right_is_float := right.(f64); right_is_float {
+		}
+		 else if left_val, left_is_int := left.(int); left_is_int
+		{
+			if right_val_f, right_is_float := right.(f64); right_is_float
+			{
 				return v->push_vm(f64(left_val) == right_val_f)
 			}
 		}
@@ -612,20 +715,33 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 		   left_is_compiled ||
 		   left_is_function ||
 		   left_is_macro ||
-		   left_is_quote {
+		   left_is_quote
+		{
 			return v->push_vm(false)
-		} else if left_is_string {
+		}
+		 else if left_is_string
+		{
 			return v->push_vm(left.(string) != right.(string))
-		} else if left_is_bool {
+		}
+		 else if left_is_bool
+		{
 			return v->push_vm(left.(bool) != right.(bool))
-		} else if left_val_f, left_is_float := left.(f64); left_is_float {
-			if right_val_f, right_is_float := right.(f64); right_is_float {
+		}
+		 else if left_val_f, left_is_float := left.(f64); left_is_float
+		{
+			if right_val_f, right_is_float := right.(f64); right_is_float
+			{
 				return v->push_vm(left_val_f != right_val_f)
-			} else if right_val, right_is_int := right.(int); right_is_int {
+			}
+			 else if right_val, right_is_int := right.(int); right_is_int
+			{
 				return v->push_vm(left_val_f != f64(right_val))
 			}
-		} else if left_val, left_is_int := left.(int); left_is_int {
-			if right_val_f, right_is_float := right.(f64); right_is_float {
+		}
+		 else if left_val, left_is_int := left.(int); left_is_int
+		{
+			if right_val_f, right_is_float := right.(f64); right_is_float
+			{
 				return v->push_vm(f64(left_val) != right_val_f)
 			}
 		}
@@ -636,9 +752,11 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	return strings.to_string(v.sb)
 }
 
-exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
+exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string)
+{
 	result: bool
-	#partial switch op {
+	#partial switch op
+	{
 	case .Eq:
 		result = left == right
 	case .Neq:
@@ -659,9 +777,11 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 	return v->push_vm(result)
 }
 
-exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
+exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string)
+{
 	result: bool
-	#partial switch op {
+	#partial switch op
+	{
 	case .Eq:
 		result = left == right
 	case .Neq:
@@ -682,9 +802,12 @@ exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err
 	return v->push_vm(result)
 }
 
-exec_not_op :: proc(v: ^VM) -> (err: string) {
+exec_not_op :: proc(v: ^VM) -> (err: string)
+{
 	o := v->pop_vm()
-	#partial switch operand in o {
+	#partial switch operand in o
+	
+	{
 	case bool:
 		return v->push_vm(!operand)
 	case ObjectNil:
@@ -694,12 +817,15 @@ exec_not_op :: proc(v: ^VM) -> (err: string) {
 	}
 }
 
-exec_neg_op :: proc(v: ^VM) -> (err: string) {
+exec_neg_op :: proc(v: ^VM) -> (err: string)
+{
 	o := v->pop_vm()
 	operand, ok := o.(int)
-	if !ok {
+	if !ok
+	{
 		operand_f, ok_f := o.(f64)
-		if !ok_f {
+		if !ok_f
+		{
 			strings.builder_reset(&v.sb)
 			fmt.sbprintf(&v.sb, "unknown operator: '-' on type '%v'", ObjectType(o))
 			return strings.to_string(v.sb)
@@ -709,16 +835,20 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	return v->push_vm(-operand)
 }
 
-exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
+exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string)
+{
 	// Check types using type assertions instead of ObjectType
 	_, operand_is_array := operand.(ObjectArray)
 	_, operand_is_ht := operand.(ObjectHashTable)
 	_, index_is_int := index.(int)
 	_, index_is_string := index.(string)
 
-	if operand_is_array && index_is_int {
+	if operand_is_array && index_is_int
+	{
 		return v->exec_arr_idx(operand.(ObjectArray), index.(int))
-	} else if operand_is_ht && index_is_string {
+	}
+	 else if operand_is_ht && index_is_string
+	{
 		return v->exec_ht_idx(operand.(ObjectHashTable), index.(string))
 	}
 
@@ -732,21 +862,25 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	return strings.to_string(v.sb)
 }
 
-exec_arr_idx :: proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string) {
+exec_arr_idx :: proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string)
+{
 	max := len(arr) - 1
 	if index < 0 || index > max do return v->push_vm(NULL)
 	return v->push_vm(arr[index])
 }
 
-exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
+exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string)
+{
 	value, key_exists := ht[key]
 	if !key_exists do return v->push_vm(NULL)
 	return v->push_vm(value)
 }
 
-exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
+exec_call :: proc(v: ^VM, num_args: int) -> (err: string)
+{
 	if DEBUG_VM do fmt.printf("DEBUG: exec_call called with num_args=%d, sp=%d\n", num_args, v.sp)
-	if v.sp - 1 - int(num_args) < 0 {
+	if v.sp - 1 - int(num_args) < 0
+	{
 		err = "stack underflow in function call"
 		return
 	}
@@ -754,30 +888,38 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	callee_idx := v.sp - 1 - int(num_args)
 	callee := v.stack[callee_idx]
 	if DEBUG_VM do fmt.printf("DEBUG: callee_idx=%d, callee type=%T\n", callee_idx, callee)
-	if DEBUG_VM {
+	if DEBUG_VM
+	{
 		fmt.printf("DEBUG: Stack layout:\n")
-		for i in 0 ..< v.sp {
+		for i in 0 ..< v.sp
+		{
 			fmt.printf("  [%d]: %T\n", i, v.stack[i])
 		}
 	}
 
-	#partial switch fn in callee {
+	#partial switch fn in callee
+	
+	{
 	case ObjectCompiledFunction:
 		if DEBUG_VM do fmt.printf("DEBUG: ObjectCompiledFunction, num_parameters=%d, num_locals=%d\n", fn.num_parameters, fn.num_locals)
 
 		// Check for implicit self method call: p@foo()
 		// Stack layout: [..., self, method, args...]
 		is_method_call := false
-		if fn.num_parameters == num_args + 1 && callee_idx > 0 {
-			if _, ok := v.stack[callee_idx - 1].(^ObjectInstance); ok {
+		if fn.num_parameters == num_args + 1 && callee_idx > 0
+		{
+			if _, ok := v.stack[callee_idx - 1].(^ObjectInstance); ok
+			{
 				is_method_call = true
 			}
 		}
 
-		if is_method_call {
+		if is_method_call
+		{
 			// It's a method call, arguments are not contiguous.
 			// Rearrange stack to make them contiguous: [..., self, args...]
-			for i in 0 ..< num_args {
+			for i in 0 ..< num_args
+			{
 				v.stack[callee_idx + i] = v.stack[callee_idx + 1 + i]
 			}
 
@@ -786,9 +928,12 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 			v->push_frame(frame)
 			v.sp = base_ptr + fn.num_locals
 
-		} else {
+		}
+		 else
+		{
 			// Regular function call, or method call with explicit self.
-			if num_args != fn.num_parameters {
+			if num_args != fn.num_parameters
+			{
 				strings.builder_reset(&v.sb)
 				fmt.sbprintf(
 					&v.sb,
@@ -813,12 +958,14 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		args := make([dynamic]ObjectBase, 0, v.varena)
 
 		// Extract arguments from stack
-		for i := v.sp - int(num_args); i < v.sp; i += 1 {
+		for i := v.sp - int(num_args); i < v.sp; i += 1
+		{
 			append(&args, v.stack[i])
 		}
 
 		// Create a temporary evaluator-like interface for the builtin
-		temp_evaluator := Evaluator {
+		temp_evaluator := Evaluator \
+		{
 			varena = v.varena,
 			sb     = v.sb,
 			args   = v.compiler_state.cli_arguments,
@@ -826,7 +973,8 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 		// Call builtin function
 		result, ok := fn(&temp_evaluator, args)
-		if !ok {
+		if !ok
+		{
 			strings.builder_reset(&v.sb)
 			fmt.sbprintf(&v.sb, "builtin function error: %v", result)
 			return strings.to_string(v.sb)
@@ -855,7 +1003,8 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		// Create new instance with empty fields
 		fields := make(ObjectHashTable)
 		instance_ptr := new(ObjectInstance, v.varena)
-		instance_ptr^ = ObjectInstance {
+		instance_ptr^ = ObjectInstance \
+		{
 			class  = persistent_class,
 			fields = fields,
 		}
@@ -882,24 +1031,29 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	return strings.to_string(v.sb)
 }
 
-build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
+build_array :: proc(v: ^VM, start, end: int) -> ObjectBase
+{
 	elements := make(ObjectArray, 0, v.varena)
 
-	for i := start; i < end; i += 1 {
+	for i := start; i < end; i += 1
+	{
 		append(&elements, v.stack[i])
 	}
 	return elements
 }
 
-build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
+build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string)
+{
 	ht := make(ObjectHashTable, (end - start) / 2, v.varena)
 
-	for i := start; i < end; i += 2 {
+	for i := start; i < end; i += 2
+	{
 		key := v.stack[i]
 		value := v.stack[i + 1]
 
 		key_str, key_is_string := key.(string)
-		if !key_is_string {
+		if !key_is_string
+		{
 			strings.builder_reset(&v.sb)
 			fmt.sbprintf(&v.sb, "key '%v' is not a string", key)
 			return nil, strings.to_string(v.sb)
@@ -909,25 +1063,31 @@ build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 	return ht, ""
 }
 
-pop_frame :: proc(v: ^VM) -> ^Frame {
+pop_frame :: proc(v: ^VM) -> ^Frame
+{
 	v.frames_idx -= 1
 	return &v.frames[v.frames_idx]
 }
 
-push_frame :: proc(v: ^VM, f: Frame) {
+push_frame :: proc(v: ^VM, f: Frame)
+{
 	v.frames[v.frames_idx] = f
 	v.frames_idx += 1
 }
 
-exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string) {
+exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string)
+{
 	_, operand_is_array := operand.(ObjectArray)
 	_, operand_is_ht := operand.(ObjectHashTable)
 	_, index_is_int := index.(int)
 	_, index_is_string := index.(string)
 
-	if operand_is_array && index_is_int {
+	if operand_is_array && index_is_int
+	{
 		return v->exec_arr_set_idx(operand.(ObjectArray), index.(int), value)
-	} else if operand_is_ht && index_is_string {
+	}
+	 else if operand_is_ht && index_is_string
+	{
 		ht := operand.(ObjectHashTable)
 		key_str := index.(string)
 		ht[strings.clone(key_str, v.varena)] = value
@@ -944,16 +1104,11 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 	return strings.to_string(v.sb)
 }
 
-exec_arr_set_idx :: proc(
-	v: ^VM,
-	arr: ObjectArray,
-	index: int,
-	value: ObjectBase,
-) -> (
-	err: string,
-) {
+exec_arr_set_idx :: proc(v: ^VM, arr: ObjectArray, index: int, value: ObjectBase) -> (err: string)
+{
 	max := len(arr) - 1
-	if index < 0 || index > max {
+	if index < 0 || index > max
+	{
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "array index out of bounds: %d", index)
 		return strings.to_string(v.sb)

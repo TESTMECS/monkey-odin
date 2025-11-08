@@ -3,7 +3,8 @@ package monkey
 import "core:mem"
 import "core:strings"
 
-Compiler_State :: struct {
+Compiler_State :: struct
+{
 	varena:        mem.Allocator,
 	symbol_table:  Symbol_Table,
 	globals:       []ObjectBase,
@@ -14,7 +15,12 @@ Compiler_State :: struct {
 	mexpand_rec:   int,
 }
 
-Compiler_State_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler_State {
+Compiler_State_New :: proc(
+	varena: mem.Allocator,
+	cli_args: []string,
+	mexpand_rec := 1,
+) -> Compiler_State
+{
 	scopes := make([dynamic]Compilation_Scope, 0, STACK_SIZE, varena)
 	main_scope: Compilation_Scope
 	main_scope_instructions := make(Instructions, 0, varena)

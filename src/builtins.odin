@@ -1,6 +1,8 @@
 package monkey
-find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
-	switch name {
+find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
+{
+	switch name
+	{
 	// Math
 	case "choose":
 		return b_choose
@@ -75,7 +77,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "printf":
 		return b_printf
 	case "quote":
-		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+			{
 				usage := `
 				"Quote obj">>
 				quote(obj)
@@ -83,7 +86,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				Usage: quote(1)=>>1<<`
 
 
-				if len(args) != 1 {
+				if len(args) != 1
+				{
 					return eval_new_error(
 							e,
 							"'quote' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -92,7 +96,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						),
 						false
 				}
-				#partial switch arg in args[0] {
+				#partial switch arg in args[0]
+				{
 				case int,
 				     bool,
 				     string,
@@ -112,7 +117,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 			}
 
 	case "unquote":
-		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+			{
 				usage := `
 				"Unquote obj">>
 				unquote(obj)
@@ -121,7 +127,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 
 				if len(args) != 1 do return eval_new_error(e, "'unquote' function error: wrong number of arguments, wants='1', got='%d'.%s", len(args), usage), false
-				#partial switch arg in args[0] {
+				#partial switch arg in args[0]
+				{
 				case ObjectQuote:
 					return arg, true // for quote, we need to convert the argument back to an AST node
 				}
@@ -134,13 +141,15 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					false
 			}
 	case "iter":
-		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+			{
 				usage := `
 				"iter through range til false">>
 				iter(range)`
 
 
-				if len(args) != 1 {
+				if len(args) != 1
+				{
 					return eval_new_error(
 							e,
 							"'iter' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -151,8 +160,10 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				}
 				range, ok := args[0].(ObjectRange)
 				arr := make([dynamic]ObjectBase, 0, e.varena)
-				for i in range.from ..= range.to {
-					if !range.isInclusive && i == range.to {
+				for i in range.from ..= range.to
+				{
+					if !range.isInclusive && i == range.to
+					{
 						break
 					}
 					obj := ObjectBase(i)
@@ -161,7 +172,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				return ObjectArray(arr), true
 			}
 	case "range":
-		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+			{
 				usage := `
 				"Get range">>
 				range(start, end, inc)
@@ -169,7 +181,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				Usage: range(1,10, true)=>>[1,2,3,4,5,6,7,8,9,10]<<`
 
 
-				if len(args) != 3 {
+				if len(args) != 3
+				{
 					return eval_new_error(
 							e,
 							"'range' function error: wrong number of arguments, wants='3', got='%d'.%s",
@@ -179,7 +192,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 				start, start_ok := args[0].(int)
-				if !start_ok {
+				if !start_ok
+				{
 					return eval_new_error(
 							e,
 							"'range' function error: start index must be integer, got '%v'.%s",
@@ -189,7 +203,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 				end, end_ok := args[1].(int)
-				if !end_ok {
+				if !end_ok
+				{
 					return eval_new_error(
 							e,
 							"'range' function error: end index must be integer, got '%v'.%s",
@@ -199,7 +214,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 				inc, inc_ok := args[2].(bool)
-				if !inc_ok {
+				if !inc_ok
+				{
 					return eval_new_error(
 							e,
 							"'range' function error: increment must be boolean, got '%v'.%s",
@@ -209,7 +225,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						false
 				}
 
-				if start > end {
+				if start > end
+				{
 					return eval_new_error(
 							e,
 							"'range' function error: invalid range [%d, %d].%s",
@@ -219,7 +236,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						),
 						false
 				}
-				obj := ObjectRange {
+				obj := ObjectRange \
+				{
 					from        = start,
 					to          = end,
 					isInclusive = inc,

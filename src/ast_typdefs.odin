@@ -1,7 +1,8 @@
 package monkey
 import "core:reflect"
 
-Node :: union {
+Node :: union
+{
 	f64,
 	int,
 	bool,
@@ -32,105 +33,124 @@ Ast_Block :: distinct [dynamic]Node
 
 Ast_Array :: distinct [dynamic]Node
 
-Ast_For :: struct {
+Ast_For :: struct
+{
 	cond: ^Node,
 	body: Ast_Block,
 }
 
-Ast_Call :: struct {
+Ast_Call :: struct
+{
 	function:  ^Node,
 	arguments: [dynamic]Node,
 }
 
-Ast_Method_Call :: struct {
+Ast_Method_Call :: struct
+{
 	object:    ^Node, // The object the method is being called on
 	method:    ^Node, // The method name (identifier)
 	arguments: [dynamic]Node, // Arguments to the method (excluding self)
 }
 
-Ast_Hash_Table :: struct {
+Ast_Hash_Table :: struct
+{
 	pairs: [dynamic]kvpair,
 	table: map[string]Node,
 }
 
-Ast_Function :: struct {
+Ast_Function :: struct
+{
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 }
 
-Ast_Let :: struct {
+Ast_Let :: struct
+{
 	name:  string,
 	value: ^Node,
 }
 
 //New
-Ast_Foreach :: struct {
+Ast_Foreach :: struct
+{
 	itervar: string,
 	expr:    ^Node, // arr or map
 	body:    Ast_Block,
 }
 
-Ast_Class :: struct {
+Ast_Class :: struct
+{
 	name:  string,
 	super: [dynamic]Ast_Identifier,
 	body:  Ast_Block,
 }
 //
 
-Ast_Ret :: struct {
+Ast_Ret :: struct
+{
 	return_value: ^Node,
 }
 
-Ast_Identifier :: struct {
+Ast_Identifier :: struct
+{
 	value: string,
 }
 
-Ast_Prefix :: struct {
+Ast_Prefix :: struct
+{
 	op:      string,
 	operand: ^Node,
 }
 
-Ast_Infix :: struct {
+Ast_Infix :: struct
+{
 	op:    string,
 	left:  ^Node,
 	right: ^Node,
 }
 
-Ast_If :: struct {
+Ast_If :: struct
+{
 	condition: ^Node,
 	then:      Ast_Block,
 	orelse:    Ast_Block,
 }
 
-kvpair :: struct {
+kvpair :: struct
+{
 	key:   Node,
 	value: Node,
 }
 
-Ast_Index :: struct {
+Ast_Index :: struct
+{
 	operand: ^Node,
 	index:   ^Node,
 }
 
-Ast_Macro :: struct {
+Ast_Macro :: struct
+{
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 }
 
 Ast_Type_Value :: reflect.union_variant_typeid
 
-Ast_IsExpr :: proc(ast: Node) -> bool {
+Ast_IsExpr :: proc(ast: Node) -> bool
+{
 	t := Ast__Type__(ast)
 	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class && t != Ast_Foreach
 }
 
-Ast__Type__ :: proc {
+Ast__Type__ :: proc
+{
 	Ast_Type_Value,
 	ast_type_pointer,
 }
 
 @(private = "file")
-ast_type_pointer :: proc(ast: ^Node) -> typeid {
+ast_type_pointer :: proc(ast: ^Node) -> typeid
+{
 	return reflect.union_variant_typeid(ast^)
 }
 

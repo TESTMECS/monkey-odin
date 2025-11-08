@@ -2,15 +2,18 @@ package monkey
 import "core:mem"
 import "core:strings"
 
-Ast__Copy__ :: proc {
+Ast__Copy__ :: proc
+{
 	ast_copy_idents,
 	ast_copy_block,
 	ast_copy_nodes,
 	ast_copy_array,
 }
 
-ast_copy_array :: proc(ast: ^Ast_Array, dst: ^Ast_Array, allocator: mem.Allocator) {
-	for &stmt in ast {
+ast_copy_array :: proc(ast: ^Ast_Array, dst: ^Ast_Array, allocator: mem.Allocator)
+{
+	for &stmt in ast
+	{
 		append(dst, ast_copy(&stmt, allocator))
 	}
 }
@@ -20,34 +23,43 @@ ast_copy_idents :: proc(
 	ast: ^[dynamic]Ast_Identifier,
 	dst: ^[dynamic]Ast_Identifier,
 	allocator: mem.Allocator,
-) {
-	for stmt in ast {
+)
+{
+	for stmt in ast
+	{
 		append(dst, Ast_Identifier{value = strings.clone(stmt.value, allocator)})
 	}
 }
 
 @(private = "file")
-ast_copy_block :: proc(ast: ^Ast_Block, dst: ^Ast_Block, allocator: mem.Allocator) {
-	for &stmt in ast {
+ast_copy_block :: proc(ast: ^Ast_Block, dst: ^Ast_Block, allocator: mem.Allocator)
+{
+	for &stmt in ast
+	{
 		append(dst, ast_copy(&stmt, allocator))
 	}
 }
 
 @(private = "file")
-ast_copy_nodes :: proc(ast: ^[dynamic]Node, dst: ^[dynamic]Node, allocator: mem.Allocator) {
-	for &stmt in ast {
+ast_copy_nodes :: proc(ast: ^[dynamic]Node, dst: ^[dynamic]Node, allocator: mem.Allocator)
+{
+	for &stmt in ast
+	{
 		append(dst, ast_copy(&stmt, allocator))
 	}
 }
 
-new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T {
+new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T
+{
 	ptr := new(T, allocator)
 	ptr^ = value
 	return ptr
 }
 
-ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
-	#partial switch &data in ast {
+ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node
+{
+	#partial switch &data in ast
+	{
 	case int, bool, f64:
 		return data
 
@@ -84,7 +96,8 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		Ast__Copy__(&data.then, &then, allocator)
 
 		orelse: Ast_Block
-		if data.orelse != nil {
+		if data.orelse != nil
+		{
 			then = make(Ast_Block, 0, len(data.orelse), allocator)
 			Ast__Copy__(&data.orelse, &orelse, allocator)
 		}
@@ -101,14 +114,17 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		return arr_copy
 
 	case Ast_Hash_Table:
-		hash_copy := Ast_Hash_Table {
+		hash_copy := Ast_Hash_Table \
+		{
 			pairs = make([dynamic]kvpair, 0, len(data.pairs), allocator),
 			table = make(map[string]Node),
 		}
 
 		n := len(data.pairs)
-		for ; n > 0; n -= 1 {
-			if n > 0 {
+		for ; n > 0; n -= 1
+		{
+			if n > 0
+			{
 				e: kvpair = pop(&data.pairs)
 				ast_copy(&e.key, allocator)
 				ast_copy(&e.value, allocator)
@@ -116,7 +132,8 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 			}
 		}
 
-		for key, &value in data.table {
+		for key, &value in data.table
+		{
 			key_clone := strings.clone(key, allocator)
 			hash_copy.table[key_clone] = ast_copy(&value, allocator)
 		}
