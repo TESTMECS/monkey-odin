@@ -90,6 +90,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 {
 	err = ""
 	#partial switch data in ast
+
+
+	
 	{
 	case Ast_Class:
 		superclass: ^ObjectClass = nil // TODO: Handle inheritance, right now we are not handling the lookup in the symbol table correctly.
@@ -130,20 +133,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 	case Ast_Foreach:
 		if err = c->compile(data.expr^); err != "" do return
-
 		iter_pos := c->emit(.Iter_Init)
-
 		symbol := c.symbol_table->define(data.itervar, c.varena)
-
 		loop_start_pos := len(c->current_instructions())
-
 		c->emit(.Iter_Next)
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
-
 		c->emit(.Iter_Get)
-
 		c->emit(.Set_L if symbol.scope == .Local else .Set_G, symbol.index)
-
 		for stmt in data.body
 		{
 			if err = c->compile(stmt); err != "" do return
@@ -152,15 +148,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 				c->emit(.Pop)
 			}
 		}
-
 		c->emit(.Jmp, loop_start_pos)
-
 		after_loop_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, after_loop_pos)
-
 		c->emit(.Pop)
 	case Ast_Let:
-		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
 		if is_function
 		{
@@ -177,11 +169,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 		}
 	case Ast_Ret:
-		//
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)
 	case Ast_Identifier:
-		//
 		if symbol, ok := c.symbol_table->resolve(data.value); !ok
 		{
 			// Check if this is a builtin that hasn't been defined yet
@@ -229,6 +219,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		if data.op == "="
 		{
 			#partial switch left in data.left^
+
+
+			
 			{
 			// Assignment
 			case Ast_Identifier:
@@ -241,12 +234,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 				}
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
-			// Index assignment - this handles field access like self.x
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return // object (self)
-
-				// Handle field access vs array indexing for assignment
 				switch idx_type in left.index^
+
+
+				
 				{
 				case Ast_Identifier:
 					// Field access: object.field = value - treat field name as string constant
@@ -333,19 +326,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			return
 		}
 	case Ast_If:
-		//
 		if err = c->compile(data.condition^); err != "" do return
-
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
-
 		if err = c->compile(data.then); err != "" do return
-
 		if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		jump_pos := c->emit(.Jmp, 9999)
-
 		orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, orelse_pos)
-
 		if data.orelse == nil
 		{
 			c->emit(.Nil)
@@ -355,11 +342,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			if err = c->compile(data.orelse); err != "" do return
 			if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		}
-
 		after_orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Block:
-		//
 		for s in data
 		{
 			if err = c->compile(s); err != "" do return
@@ -369,14 +354,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			}
 		}
 	case Ast_Array:
-		//
 		for el in data
 		{
 			if err = c->compile(el); err != "" do return
 		}
 		c->emit(.Arr, len(data))
 	case Ast_Hash_Table:
-		//
 		for pair in data.pairs
 		{
 			if err = c->compile(pair.key); err != "" do return
@@ -384,11 +367,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		}
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
-		//
 		if err = c->compile(data.operand^); err != "" do return
-
 		// Handle field access vs array indexing
 		switch idx_type in data.index^
+
+
+		
 		{
 		case Ast_Identifier:
 			// Field access: object.field - treat field name as string constant
@@ -456,6 +440,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			// Check if first argument is an identifier (object)
 			first_arg_is_identifier := false
 			switch arg_type in data.arguments[0]
+
+
+			
 			{
 			case Ast_Identifier:
 				first_arg_is_identifier = true
@@ -482,33 +469,22 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			     Ast_For,
 			     Ast_Foreach,
 			     Ast_Class:
-			// First argument is not an identifier, so this might be a regular call
 			}
 
-			// Check if function is a builtin
 			builtin_fn := find_builtin_fn(fn_node.value)
 
 			if first_arg_is_identifier && builtin_fn == nil
 			{
-				// Method call: obj@method(args) - compiled as method call with object as first arg
-				// Compile the object (first argument)
 				if err = c->compile(data.arguments[0]); err != "" do return
-
-				// Get the method from the object
 				c->emit(.Get_Method, c->add_constant(fn_node.value))
-
-				// Compile remaining arguments (if any)
 				for i in 1 ..< len(data.arguments)
 				{
 					if err = c->compile(data.arguments[i]); err != "" do return
 				}
-
-				// Call the method with object as first argument + additional arguments
 				c->emit(.Call, len(data.arguments))
 			}
 			 else
 			{
-				// Regular function call
 				if err = c->compile(data.function^); err != "" do return
 				for arg in data.arguments
 				{
@@ -519,7 +495,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		}
 		 else
 		{
-			// Regular function call
 			if err = c->compile(data.function^); err != "" do return
 			for arg in data.arguments
 			{
@@ -528,11 +503,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			c->emit(.Call, len(data.arguments))
 		}
 	case Ast_Method_Call:
-		// Method call: obj@method(args)
-		// Compile the object
 		if err = c->compile(data.object^); err != "" do return
-
-		// Get the method from the object
 		if method_ident, ok := data.method^.(Ast_Identifier); ok
 		{
 			c->emit(.Get_Method, c->add_constant(method_ident.value))
@@ -542,24 +513,15 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 			err = "method name must be identifier"
 			return
 		}
-
-		// Compile arguments
 		for arg in data.arguments
 		{
 			if err = c->compile(arg); err != "" do return
 		}
-
-		// Call the method
-		// For instance method calls: Get_Method pushes self then method, so we have self, method, args
-		// For class method calls: Get_Method pushes only method, so we have method, args
-		// We need to determine which case we're in based on the object type
-		c->emit(.Call, len(data.arguments)) // Let VM handle self parameter logic
+		c->emit(.Call, len(data.arguments))
 	case Ast_Macro:
-		//
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")
 		return
 	case Ast_For:
-		//
 		condition_start_pos := len(c->current_instructions())
 		if err = c->compile(data.cond^); err != "" do return
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
@@ -567,23 +529,17 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		{
 			if err = c->compile(s); err != "" do return
 		}
-		jump_back_pos := c->emit(.Jmp, 9999) // jump back to condition evaluation
-		// Set the jump target for Jmp_If_Not (to after the loop)
+		jump_back_pos := c->emit(.Jmp, 9999)
 		after_loop_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, after_loop_pos)
-		// Set the jump target for Jmp (back to condition evaluation start)
 		c->change_operand(jump_back_pos, condition_start_pos)
 	case int:
-		//
 		c->emit(.Cnst, c->add_constant(data))
 	case f64:
-		//
 		c->emit(.Cnst, c->add_constant(data))
 	case bool:
-		//
 		c->emit(.True if data else .False)
 	case string:
-		//
 		str_clone, _ := strings.clone(data, c.varena)
 		c->emit(.Cnst, c->add_constant(str_clone))
 	}
