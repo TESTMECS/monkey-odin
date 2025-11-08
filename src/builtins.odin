@@ -91,6 +91,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_printf
 	case "readf":
 		return b_readf
+	case "writef":
+		return b_writef
 	// quotes
 	case "quote":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)

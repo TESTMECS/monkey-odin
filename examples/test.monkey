@@ -5,3 +5,6 @@ puts(new_str);
 
 let test = contains("hello monkey", "monkey")
 puts(test);
+
+# let res = writef("tests.txt", "hello BANANAS")
+# puts(res);

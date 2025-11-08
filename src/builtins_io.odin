@@ -165,3 +165,50 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return string(file_content), true
 }
 
+b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
+	usage := `
+				"Write obj to file">>
+				writef(file, obj)
+				$ file :: str
+				$ obj :: obj
+				Usage: writef("file.txt", "hello monkey")=>>true|false<<`
+
+
+	if len(args) != 2
+	{
+		return eval_new_error(
+				e,
+				"'writef' function error: wrong number of arguments, wants='2', got='%d'.%s",
+				len(args),
+				usage,
+			),
+			false
+	}
+	file, ok := args[0].(string)
+	if !ok
+	{
+		return eval_new_error(
+				e,
+				"'writef' function error: not supported for argument of type '%v'.%s",
+				ObjectType(args[0]),
+				usage,
+			),
+			false
+	}
+	str_obj, okk := args[1].(string)
+	if !okk
+	{
+		return eval_new_error(
+				e,
+				"'writef' function error: not supported for argument of type '%v'.%s",
+				ObjectType(args[1]),
+				usage,
+			),
+			false
+	}
+	okkk := os.write_entire_file(file, transmute([]u8)str_obj)
+	if !okkk do return eval_new_error(e, "'writef' function error: cannot write file '%s'.%s", file, usage), false
+	return true, true
+}
+
