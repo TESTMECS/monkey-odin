@@ -230,9 +230,11 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 
 		// Now compare based on the common type
 		#partial switch elem_val in elem
+		
 		{
 		case int:
 			#partial switch target_val in target
+			
 			{
 			case int:
 				if elem_val == target_val
@@ -242,6 +244,7 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			}
 		case string:
 			#partial switch target_val in target
+			
 			{
 			case string:
 				if elem_val == target_val
@@ -251,6 +254,7 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			}
 		case bool:
 			#partial switch target_val in target
+			
 			{
 			case bool:
 				if elem_val == target_val
@@ -625,6 +629,7 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	#partial switch arg in args[0]
+	
 	{
 	case string:
 		return len(arg), true
@@ -640,5 +645,83 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			usage,
 		),
 		false
+}
+
+b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
+{
+	usage := `
+				Create an arr of integers
+				range(start, end, step)
+				$ start :: int
+				$ end :: int
+				$ step :: int
+				Usage: range(1, 10, 2)=>>[1,3,5,7,9]<< `
+
+
+	if len(args) != 3
+	{
+		return eval_new_error(
+				e,
+				"'range' function error: wrong number of arguments, wants='3', got='%d'.%s",
+				len(args),
+				usage,
+			),
+			false
+	}
+
+	start, start_ok := args[0].(int)
+	if !start_ok
+	{
+		return eval_new_error(
+				e,
+				"'range' function error: start index must be integer, got '%v'.%s",
+				ObjectType(args[0]),
+				usage,
+			),
+			false
+	}
+
+	end, end_ok := args[1].(int)
+	if !end_ok
+	{
+		return eval_new_error(
+				e,
+				"'range' function error: end index must be integer, got '%v'.%s",
+				ObjectType(args[1]),
+				usage,
+			),
+			false
+	}
+
+	step, step_ok := args[2].(int)
+	if !step_ok
+	{
+		return eval_new_error(
+				e,
+				"'range' function error: step must be integer, got '%v'.%s",
+				ObjectType(args[2]),
+				usage,
+			),
+			false
+	}
+
+	if step == 0
+	{
+		return eval_new_error(
+				e,
+				"'range' function error: step cannot be 0, got '%v'.%s",
+				ObjectType(args[2]),
+				usage,
+			),
+			false
+	}
+
+	arr := make([dynamic]ObjectBase, 0, e.varena)
+	for i := start; i < end; i += step
+	{
+		append(&arr, i)
+	}
+
+	return ObjectArray(arr), true
 }
 

@@ -8,6 +8,12 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_choose
 	case "rand":
 		return b_rand
+	case "sin":
+		return b_sin
+	case "cos":
+		return b_cos
+	case "tan":
+		return b_tan
 	// str
 	case "hash":
 		return b_hash
@@ -38,6 +44,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 		return b_slice
 	case "indexOf":
 		return b_indexOf
+	case "range":
+		return b_range
 	// typ
 	case "bool":
 		return b_bool
@@ -98,6 +106,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 						false
 				}
 				#partial switch arg in args[0]
+
+
 				
 				{
 				case int,
@@ -130,6 +140,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction
 
 				if len(args) != 1 do return eval_new_error(e, "'unquote' function error: wrong number of arguments, wants='1', got='%d'.%s", len(args), usage), false
 				#partial switch arg in args[0]
+
+
 				
 				{
 				case ObjectQuote:
