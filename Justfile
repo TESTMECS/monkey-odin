@@ -19,12 +19,11 @@ build:
 # just run repl
 alias re := repl
 repl:
-	just build && just run repl
+	just build && {{exe}} repl
 
-# just run repl | file | mexpand
-alias r := run
-run ARGS:
-	{{exe}} {{ARGS}}
+ast:
+	echo "AST for {{test_file}}"
+	just build && {{exe}} ast {{test_dir}}{{test_file}}
 
 # for odin tests. 
 alias ta := test-all

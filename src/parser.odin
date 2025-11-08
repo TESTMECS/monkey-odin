@@ -111,7 +111,7 @@ GetPrecedence: [Token_Type]Precedence
 
 init_precedences :: proc()
 {
-	GetPrecedence = \
+	GetPrecedence = #partial \
 	{
 		.Plus               = .Sum,
 		.Minus              = .Sum,
@@ -123,38 +123,13 @@ init_precedences :: proc()
 		.Less_Than_Equal    = .Less_Greater,
 		.Equal              = .Equals,
 		.Not_Equal          = .Equals,
-		.Assign             = .Assign, // Assignment has lowest precedence
+		.Assign             = .Assign,
 		.Left_Paren         = .Call,
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
 		.Dot                = .Call,
 		.At                 = .Call,
-		// Default cases for tokens that don't have precedence
-		.Illegal            = .Lowest,
-		.EOF                = .Lowest,
-		.Identifier         = .Lowest,
-		.Int                = .Lowest,
-		.String             = .Lowest,
-		.Bang               = .Lowest,
-		.Comma              = .Lowest,
-		.Semicolon          = .Lowest,
-		.Colon              = .Lowest,
-		.Right_Paren        = .Lowest,
-		.Left_Brace         = .Lowest,
-		.Right_Brace        = .Lowest,
-		.Right_Bracket      = .Lowest,
-		.Function           = .Lowest,
-		.Let                = .Lowest,
-		.True               = .Lowest,
-		.False              = .Lowest,
-		.If                 = .Lowest,
-		.Else               = .Lowest,
-		.Return             = .Lowest,
-		.For                = .Lowest,
-		.Foreach            = .Lowest,
-		.Class              = .Lowest,
-		.Self               = .Lowest,
-		.In                 = .Lowest,
+		// All others lowest
 	}
 }
 
@@ -166,14 +141,10 @@ peek_precedence :: proc(p: ^Parser) -> Precedence
 cur_precedence :: proc(p: ^Parser) -> Precedence
 {
 	return GetPrecedence[p.cur_token.type]
-}
-//end <<Precedence
-
+} //end <<Precedence
 // Expressions_types=>>begin
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
-
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-
 prefix_parse_fns := #partial [Token_Type]prefix_parse_fn \
 {
 	.Identifier   = parse_identifier,
@@ -194,7 +165,6 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn \
 	.Class        = parse_class_expression,
 	.Self         = parse_self_expression,
 }
-
 infix_parse_fns := #partial [Token_Type]infix_parse_fn \
 {
 	.Plus               = parse_infix_expression,
@@ -212,20 +182,16 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn \
 	.Left_Bracket       = parse_index_expression,
 	.Dot                = parse_dot_expression,
 	.At                 = parse_at_expression,
-}
-// end <<Expressions_types
-
+} // end <<Expressions_types
 // Literals=>>begin
 parse_identifier :: proc(p: ^Parser) -> Node
 {
 	return Ast_Identifier{string(p.cur_token.text_slice)}
 }
-
 parse_string_literal :: proc(p: ^Parser) -> Node
 {
 	return string(p.cur_token.text_slice)
 }
-
 parse_integer_literal :: proc(p: ^Parser) -> Node
 {
 	// trying to parse as float first.
@@ -248,19 +214,16 @@ parse_integer_literal :: proc(p: ^Parser) -> Node
 	}
 	return value
 }
-
 parse_boolean_literal :: proc(p: ^Parser) -> Node
 {
 	return current_token_is(p, .True)
 }
-
 parse_array_literal :: proc(p: ^Parser) -> Node
 {
 	result, ok := parse_expression_list(p, .Right_Bracket)
 	if !ok do return nil
 	return Ast_Array(result)
 }
-
 parse_hash_table_literal :: proc(p: ^Parser) -> Node
 {
 	result := Ast_Hash_Table \
@@ -268,9 +231,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node
 		pairs = make([dynamic]kvpair, 0, p.varena),
 		table = make(map[string]Node, p.varena),
 	}
-
 	next_token(p)
-
 	for !current_token_is(p, .Right_Brace)
 	{
 		key_expr := parse_expression(p, .Lowest)
@@ -287,24 +248,22 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node
 		}
 
 		key_str := key_str_node
-
 		if !expect_peek(p, .Colon) do return nil
+
 		next_token(p)
-
 		value_expr := parse_expression(p, .Lowest)
-
 		if key_str in result.table
 		{
 			parser_new_error(p, "duplicate key '%s' in hash literal", key_str)
 			return nil
 		}
+
 		new_pair := kvpair \
 		{
 			key   = key_expr,
 			value = value_expr,
 		}
-		// TODO: Store stringified key in the kvpair for "foo" and foo to be different.
-		// Cache identifiers as well.
+
 		append(&result.pairs, new_pair)
 		result.table[key_str] = value_expr
 
@@ -342,7 +301,6 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_Prefix{op = op, operand = operand}
 }
-
 parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node
 {
 	op := string(p.cur_token.text_slice)
@@ -358,7 +316,6 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node
 
 	return Ast_Infix{op = op, left = new_left, right = new_right}
 }
-
 parse_grouped_expression :: proc(p: ^Parser) -> Node
 {
 	next_token(p)
@@ -367,7 +324,6 @@ parse_grouped_expression :: proc(p: ^Parser) -> Node
 	if !expect_peek(p, .Right_Paren) do return nil
 	return expr
 }
-
 parse_if_expression :: proc(p: ^Parser) -> Node
 {
 	next_token(p)
@@ -390,7 +346,6 @@ parse_if_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_If{condition = condition, then = then, orelse = orelse}
 }
-
 parse_function_literal :: proc(p: ^Parser) -> Node
 {
 	if !expect_peek(p, .Left_Paren) do return nil
@@ -403,7 +358,6 @@ parse_function_literal :: proc(p: ^Parser) -> Node
 
 	return Ast_Function{body = body, parameters = parameters}
 }
-
 parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
@@ -429,7 +383,6 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 
 	return identifiers
 }
-
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool)
 {
 	args := make([dynamic]Node, 0, 16, p.varena)
@@ -460,7 +413,6 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 
 	return args, true
 }
-
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node
 {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
@@ -468,7 +420,6 @@ parse_call_expression :: proc(p: ^Parser, function: Node) -> Node
 	f := new_clone(function, p.varena)
 	return Ast_Call{function = f, arguments = arguments}
 }
-
 parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node
 {
 	next_token(p)
@@ -481,17 +432,14 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node
 
 	return Ast_Index{operand = new_op, index = new_index}
 }
-
 parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node
 {
 	next_token(p)
-
 	if !current_token_is(p, .Identifier)
 	{
 		parser_new_error(p, "expected identifier after '.', got '%s' instead.", p.cur_token.type)
 		return nil
 	}
-
 	property := Ast_Identifier \
 	{
 		value = string(p.cur_token.text_slice),
@@ -499,11 +447,8 @@ parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node
 	new_left := new_clone(left, p.varena)
 	property_node := Node(property)
 	new_property := new_clone(property_node, p.varena)
-
-	// For now, treat dot access as index expression with string key
 	return Ast_Index{operand = new_left, index = new_property}
 }
-
 parse_at_expression :: proc(p: ^Parser, left: Node) -> Node
 {
 	next_token(p)
@@ -522,21 +467,18 @@ parse_at_expression :: proc(p: ^Parser, left: Node) -> Node
 	method_node := Node(method_name)
 	new_method := new_clone(method_node, p.varena)
 
-	// Check if there are arguments (call expression)
 	if peek_token_is(p, .Left_Paren)
 	{
-		next_token(p) // consume '('
+		next_token(p)
 
 		arguments, ok := parse_expression_list(p, .Right_Paren)
 		if !ok do return nil
 
-		// Create a method call
 		return Ast_Method_Call{object = new_left, method = new_method, arguments = arguments}
 	}
 	 else
 	{
 		// Method reference without call: obj@method
-		// For now, treat as getting method from object
 		return Ast_Method_Call{object = new_left, method = new_method, arguments = [dynamic]Node{}}
 	}
 }
@@ -606,11 +548,9 @@ parse_foreach_expression :: proc(p: ^Parser) -> Node
 }
 parse_class_expression :: proc(p: ^Parser) -> Node
 {
-	// Parse class name
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
-	// Parse optional superclass
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren)
 	{
@@ -646,8 +586,7 @@ parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 parse_self_expression :: proc(p: ^Parser) -> Node
 {
 	return Ast_Identifier{value = "self"}
-}
-// end <<Expressions
+} // end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node
 {
@@ -664,7 +603,6 @@ parse_let_statement :: proc(p: ^Parser) -> Node
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return Ast_Let{name = name, value = value}
 }
-
 parse_return_statement :: proc(p: ^Parser) -> Node
 {
 	next_token(p)
@@ -677,7 +615,6 @@ parse_return_statement :: proc(p: ^Parser) -> Node
 
 	return Ast_Ret{return_value = return_value}
 }
-
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block
 {
 	block := make(Ast_Block, 0, 16, p.varena)
@@ -695,20 +632,16 @@ parse_block_statement :: proc(p: ^Parser) -> Ast_Block
 }
 parse_foreach_statement :: proc(p: ^Parser) -> Node
 {
-	// Parse iterator variable
 	if !expect_peek(p, .Identifier) do return nil
 	itervar := string(p.cur_token.text_slice)
 
-	// Expect 'in' keyword
 	if !expect_peek(p, .In) do return nil
 
-	// Parse iterable expression
 	next_token(p)
 	expr := parse_expression(p, .Lowest)
 	if expr == nil do return nil
 	new_expr := new_clone(expr, p.varena)
 
-	// Parse body
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
 
@@ -719,11 +652,9 @@ parse_foreach_statement :: proc(p: ^Parser) -> Node
 
 parse_class_statement :: proc(p: ^Parser) -> Node
 {
-	// Parse class name
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
-	// Parse optional superclass
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren)
 	{

@@ -14,6 +14,7 @@ Commands:
   repl     Start the Monkey REPL.
   file     Run a << file_path >> and print the evaluation result.
 	bytes    Run a << file_path >> and prettyprint bytecode.
+	ast      Run a << file_path >> and prettyprint AST. 
 	mexpand  Run a << file_path >> and prettyprint file with all macros expanded.
   help     Show this help message`
 
@@ -99,6 +100,16 @@ main :: proc()
 		// Print bytecode
 		bytecode := c->bytecode()
 		fmt.println(bytecode)
+	case "ast":
+		fmt.println(os.args[2])
+		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
+		// Parse file
+		p := Parser_New(stmts, varena)
+		program := p->parse()
+		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
+		// Print AST
+		ast_to_string(program, &sb)
+		fmt.println(strings.to_string(sb))
 	case "mexpand":
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
 		// Parse file

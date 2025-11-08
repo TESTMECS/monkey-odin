@@ -5,7 +5,6 @@ import "core:reflect"
 import "core:strings"
 
 NULL :: ObjectNil{}
-
 ObjectNil :: struct {}
 
 ObjectFunction :: struct
@@ -46,35 +45,25 @@ ObjectCompiledFunction :: struct
 	num_parameters: int,
 }
 
-// Iterator for foreach loops
 ObjectIterator :: struct
 {
-	collection: ^ObjectBase, // The array or hash table being iterated
-	index:      int, // Current index for arrays, or state for hash tables
-	keys:       [dynamic]string, // Cached keys for hash table iteration
-	is_array:   bool, // True for arrays, false for hash tables
+	collection: ^ObjectBase,
+	index:      int,
+	keys:       [dynamic]string,
+	is_array:   bool,
 }
 
-// Class-related objects
 ObjectClass :: struct
 {
 	name:       string,
 	methods:    ObjectHashTable, // Method name -> compiled function
-	superclass: ^ObjectClass, // Inheritance support
+	superclass: ^ObjectClass,
 }
 
 ObjectInstance :: struct
 {
 	class:  ^ObjectClass,
 	fields: ObjectHashTable, // Field name -> value
-}
-
-// Placeholder before iter opcodes
-ObjectRange :: struct
-{
-	from:        int,
-	to:          int,
-	isInclusive: bool,
 }
 
 ObjectBase :: union
@@ -91,7 +80,6 @@ ObjectBase :: union
 	ObjectCompiledFunction,
 	ObjectMacro,
 	ObjectQuote,
-	ObjectRange,
 	ObjectIterator,
 	ObjectClass,
 	^ObjectInstance,
@@ -121,6 +109,8 @@ to_object_base_val :: proc(obj: Object) -> ObjectBase
 to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase
 {
 	switch data in obj
+
+	
 	{
 	case ObjectBase:
 		return data
@@ -132,6 +122,8 @@ to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase
 object_is_truthy :: proc(obj: ObjectBase) -> bool
 {
 	#partial switch o in obj
+
+	
 	{
 	case bool:
 		return o
@@ -196,6 +188,8 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder)
 	obj := o
 	obj_base := ToObjectBase(obj)
 	#partial switch data in obj_base
+
+	
 	{
 	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
@@ -230,8 +224,6 @@ object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder)
 		fmt.sbprint(sb, "(macro)")
 	case ObjectQuote:
 		fmt.sbprint(sb, "(quote)")
-	case ObjectRange:
-		fmt.sbprint(sb, "(range)")
 	}
 }
 

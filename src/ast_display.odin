@@ -19,6 +19,9 @@ ast_to_string_value :: proc(ast: Node, sb: ^strings.Builder)
 ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder)
 {
 	#partial switch data in ast
+
+
+	
 	{
 	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
@@ -67,11 +70,13 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder)
 		fmt.sbprint(sb, ")")
 
 	case Ast_Infix:
-		fmt.sbprint(sb, "(")
+		fmt.sbprint(sb, "( ")
 		ast_to_string(data.left, sb)
+		fmt.sbprint(sb, " ")
 		fmt.sbprint(sb, data.op)
+		fmt.sbprint(sb, " ")
 		ast_to_string(data.right, sb)
-		fmt.sbprint(sb, ")")
+		fmt.sbprint(sb, " )")
 
 	case Ast_If:
 		fmt.sbprint(sb, "if ")
@@ -157,6 +162,37 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder)
 			if i < len(data.arguments) - 1 do fmt.sbprint(sb, ", ")
 		}
 		fmt.sbprint(sb, ")")
+	case Ast_Class:
+		fmt.sbprint(sb, "Class ")
+		ast_to_string(data.name, sb)
+		if data.super != nil
+		{
+			fmt.sbprint(sb, "(super:")
+			for super, i in data.super
+			{
+				ast_to_string(super, sb)
+				if i < len(data.super) - 1 do fmt.sbprint(sb, ", ")
+			}
+			fmt.sbprint(sb, ")\n")
+		}
+		 else
+		{fmt.sbprint(sb, "(super:nil)\n")}
+
+		fmt.sbprint(sb, "{\n")
+		for stmt, i in data.body
+		{
+			fmt.sbprint(sb, "\t")
+			ast_to_string(stmt, sb)
+			if i < len(data.body) - 1 do fmt.sbprint(sb, "\n")
+		}
+		fmt.sbprint(sb, "\n}")
+	case Ast_Foreach:
+		fmt.sbprint(sb, "foreach ")
+		ast_to_string(data.itervar, sb)
+		fmt.sbprint(sb, " in ")
+		ast_to_string(data.expr, sb)
+		fmt.sbprint(sb, " ")
+		ast_to_string(data.body, sb)
 	}
 }
 
