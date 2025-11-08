@@ -21,7 +21,7 @@ class Point3d {
 	};
 }
 
-class Point2d(Point3d) {
+class Point2d() {
 	let new = fn(self, x, y) {
 		self.x = x;
 		self.y = y;
