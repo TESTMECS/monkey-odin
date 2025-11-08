@@ -1,5 +1,6 @@
-# Monkey.
-WIP Compiler impl for the Monkey programming language.
+Work in progress !!
+
+![monkey](logo.png)
 # demo.monkey 
 ```monkey
 #!/usr/bin/env monkey -- 1,2,3 T 24
