@@ -37,7 +37,7 @@ class Point2d(Point3d) {
 };
 # Instantiation
 let p = Point3d();
-p@new(p, 1, 2, 2);
+p@new(1, 2, 3);
 puts("p created");
-p@inspect(p);
+p@inspect();
 

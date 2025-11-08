@@ -85,7 +85,7 @@ ObjectBase :: union {
 	ObjectRange,
 	ObjectIterator,
 	ObjectClass,
-	ObjectInstance,
+	^ObjectInstance,
 }
 
 ObjectReturn :: distinct ObjectBase

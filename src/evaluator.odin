@@ -104,7 +104,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 		if method_str_obj, is_str := ToObjectBase(method_name).(string); is_str {
 			// Look up method on object
-			if obj_instance, is_instance := ToObjectBase(object).(ObjectInstance); is_instance {
+			if obj_instance, is_instance := ToObjectBase(object).(^ObjectInstance); is_instance {
 				class := obj_instance.class
 				for class != nil {
 					if method, ok := class.methods[method_str_obj]; ok {

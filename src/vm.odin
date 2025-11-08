@@ -128,7 +128,8 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			case ObjectClass:
 				// Create new instance with empty fields
 				fields := make(ObjectHashTable)
-				instance := ObjectInstance {
+				instance := new(ObjectInstance, v.varena)
+				instance^ = ObjectInstance {
 					class  = &cls,
 					fields = fields,
 				}
@@ -322,7 +323,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			instance := v->pop_vm()
 
 			#partial switch inst in instance {
-			case ObjectInstance:
+			case ^ObjectInstance:
 				// Look up field in instance
 				if value, exists := inst.fields[field_name]; exists {
 					// fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
@@ -352,8 +353,8 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			value := v->pop_vm()
 			instance := v->pop_vm()
 
-			#partial switch &inst in instance {
-			case ObjectInstance:
+			#partial switch inst in instance {
+			case ^ObjectInstance:
 				// Set field in instance
 				inst.fields[field_name] = value
 				if err = v->push_vm(value); err != "" do return // Return the set value
@@ -385,7 +386,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					// Method not found, push nil
 					if err = v->push_vm(NULL); err != "" do return // method
 				}
-			} else if obj_instance, ok := obj.(ObjectInstance); ok {
+			} else if obj_instance, ok := obj.(^ObjectInstance); ok {
 				// Look up method in instance's class (with inheritance)
 				fmt.printf(
 					"DEBUG: Looking for method '%s' in instance of class '%s'\n",
@@ -872,64 +873,45 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	case ObjectCompiledFunction:
 		if DEBUG_VM do fmt.printf("DEBUG: ObjectCompiledFunction, num_parameters=%d, num_locals=%d\n", fn.num_parameters, fn.num_locals)
 
-		// Check if this is a method call that needs self parameter
-		actual_args := num_args
-		if fn.num_parameters > num_args && callee_idx > 0 {
-			// Check if there's a self parameter before the method
-			potential_self := v.stack[callee_idx - 1]
-			_, is_instance := potential_self.(ObjectInstance)
-			if is_instance && fn.num_parameters == num_args + 1 {
-				// This is a method call with self parameter already set up by Get_Method
-				// Stack layout from Get_Method: [self, method, args...]
-				// No rearrangement needed - Get_Method already set it up correctly
-				actual_args = num_args + 1
-				if DEBUG_VM do fmt.printf("DEBUG: Method call detected, using existing stack layout from Get_Method\n")
+		// Check for implicit self method call: p@foo()
+		// Stack layout: [..., self, method, args...]
+		is_method_call := false
+		if fn.num_parameters == num_args + 1 && callee_idx > 0 {
+			if _, ok := v.stack[callee_idx - 1].(^ObjectInstance); ok {
+				is_method_call = true
 			}
 		}
 
-		if actual_args != fn.num_parameters {
-			strings.builder_reset(&v.sb)
-			fmt.sbprintf(
-				&v.sb,
-				"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
-				fn.num_parameters,
-				actual_args,
-			)
-			return strings.to_string(v.sb)
-		}
+		if is_method_call {
+			// It's a method call, arguments are not contiguous.
+			// Rearrange stack to make them contiguous: [..., self, args...]
+			for i in 0 ..< num_args {
+				v.stack[callee_idx + i] = v.stack[callee_idx + 1 + i]
+			}
+			
+			base_ptr := callee_idx - 1
+			frame := frame(fn.instructions[:], base_ptr)
+			v->push_frame(frame)
+			v.sp = base_ptr + fn.num_locals
 
-		frame := frame(fn.instructions[:], v.sp - actual_args)
-		v->push_frame(frame)
-
-		// Setup local variables for parameters	
-		args_start := v.sp - actual_args
-		if DEBUG_VM {
-			fmt.printf(
-				"DEBUG: Setting up parameters, args_start=%d, base_pointer=%d\n",
-				args_start,
-				frame.base_pointer,
-			)
-			for i in 0 ..< actual_args {
-				fmt.printf(
-					"DEBUG: arg[%d] = %v (type %T)\n",
-					i,
-					v.stack[args_start + i],
-					v.stack[args_start + i],
+		} else {
+			// Regular function call, or method call with explicit self.
+			if num_args != fn.num_parameters {
+				strings.builder_reset(&v.sb)
+				fmt.sbprintf(
+					&v.sb,
+					"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
+					fn.num_parameters,
+					num_args,
 				)
+				return strings.to_string(v.sb)
 			}
-		}
-		for i in 0 ..< min(actual_args, fn.num_parameters) {
-			v.stack[frame.base_pointer + i] = v.stack[args_start + i]
-			if DEBUG_VM do fmt.printf("DEBUG: param[%d] = %v (type %T)\n", i, v.stack[frame.base_pointer + i], v.stack[frame.base_pointer + i])
-		}
 
-		v.sp = frame.base_pointer + fn.num_locals
-		if DEBUG_VM {
-			fmt.printf("DEBUG: frame created, new sp=%d\n", v.sp)
-			fmt.printf("DEBUG: Frame contents:\n")
-			for i in frame.base_pointer ..< frame.base_pointer + fn.num_locals {
-				fmt.printf("  [%d]: %v (type %T)\n", i, v.stack[i], v.stack[i])
-			}
+			// Arguments are already contiguous, starting after the function.
+			base_ptr := callee_idx + 1
+			frame := frame(fn.instructions[:], base_ptr)
+			v->push_frame(frame)
+			v.sp = base_ptr + fn.num_locals
 		}
 		return ""
 
@@ -980,7 +962,8 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 		// Create new instance with empty fields
 		fields := make(ObjectHashTable)
-		instance := ObjectInstance {
+		instance_ptr := new(ObjectInstance, v.varena)
+		instance_ptr^ = ObjectInstance {
 			class  = persistent_class,
 			fields = fields,
 		}
@@ -992,7 +975,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		v.sp -= 1
 
 		// Push the new instance
-		return v->push_vm(instance)
+		return v->push_vm(instance_ptr)
 
 	case ObjectQuote:
 		strings.builder_reset(&v.sb)
