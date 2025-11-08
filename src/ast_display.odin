@@ -132,6 +132,17 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			if i < len(data.arguments) - 1 do fmt.sbprint(sb, ", ")
 		}
 		fmt.sbprint(sb, ")")
+	case Ast_Method_Call:
+		ast_to_string(data.object, sb)
+		fmt.sbprint(sb, "@")
+		ast_to_string(data.method, sb)
+		fmt.sbprint(sb, "(")
+		for arg, i in data.arguments {
+			ast_to_string(arg, sb)
+
+			if i < len(data.arguments) - 1 do fmt.sbprint(sb, ", ")
+		}
+		fmt.sbprint(sb, ")")
 	}
 }
 

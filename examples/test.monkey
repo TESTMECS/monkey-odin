@@ -1,10 +1,13 @@
 #!/usr/bin/env monkey -- 1,2,3
 
+puts("Starting test...");
+
 class Point3d {
 	let new = fn(self, x, y, z) {
 		self.x = x;
 		self.y = y;
 		self.z = z;
+		return self;
 	};
 	let add = fn(self, other) {
 		self.x = self.x + other.x;
@@ -24,6 +27,7 @@ class Point2d(Point3d) {
 	let new = fn(self, x, y) {
 		self.x = x;
 		self.y = y;
+		return self;
 	};
 	let add = fn(self, other) {
 		self.x = self.x + other.x;
@@ -31,11 +35,9 @@ class Point2d(Point3d) {
 		return self;
 	};
 };
+# Instantiation
+let p = Point3d();
+p@new(p, 1, 2, 2);
+puts("p created");
+p@inspect(p);
 
-let p = Point2d().new(1,2);
-
-p.inspect();
-
-let res = p.add(Point2d().new(1,2)); # make sure we call the correct add method
-
-puts(res);

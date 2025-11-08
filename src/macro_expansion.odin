@@ -98,6 +98,27 @@ expand_node :: proc(
 				arguments = expanded_args,
 			},
 			""
+	case Ast_Method_Call:
+		// Method calls can't be macros, so just expand arguments
+		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
+		for arg in data.arguments {
+			expanded_arg, err := expand_node(arg, macros, varena)
+			if err != "" do return nil, err
+			append(&expanded_args, expanded_arg)
+		}
+
+		expanded_object, obj_err := expand_node(data.object^, macros, varena)
+		if obj_err != "" do return nil, obj_err
+
+		expanded_method, method_err := expand_node(data.method^, macros, varena)
+		if method_err != "" do return nil, method_err
+
+		return Ast_Method_Call {
+				object = new_clone(expanded_object, varena),
+				method = new_clone(expanded_method, varena),
+				arguments = expanded_args,
+			},
+			""
 
 	case Ast_Program:
 		expanded := make(Ast_Program, 0, len(data), varena)
@@ -300,6 +321,27 @@ expand_unquote_calls :: proc(
 				arguments = expanded_args,
 			},
 			""
+	case Ast_Method_Call:
+		// Method calls in unquote are not typical, but handle them
+		expanded_object, obj_err := expand_unquote_calls(data.object^, env, varena)
+		if obj_err != "" do return nil, obj_err
+
+		expanded_method, method_err := expand_unquote_calls(data.method^, env, varena)
+		if method_err != "" do return nil, method_err
+
+		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
+		for arg in data.arguments {
+			expanded_arg, arg_err := expand_unquote_calls(arg, env, varena)
+			if arg_err != "" do return nil, arg_err
+			append(&expanded_args, expanded_arg)
+		}
+
+		return Ast_Method_Call {
+				object = new_clone(expanded_object, varena),
+				method = new_clone(expanded_method, varena),
+				arguments = expanded_args,
+			},
+			""
 
 	case Ast_Infix:
 		expanded_left, left_err := expand_unquote_calls(data.left^, env, varena)
@@ -407,6 +449,27 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 
 		return Ast_Call {
 				function = new_clone(expanded_function, varena),
+				arguments = expanded_args,
+			},
+			""
+	case Ast_Method_Call:
+		// Handle method calls in quote evaluation
+		expanded_object, obj_err := evaluate_remaining_quotes(data.object^, varena)
+		if obj_err != "" do return nil, obj_err
+
+		expanded_method, method_err := evaluate_remaining_quotes(data.method^, varena)
+		if method_err != "" do return nil, method_err
+
+		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
+		for arg in data.arguments {
+			expanded_arg, arg_err := evaluate_remaining_quotes(arg, varena)
+			if arg_err != "" do return nil, arg_err
+			append(&expanded_args, expanded_arg)
+		}
+
+		return Ast_Method_Call {
+				object = new_clone(expanded_object, varena),
+				method = new_clone(expanded_method, varena),
 				arguments = expanded_args,
 			},
 			""

@@ -232,30 +232,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				err = fmt.sbprintf(&v.sb, "iter get: expected iterator, got %v", iterator)
 				return
 			}
-		case .Get_Method:
-			// Get a method from a class
-			method_name_idx := int(read_u16(ins[ip + 1:]))
-			v->current_frame().ip += 2
-			method_name_obj := v.constants[method_name_idx]
-			method_name, ok := method_name_obj.(string)
-			if !ok {
-				err = fmt.sbprintf(&v.sb, "get method: method name must be string")
-				return
-			}
-			class_obj := v->pop_vm()
-			#partial switch cls in class_obj {
-			case ObjectClass:
-				// Look up method in class
-				if method, exists := cls.methods[method_name]; exists {
-					if err = v->push_vm(method); err != "" do return
-				} else {
-					// Method not found, return nil
-					if err = v->push_vm(NULL); err != "" do return
-				}
-			case:
-				err = fmt.sbprintf(&v.sb, "get method: expected class, got %v", class_obj)
-				return
-			}
 		case .Set_Method:
 			// Set a method on a class
 			method_name_idx := int(read_u16(ins[ip + 1:]))
@@ -381,9 +357,76 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				// Set field in instance
 				inst.fields[field_name] = value
 				if err = v->push_vm(value); err != "" do return // Return the set value
-
 			case:
 				err = fmt.sbprintf(&v.sb, "set field: expected instance, got %v", instance)
+				return
+			}
+		case .Get_Method:
+			// Get a method from a class or instance
+			if DEBUG_VM do fmt.printf("DEBUG: Get_Method called\n")
+			method_name_idx := int(read_u16(ins[ip + 1:]))
+			v->current_frame().ip += 2
+			method_name_obj := v.constants[method_name_idx]
+			method_name, ok := method_name_obj.(string)
+			if !ok {
+				err = fmt.sbprintf(&v.sb, "get method: method name must be string")
+				return
+			}
+			obj := v->pop_vm()
+			if DEBUG_VM do fmt.printf("DEBUG: Get_Method looking for '%s' on object %v (type %T)\n", method_name, obj, obj)
+
+			if obj_class, ok := obj.(ObjectClass); ok {
+				// Look up method in class
+				if method, method_ok := obj_class.methods[method_name]; method_ok {
+					// For class method calls, push the method only
+					// The class instance will be created separately
+					if err = v->push_vm(method); err != "" do return // method
+				} else {
+					// Method not found, push nil
+					if err = v->push_vm(NULL); err != "" do return // method
+				}
+			} else if obj_instance, ok := obj.(ObjectInstance); ok {
+				// Look up method in instance's class (with inheritance)
+				fmt.printf(
+					"DEBUG: Looking for method '%s' in instance of class '%s'\n",
+					method_name,
+					obj_instance.class.name,
+				)
+				class := obj_instance.class
+				method_found := false
+				for class != nil {
+					fmt.printf(
+						"DEBUG: Checking class '%s' with %d methods\n",
+						class.name,
+						len(class.methods),
+					)
+					for name, method in class.methods {
+						fmt.printf("DEBUG: Found method '%s' = %T\n", name, method)
+					}
+					if method, method_ok := class.methods[method_name]; method_ok {
+						fmt.printf("DEBUG: Found method '%s'!\n", method_name)
+						fmt.printf("DEBUG: Method type=%T\n", method)
+						// For instance method calls, we need self as first parameter
+						// So push the instance back, then the method
+						if err = v->push_vm(obj_instance); err != "" do return // self
+						if err = v->push_vm(method); err != "" do return // method
+						fmt.printf(
+							"DEBUG: After Get_Method, sp=%d, top=%T\n",
+							v.sp,
+							v->stack_top(),
+						)
+						method_found = true
+						break
+					}
+					class = class.superclass
+				}
+				if !method_found {
+					// Method not found in class hierarchy, push nil
+					fmt.printf("DEBUG: Method '%s' not found in class hierarchy\n", method_name)
+					if err = v->push_vm(NULL); err != "" do return // method
+				}
+			} else {
+				err = fmt.sbprintf(&v.sb, "get method: expected class or instance, got %v", obj)
 				return
 			}
 		case .Cnst:
@@ -420,6 +463,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			if err = v->exec_call(num_args); err != "" do return
 		case .Ret_V:
 			ret_val := v->pop_vm()
+			if DEBUG_VM do fmt.printf("DEBUG: Ret_V returning %v (type %T)\n", ret_val, ret_val)
 			frame := v->pop_frame()
 			v.sp = frame.base_pointer - 1
 			if err = v->push_vm(ret_val); err != "" do return
@@ -808,24 +852,85 @@ exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 }
 
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
-	callee := v.stack[v.sp - 1 - int(num_args)]
+	if DEBUG_VM do fmt.printf("DEBUG: exec_call called with num_args=%d, sp=%d\n", num_args, v.sp)
+	if v.sp - 1 - int(num_args) < 0 {
+		err = "stack underflow in function call"
+		return
+	}
+
+	callee_idx := v.sp - 1 - int(num_args)
+	callee := v.stack[callee_idx]
+	if DEBUG_VM do fmt.printf("DEBUG: callee_idx=%d, callee type=%T\n", callee_idx, callee)
+	if DEBUG_VM {
+		fmt.printf("DEBUG: Stack layout:\n")
+		for i in 0 ..< v.sp {
+			fmt.printf("  [%d]: %T\n", i, v.stack[i])
+		}
+	}
 
 	#partial switch fn in callee {
 	case ObjectCompiledFunction:
-		if num_args != fn.num_parameters {
+		if DEBUG_VM do fmt.printf("DEBUG: ObjectCompiledFunction, num_parameters=%d, num_locals=%d\n", fn.num_parameters, fn.num_locals)
+
+		// Check if this is a method call that needs self parameter
+		actual_args := num_args
+		if fn.num_parameters > num_args && callee_idx > 0 {
+			// Check if there's a self parameter before the method
+			potential_self := v.stack[callee_idx - 1]
+			_, is_instance := potential_self.(ObjectInstance)
+			if is_instance && fn.num_parameters == num_args + 1 {
+				// This is a method call with self parameter already set up by Get_Method
+				// Stack layout from Get_Method: [self, method, args...]
+				// No rearrangement needed - Get_Method already set it up correctly
+				actual_args = num_args + 1
+				if DEBUG_VM do fmt.printf("DEBUG: Method call detected, using existing stack layout from Get_Method\n")
+			}
+		}
+
+		if actual_args != fn.num_parameters {
 			strings.builder_reset(&v.sb)
 			fmt.sbprintf(
 				&v.sb,
 				"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
 				fn.num_parameters,
-				num_args,
+				actual_args,
 			)
 			return strings.to_string(v.sb)
 		}
 
-		frame := frame(fn.instructions[:], v.sp - num_args)
+		frame := frame(fn.instructions[:], v.sp - actual_args)
 		v->push_frame(frame)
+
+		// Setup local variables for parameters	
+		args_start := v.sp - actual_args
+		if DEBUG_VM {
+			fmt.printf(
+				"DEBUG: Setting up parameters, args_start=%d, base_pointer=%d\n",
+				args_start,
+				frame.base_pointer,
+			)
+			for i in 0 ..< actual_args {
+				fmt.printf(
+					"DEBUG: arg[%d] = %v (type %T)\n",
+					i,
+					v.stack[args_start + i],
+					v.stack[args_start + i],
+				)
+			}
+		}
+		for i in 0 ..< min(actual_args, fn.num_parameters) {
+			v.stack[frame.base_pointer + i] = v.stack[args_start + i]
+			if DEBUG_VM do fmt.printf("DEBUG: param[%d] = %v (type %T)\n", i, v.stack[frame.base_pointer + i], v.stack[frame.base_pointer + i])
+		}
+
 		v.sp = frame.base_pointer + fn.num_locals
+		if DEBUG_VM {
+			fmt.printf("DEBUG: frame created, new sp=%d\n", v.sp)
+			fmt.printf("DEBUG: Frame contents:\n")
+			for i in frame.base_pointer ..< frame.base_pointer + fn.num_locals {
+				fmt.printf("  [%d]: %v (type %T)\n", i, v.stack[i], v.stack[i])
+			}
+		}
 		return ""
 
 	case ObjectBuilinFunction:
@@ -863,6 +968,31 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
 		return strings.to_string(v.sb)
+
+	case ObjectClass:
+		// Class instantiation: Class(args) -> create new instance
+		if DEBUG_VM do fmt.println("EXEC_CALL, class=", callee)
+
+		// Create a copy of the class object that will persist
+		class_obj := callee.(ObjectClass)
+		persistent_class := new(ObjectClass, v.varena)
+		persistent_class^ = class_obj
+
+		// Create new instance with empty fields
+		fields := make(ObjectHashTable)
+		instance := ObjectInstance {
+			class  = persistent_class,
+			fields = fields,
+		}
+
+		// Pop arguments from stack (they're not used for basic instantiation)
+		v.sp -= int(num_args)
+
+		// Pop class object from stack
+		v.sp -= 1
+
+		// Push the new instance
+		return v->push_vm(instance)
 
 	case ObjectQuote:
 		strings.builder_reset(&v.sb)

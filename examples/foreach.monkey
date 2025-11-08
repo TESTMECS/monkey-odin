@@ -9,3 +9,8 @@ let d = {"a": 1, "b": 2, "c": 3};
 foreach k in reverse(keys(d)) {
 	puts(k);
 }
+
+# TODO
+# foreach i in range(0, 10, true) {
+# 	puts(i);
+# }

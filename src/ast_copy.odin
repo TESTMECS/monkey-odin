@@ -140,6 +140,16 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 			arguments = arguments,
 		}
 
+	case Ast_Method_Call:
+		arguments := make([dynamic]Node, 0, len(data.arguments), allocator)
+		Ast__Copy__(&data.arguments, &arguments, allocator)
+
+		return Ast_Method_Call {
+			object = new_clone(ast_copy(data.object, allocator), allocator),
+			method = new_clone(ast_copy(data.method, allocator), allocator),
+			arguments = arguments,
+		}
+
 	case Ast_Index:
 		return Ast_Index {
 			operand = new_clone(ast_copy(data.operand, allocator), allocator),

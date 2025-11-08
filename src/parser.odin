@@ -117,6 +117,7 @@ init_precedences :: proc() {
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
 		.Dot                = .Call,
+		.At                 = .Call,
 		// Default cases for tokens that don't have precedence
 		.Illegal            = .Lowest,
 		.EOF                = .Lowest,
@@ -195,6 +196,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren         = parse_call_expression,
 	.Left_Bracket       = parse_index_expression,
 	.Dot                = parse_dot_expression,
+	.At                 = parse_at_expression,
 }
 // end <<Expressions_types
 
@@ -446,6 +448,43 @@ parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
 	
 	// For now, treat dot access as index expression with string key
 	return Ast_Index{operand = new_left, index = new_property}
+}
+
+parse_at_expression :: proc(p: ^Parser, left: Node) -> Node {
+	next_token(p)
+	
+	if !current_token_is(p, .Identifier) {
+		parser_new_error(p, "expected identifier after '@', got '%s' instead.", p.cur_token.type)
+		return nil
+	}
+	
+	method_name := Ast_Identifier{value = string(p.cur_token.text_slice)}
+	new_left := new_clone(left, p.varena)
+	method_node := Node(method_name)
+	new_method := new_clone(method_node, p.varena)
+	
+	// Check if there are arguments (call expression)
+	if peek_token_is(p, .Left_Paren) {
+		next_token(p) // consume '('
+		
+		arguments, ok := parse_expression_list(p, .Right_Paren)
+		if !ok do return nil
+		
+		// Create a method call
+		return Ast_Method_Call{
+			object = new_left,
+			method = new_method,
+			arguments = arguments,
+		}
+	} else {
+		// Method reference without call: obj@method
+		// For now, treat as getting method from object
+		return Ast_Method_Call{
+			object = new_left,
+			method = new_method,
+			arguments = [dynamic]Node{},
+		}
+	}
 }
 
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {

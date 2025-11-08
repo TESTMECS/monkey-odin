@@ -93,6 +93,41 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 		return apply_function(e, ToObjectBase(function), args)
 
+	case Ast_Method_Call:
+		// Evaluate the object
+		object, obj_ok := eval(e, data.object^, current_env)
+		if !obj_ok do return object, false
+
+		// Get the method name
+		method_name, method_ok := eval(e, data.method^, current_env)
+		if !method_ok do return method_name, false
+
+		if method_str_obj, is_str := ToObjectBase(method_name).(string); is_str {
+			// Look up method on object
+			if obj_instance, is_instance := ToObjectBase(object).(ObjectInstance); is_instance {
+				class := obj_instance.class
+				for class != nil {
+					if method, ok := class.methods[method_str_obj]; ok {
+						// Evaluate arguments
+						args, args_success := eval_array_of_expressions_fixed(e, data.arguments, current_env)
+						if !args_success do return args[0], false
+						
+						// Add object as first argument (self)
+						all_args := make([dynamic]ObjectBase, 0, len(args) + 1, e.varena)
+						append(&all_args, ToObjectBase(object))
+						for arg in args {
+							append(&all_args, arg)
+						}
+						
+						return apply_function(e, method, all_args)
+					}
+					class = class.superclass
+				}
+				return ObjectBase(fmt.sbprintf(&e.sb, "method not found: '%s'", method_str_obj)), false
+			}
+		}
+		return ObjectBase(fmt.sbprintf(&e.sb, "invalid method call")), false
+
 	case Ast_Index:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false

@@ -1,5 +1,6 @@
 package monkey
 
+import "core:encoding/endian"
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -83,11 +84,59 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
 	case Ast_Class:
+		// Handle inheritance
+		superclass: ^ObjectClass = nil
+		if len(data.super) > 0 {
+			// For now, just handle single inheritance
+			super_class_name := data.super[0].value
+			if symbol, ok := c.symbol_table->resolve(super_class_name); ok {
+				if symbol.scope == .Global {
+					super_class_obj := c.compiler_state.constants[symbol.index]
+					if cls, is_class := super_class_obj.(ObjectClass); is_class {
+						superclass = &cls
+					}
+				}
+			}
+		}
+
 		methods := make(ObjectHashTable)
+
+		// Compile class body and collect methods
+		for stmt in data.body {
+			if let_stmt, is_let := stmt.(Ast_Let); is_let {
+				// Compile the method function
+				if err = c->compile(let_stmt.value^); err != "" do return
+				// The compiled function should be the last thing emitted
+				// Get the constant index of the compiled function
+				if c->last_instruction_is(.Cnst) {
+					last_instr := c.scopes[c.scopes_idx].last_instruction
+					const_idx, _ := endian.get_u16(
+						c->current_instructions()[last_instr.pos + 1:],
+						.Big,
+					)
+					method_fn := c.compiler_state.constants[int(const_idx)]
+					fmt.printf(
+						"DEBUG: Storing method '%s' = %T in class\n",
+						let_stmt.name,
+						method_fn,
+					)
+					if compiled_fn, is_compiled := method_fn.(ObjectCompiledFunction);
+					   is_compiled {
+						fmt.printf(
+							"DEBUG: Method '%s' is ObjectCompiledFunction with %d instructions\n",
+							let_stmt.name,
+							len(compiled_fn.instructions),
+						)
+					}
+					methods[let_stmt.name] = method_fn
+				}
+			}
+		}
+
 		class_obj := ObjectClass {
 			name       = data.name,
 			methods    = methods,
-			superclass = nil,
+			superclass = superclass,
 		}
 		// Store the class as a constant and emit it
 		class_const_idx := c->add_constant(class_obj)
@@ -189,12 +238,48 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				}
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
-			// Index assignment
+			// Index assignment - this handles field access like self.x
 			case Ast_Index:
-				if err = c->compile(left.operand^); err != "" do return // array
-				if err = c->compile(left.index^); err != "" do return // index
-				if err = c->compile(data.right^); err != "" do return // value
-				c->emit(.SetIdx)
+				if err = c->compile(left.operand^); err != "" do return // object (self)
+
+				// Handle field access vs array indexing for assignment
+				switch idx_type in left.index^ {
+				case Ast_Identifier:
+					// Field access: object.field = value - treat field name as string constant
+					idx := left.index.(Ast_Identifier)
+					if err = c->compile(data.right^); err != "" do return // value
+					c->emit(.Set_Field, c->add_constant(idx.value))
+				case:
+					// Array indexing: object[index] = value - compile index as expression
+					if err = c->compile(left.index^); err != "" do return
+					if err = c->compile(data.right^); err != "" do return // value
+					c->emit(.SetIdx)
+				case f64,
+				     int,
+				     bool,
+				     string,
+				     Ast_Program,
+				     Ast_Let,
+				     Ast_Ret,
+				     Ast_Block,
+				     Ast_Prefix,
+				     Ast_Infix,
+				     Ast_If,
+				     Ast_Array,
+				     Ast_Hash_Table,
+				     Ast_Function,
+				     Ast_Call,
+				     Ast_Method_Call,
+				     Ast_Index,
+				     Ast_Macro,
+				     Ast_For,
+				     Ast_Foreach,
+				     Ast_Class:
+					// Array indexing: object[index] = value - compile index as expression
+					if err = c->compile(left.index^); err != "" do return
+					if err = c->compile(data.right^); err != "" do return // value
+					c->emit(.SetIdx)
+				}
 			case:
 				err = compiler_error(c, "assignment to is not supported", Ast__Type__(data.left^))
 				return
@@ -288,8 +373,45 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Index:
 		//
 		if err = c->compile(data.operand^); err != "" do return
-		if err = c->compile(data.index^); err != "" do return
-		c->emit(.Idx)
+
+		// Handle field access vs array indexing
+		switch idx_type in data.index^ {
+		case Ast_Identifier:
+			// Field access: object.field - treat field name as string constant
+			idx := data.index.(Ast_Identifier)
+			c->emit(.Get_Field, c->add_constant(idx.value))
+		case Ast_Method_Call:
+			// This shouldn't happen in normal indexing, but handle it
+			err = "method call cannot be used as index"
+			return
+		case:
+			// Array indexing: object[index] - compile index as expression
+			if err = c->compile(data.index^); err != "" do return
+			c->emit(.Idx)
+		case f64,
+		     int,
+		     bool,
+		     string,
+		     Ast_Program,
+		     Ast_Let,
+		     Ast_Ret,
+		     Ast_Block,
+		     Ast_Prefix,
+		     Ast_Infix,
+		     Ast_If,
+		     Ast_Array,
+		     Ast_Hash_Table,
+		     Ast_Function,
+		     Ast_Call,
+		     Ast_Index,
+		     Ast_Macro,
+		     Ast_For,
+		     Ast_Foreach,
+		     Ast_Class:
+			// Array indexing: object[index] - compile index as expression
+			if err = c->compile(data.index^); err != "" do return
+			c->emit(.Idx)
+		}
 	case Ast_Function:
 		// Function
 		c->enter_scope()
@@ -311,11 +433,100 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
-		if err = c->compile(data.function^); err != "" do return
+		// Check if this is a method call from @ syntax
+		// Method calls have: function is identifier, first argument is an identifier (object), and function is not a builtin/global
+		if fn_node, ok := data.function^.(Ast_Identifier); ok && len(data.arguments) > 0 {
+			// Check if first argument is an identifier (object)
+			first_arg_is_identifier := false
+			switch arg_type in data.arguments[0] {
+			case Ast_Identifier:
+				first_arg_is_identifier = true
+			case:
+			// First argument is not an identifier, so this might be a regular call
+			case f64,
+			     int,
+			     bool,
+			     string,
+			     Ast_Program,
+			     Ast_Let,
+			     Ast_Ret,
+			     Ast_Block,
+			     Ast_Prefix,
+			     Ast_Infix,
+			     Ast_If,
+			     Ast_Array,
+			     Ast_Hash_Table,
+			     Ast_Function,
+			     Ast_Call,
+			     Ast_Method_Call,
+			     Ast_Index,
+			     Ast_Macro,
+			     Ast_For,
+			     Ast_Foreach,
+			     Ast_Class:
+			// First argument is not an identifier, so this might be a regular call
+			}
+
+			// Check if function is a builtin
+			builtin_fn := find_builtin_fn(fn_node.value)
+
+			if first_arg_is_identifier && builtin_fn == nil {
+				// Method call: obj@method(args) - compiled as method call with object as first arg
+				// Compile the object (first argument)
+				if err = c->compile(data.arguments[0]); err != "" do return
+
+				// Get the method from the object
+				c->emit(.Get_Method, c->add_constant(fn_node.value))
+
+				// Compile remaining arguments (if any)
+				for i in 1 ..< len(data.arguments) {
+					if err = c->compile(data.arguments[i]); err != "" do return
+				}
+
+				// Call the method with object as first argument + additional arguments
+				c->emit(.Call, len(data.arguments))
+			} else {
+				// Regular function call
+				if err = c->compile(data.function^); err != "" do return
+				for arg in data.arguments {
+					if err = c->compile(arg); err != "" do return
+				}
+				c->emit(.Call, len(data.arguments))
+			}
+		} else {
+			// Regular function call
+			if err = c->compile(data.function^); err != "" do return
+			for arg in data.arguments {
+				if err = c->compile(arg); err != "" do return
+			}
+			c->emit(.Call, len(data.arguments))
+		}
+	case Ast_Method_Call:
+		// Method call: obj@method(args)
+		fmt.printf("DEBUG: Compiling method call\n")
+		// Compile the object
+		if err = c->compile(data.object^); err != "" do return
+
+		// Get the method from the object
+		if method_ident, ok := data.method^.(Ast_Identifier); ok {
+			fmt.printf("DEBUG: Emitting Get_Method for '%s'\n", method_ident.value)
+			c->emit(.Get_Method, c->add_constant(method_ident.value))
+		} else {
+			err = "method name must be identifier"
+			return
+		}
+
+		// Compile arguments
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return
 		}
-		c->emit(.Call, len(data.arguments))
+
+		// Call the method
+		// For instance method calls: Get_Method pushes self then method, so we have self, method, args
+		// For class method calls: Get_Method pushes only method, so we have method, args
+		// We need to determine which case we're in based on the object type
+		fmt.printf("DEBUG: Emitting Call with %d args\n", len(data.arguments))
+		c->emit(.Call, len(data.arguments)) // Let VM handle self parameter logic
 	case Ast_Macro:
 		//
 		err = compiler_error(c, "macro encountered during compilation - should have been expanded")

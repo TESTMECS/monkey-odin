@@ -18,6 +18,7 @@ Node :: union {
 	Ast_Hash_Table,
 	Ast_Function,
 	Ast_Call,
+	Ast_Method_Call,
 	Ast_Index,
 	Ast_Macro,
 	Ast_For,
@@ -39,6 +40,12 @@ Ast_For :: struct {
 Ast_Call :: struct {
 	function:  ^Node,
 	arguments: [dynamic]Node,
+}
+
+Ast_Method_Call :: struct {
+	object:    ^Node, // The object the method is being called on
+	method:    ^Node, // The method name (identifier)
+	arguments: [dynamic]Node, // Arguments to the method (excluding self)
 }
 
 Ast_Hash_Table :: struct {
@@ -112,10 +119,10 @@ Ast_Macro :: struct {
 
 Ast_Type_Value :: reflect.union_variant_typeid
 
-	Ast_IsExpr :: proc(ast: Node) -> bool {
-		t := Ast__Type__(ast)
-		return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class && t != Ast_Foreach
-	}
+Ast_IsExpr :: proc(ast: Node) -> bool {
+	t := Ast__Type__(ast)
+	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class && t != Ast_Foreach
+}
 
 Ast__Type__ :: proc {
 	Ast_Type_Value,

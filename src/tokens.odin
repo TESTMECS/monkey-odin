@@ -43,6 +43,7 @@ Token_Type :: enum {
 	Class,
 	Self,
 	Dot,
+	At,
 }
 
 Token :: struct {

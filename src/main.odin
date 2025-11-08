@@ -79,6 +79,19 @@ main :: proc() {
 			}
 		}
 		_ = Monkey_Run_String(stmts, &sb, true, varena, all_args[:], mexpand_rec)
+	case "bytes":
+		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
+		// Parse file
+		p := Parser_New(stmts, varena)
+		program := p->parse()
+		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
+		// Compile to bytecode
+		c := Compiler_New(varena, os.args[3:], 1)
+		err := c->compile_program(program)
+		if err != "" do monkey_err("Error compiling file", 1, &sb, true, err)
+		// Print bytecode
+		bytecode := c->bytecode()
+		fmt.println(bytecode)
 	case "mexpand":
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
 		// Parse file

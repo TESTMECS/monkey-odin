@@ -131,6 +131,8 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok = token_from_current_char(l, .Comma)
 	case '.':
 		tok = token_from_current_char(l, .Dot)
+	case '@':
+		tok = token_from_current_char(l, .At)
 	case '(':
 		tok = token_from_current_char(l, .Left_Paren)
 	case ')':
