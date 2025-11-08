@@ -104,20 +104,21 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.expr^); err != "" do return
 
 		// Initialize iterator - creates iterator and leaves it on stack
-		iter_pos := c->emit(.Iter_Init, 9999) // placeholder for iterator constant index
+		iter_pos := c->emit(.Iter_Init) // no operands needed
 
 		// Define the iteration variable in current scope
 		symbol := c.symbol_table->define(data.itervar, c.varena)
+		fmt.printf("Foreach: defined variable '%s' with scope %v, index %d\n", data.itervar, symbol.scope, symbol.index)
 
 		// Loop start
 		loop_start_pos := len(c->current_instructions())
 
 		// Check if iterator has next element
-		c->emit(.Iter_Next, 0) // iterator is at stack top
+		c->emit(.Iter_Next) // iterator is at stack top
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999) // jump to end if no next
 
 		// Get current value from iterator
-		c->emit(.Iter_Get, 0) // get current value, leaves it on stack
+		c->emit(.Iter_Get) // get current value, leaves it on stack
 
 		// Store the value in the iteration variable
 		c->emit(.Set_L if symbol.scope == .Local else .Set_G, symbol.index)
@@ -125,6 +126,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// Compile loop body
 		for stmt in data.body {
 			if err = c->compile(stmt); err != "" do return
+			// Pop expression results from loop body to keep stack clean
+			if Ast_IsExpr(stmt) {
+				c->emit(.Pop)
+			}
 		}
 
 		// Jump back to loop start
@@ -136,6 +141,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 		// Clean up iterator from stack
 		c->emit(.Pop)
+		fmt.printf("Foreach: completed compilation, final cleanup pop added\n")
 	case Ast_Let:
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)

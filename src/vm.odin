@@ -141,9 +141,11 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Iter_Init:
 			// Pop the collection from stack and create iterator
 			collection := v->pop_vm()
+			// fmt.printf("Iter_Init: collection type %v\n", reflect.union_variant_typeid(collection))
 
 			#partial switch coll in collection {
 			case ObjectArray:
+				// fmt.printf("Iter_Init: creating array iterator with %d elements\n", len(coll))
 				// Create iterator for array
 				iter := ObjectIterator {
 					collection = &collection,
@@ -173,6 +175,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Iter_Next:
 			// Check if iterator has next element
 			iterator := v->stack_top()
+			// fmt.printf("Iter_Next: stack top is %v\n", iterator)
 
 			#partial switch iter in iterator {
 			case ObjectIterator:
@@ -180,7 +183,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 				if iter.is_array {
 					// Array iteration
-					#partial switch arr in iter.collection {
+					#partial switch arr in iter.collection^ {
 					case ObjectArray:
 						has_next = iter.index < len(arr)
 					}
@@ -197,7 +200,8 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			}
 		case .Iter_Get:
 			// Get current value from iterator and advance to next
-			iterator := v->pop_vm()
+			iterator := v->stack_top()
+			// fmt.printf("Iter_Get: called, stack top=%v\n", iterator)
 
 			#partial switch &iter in iterator {
 			case ObjectIterator:
@@ -205,28 +209,35 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 				if iter.is_array {
 					// Array iteration
-					#partial switch arr in iter.collection {
-
+					#partial switch &arr in iter.collection^ {
 					case ObjectArray:
 						if iter.index < len(arr) {
 							value = arr[iter.index]
-							iter.index += 1
+							// fmt.printf("Iter_Get: getting array[%d] = %v\n", iter.index, value)
+							// Update iterator index directly on stack BEFORE pushing value
+							updated_iter := iter
+							updated_iter.index += 1
+							v.stack[v.sp - 1] = updated_iter
 						}
 					}
-
 				} else {
 					// Hash table iteration
-					#partial switch ht in iter.collection {
+					#partial switch ht in iter.collection^ {
 					case ObjectHashTable:
 						if iter.index < len(iter.keys) {
 							key := iter.keys[iter.index]
 							value = ht[key]
-							iter.index += 1
+							// Update iterator index directly on stack BEFORE pushing value
+							updated_iter := iter
+							updated_iter.index += 1
+							v.stack[v.sp - 1] = updated_iter
 						}
 					}
 				}
 
+				// Push value (iterator stays on stack below the new value)
 				if err = v->push_vm(value); err != "" do return
+			// fmt.printf("Iter_Get: pushed value, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 
 			case:
 				err = fmt.sbprintf(&v.sb, "iter get: expected iterator, got %v", iterator)
@@ -353,7 +364,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			case ObjectInstance:
 				// Look up field in instance
 				if value, exists := inst.fields[field_name]; exists {
+					fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
 					if err = v->push_vm(value); err != "" do return
+					fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 				} else {
 					// Field not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
@@ -437,19 +450,49 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			if err = v->exec_neg_op(); err != "" do return
 		case .Jmp:
 			pos := int(read_u16(ins[ip + 1:]))
+			fmt.printf(
+				"Jmp: jumping to position %d, sp=%d, stack top before jump: %v\n",
+				pos,
+				v.sp,
+				v->stack_top(),
+			)
+			if v.sp > 1 {
+				fmt.printf("Jmp: stack[sp-2]: %v\n", v.stack[v.sp - 2])
+			}
 			v->current_frame().ip = pos - 1
+			fmt.printf("Jmp: after ip change, sp=%d, stack top: %v\n", v.sp, v->stack_top())
 		case .Jmp_If_Not:
 			pos := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
 
 			cond := v->pop_vm()
+			fmt.printf(
+				"Jmp_If_Not: condition=%v, sp after pop=%d, stack top=%v\n",
+				cond,
+				v.sp,
+				v->stack_top(),
+			)
 			if !object_is_truthy(cond) {
 				v->current_frame().ip = pos - 1
 			}
 		case .Set_G:
 			global_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2
-			v.compiler_state.globals[global_idx] = v->pop_vm()
+			fmt.printf("Set_G: stack before pop, sp=%d, top=%v\n", v.sp, v->stack_top())
+			if v.sp > 1 {
+				fmt.printf("Set_G: stack element below top: %v\n", v.stack[v.sp - 2])
+			}
+			value := v->pop_vm()
+			fmt.printf(
+				"Set_G: storing value %v at global index %d, sp after pop=%d\n",
+				value,
+				global_idx,
+				v.sp,
+			)
+			if v.sp > 0 {
+				fmt.printf("Set_G: new stack top after pop: %v\n", v->stack_top())
+			}
+			v.compiler_state.globals[global_idx] = value
 		case .Get_G:
 			global_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2
@@ -471,7 +514,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .False:
 			if err = v->push_vm(false); err != "" do return
 		case .Pop:
+			fmt.printf("Pop: called, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 			v->pop_vm()
+			fmt.printf("Pop: after pop, sp=%d\n", v.sp)
 		case:
 			return
 		}

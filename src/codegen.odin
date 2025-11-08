@@ -96,9 +96,9 @@ Definition__Map__ := [Opcode]Definition {
 	.New_Instance = {"OpNewInstance", {2}},
 	.Get_Field    = {"OpGetField", {2}},
 	.Set_Field    = {"OpSetField", {2}},
-	.Iter_Init    = {"OpIterInit", {2}},
-	.Iter_Next    = {"OpIterNext", {2}},
-	.Iter_Get     = {"OpIterGet", {2}},
+	.Iter_Init    = {"OpIterInit", {}},
+	.Iter_Next    = {"OpIterNext", {}},
+	.Iter_Get     = {"OpIterGet", {}},
 }
 
 lookup :: proc(op: Opcode) -> (Definition, bool) {
