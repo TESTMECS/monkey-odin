@@ -108,7 +108,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 		// Define the iteration variable in current scope
 		symbol := c.symbol_table->define(data.itervar, c.varena)
-		fmt.printf("Foreach: defined variable '%s' with scope %v, index %d\n", data.itervar, symbol.scope, symbol.index)
+		// fmt.printf("Foreach: defined variable '%s' with scope %v, index %d\n", data.itervar, symbol.scope, symbol.index)
 
 		// Loop start
 		loop_start_pos := len(c->current_instructions())
@@ -141,7 +141,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 		// Clean up iterator from stack
 		c->emit(.Pop)
-		fmt.printf("Foreach: completed compilation, final cleanup pop added\n")
+	// fmt.printf("Foreach: completed compilation, final cleanup pop added\n")
 	case Ast_Let:
 		// Check if this is a function literal for recursive function support
 		_, is_function := data.value^.(Ast_Function)
@@ -387,7 +387,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 }
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
-	fmt.printf("emit: %v\n", op)
+	// fmt.printf("emit: %v\n", op)
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
