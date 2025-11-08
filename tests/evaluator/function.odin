@@ -6,7 +6,8 @@ import "core:strings"
 import "core:testing"
 
 @(test)
-test_eval_function_object :: proc(t: ^testing.T) {
+test_eval_function_object :: proc(t: ^testing.T)
+{
 	using monkey
 	using tc
 	input := "fn(x) { x + 2 };"
@@ -16,12 +17,14 @@ test_eval_function_object :: proc(t: ^testing.T) {
 	if !ok do return
 
 	fn, is_fn := evaluated.(^ObjectFunction)
-	if !is_fn {
+	if !is_fn
+	{
 		log.errorf("object is not function. got='%v'", ObjectType(evaluated))
 		return
 	}
 
-	if len(fn.parameters) != 1 {
+	if len(fn.parameters) != 1
+	{
 		log.errorf(
 			"function has wrong number of parameters, got='%d', '%v'",
 			len(fn.parameters),
@@ -31,19 +34,21 @@ test_eval_function_object :: proc(t: ^testing.T) {
 	}
 
 
-	if fn.parameters[0].value != "x" {
+	if fn.parameters[0].value != "x"
+	{
 		log.errorf("function's parameter is not 'x', got='%s'", fn.parameters[0])
 		return
 	}
 
-	expected_body := "{ (x+2) }"
+	expected_body := "{ ( x + 2 ) }"
 
 	sb := strings.builder_make(context.temp_allocator)
 	defer free_all(context.temp_allocator)
 
 	ast_to_string(fn.body, &sb)
 
-	if strings.to_string(sb) != expected_body {
+	if strings.to_string(sb) != expected_body
+	{
 		log.errorf(
 			"ast_to_string ris not valid, expected='%s', got='%s'",
 			expected_body,
@@ -53,10 +58,12 @@ test_eval_function_object :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_eval_function_application :: proc(t: ^testing.T) {
+test_eval_function_application :: proc(t: ^testing.T)
+{
 	using monkey
 	using tc
-	tests := [?]struct {
+	tests := [?]struct
+	{
 		input:    string,
 		expected: int,
 	} {
@@ -78,15 +85,18 @@ test_eval_function_application :: proc(t: ^testing.T) {
 		},
 	}
 
-	for test_case, i in tests {
+	for test_case, i in tests
+	{
 		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
 		defer v->free()
-		if !ok {
+		if !ok
+		{
 			log.errorf("test[%d] has failed", i)
 			continue
 		}
 
-		if !integer_object_is_valid(evaluated, test_case.expected) {
+		if !integer_object_is_valid(evaluated, test_case.expected)
+		{
 			log.errorf("test[%d] has failed", i)
 		}
 
@@ -94,33 +104,42 @@ test_eval_function_application :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_eval_builtin_functions :: proc(t: ^testing.T) {
+test_eval_builtin_functions :: proc(t: ^testing.T)
+{
 	using monkey
 	using tc
-	tests := [?]struct {
+	tests := [?]struct
+	{
 		input:    string,
-		expected: union {
+		expected: union
+		{
 			int,
 			string,
 		},
 	}{{`len("")`, 0}, {`len("four")`, 4}, {`len("hello world")`, 11}}
 
-	for test_case, i in tests {
+	for test_case, i in tests
+	{
 		evaluated, e, ok, v := eval_test_is_valid(test_case.input)
 		defer v->free()
-		if !ok {
+		if !ok
+		{
 			log.errorf("test[%d] has failed", i)
 			continue
 		}
 
-		switch expected in test_case.expected {
+		switch expected in test_case.expected
+		
+		{
 		case int:
-			if !integer_object_is_valid(evaluated, expected) {
+			if !integer_object_is_valid(evaluated, expected)
+			{
 				log.errorf("test[%d] has failed", i)
 			}
 
 		case string:
-			if !string_object_is_valid(evaluated, expected) {
+			if !string_object_is_valid(evaluated, expected)
+			{
 				log.errorf("test[%d] has failed", i)
 			}
 		}
