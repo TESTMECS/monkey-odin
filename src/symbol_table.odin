@@ -1,4 +1,5 @@
 package monkey
+import "core:fmt"
 import "core:mem"
 import "core:strings"
 
@@ -38,9 +39,13 @@ Symbol_Table_New :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -
 		define = proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol
 		{
 			name_copied := strings.clone(name, allocator)
+
 			scope: Symbol_Scope = .Global if table.outer == nil else .Local
+
 			symbol := Symbol{name_copied, scope, len(table.store)}
+
 			table.store[name_copied] = symbol
+
 			return symbol
 		},
 		define_builtin = proc(table: ^Symbol_Table, name: string, index: int)

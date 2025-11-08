@@ -1,4 +1,4 @@
-#!/usr/bin/env monkey -- 1,2,3
+#!/usr/bin/env monkey
 
 class Point() {
 	let new = fn(self, x, y) {
@@ -10,9 +10,6 @@ class Point() {
 		puts("Point:");
 		puts(self.x);
 		puts(self.y);
-	};
-	let hi = fn(self) {
-		puts("hi");
 	};
 }
 
@@ -29,11 +26,11 @@ class Point3D(Point) {
 		puts(self.y);
 		puts(self.z);
 	};
-	let hi = fn(self) {
-		puts("hi from Point3D");
-	};
 }
 
+// Test inheritance
 let p = Point3D();
 p@new(1, 2, 3);
-p@hi();
+p@inspect();
+
+puts("Inheritance test completed");

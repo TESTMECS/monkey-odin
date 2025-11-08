@@ -12,3 +12,12 @@ let arr = split("a, b, c", ",");
 puts(arr);
 
 puts(join(args(), " ")) # "hash upper lower split join"
+
+let cap = match("hello monkey", "hello (.*)")
+puts(cap); # =>> "monkey"
+
+let new_str = replace("hello monkey", "hello (.*)", "BANANAS")
+puts(new_str);
+
+let test = contains("hello monkey", "monkey")
+puts(test);

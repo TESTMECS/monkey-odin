@@ -52,6 +52,7 @@ Compiler :: struct
 	last_instruction_is:          proc(c: ^Compiler, op: Opcode) -> bool,
 	replace_instructions:         proc(c: ^Compiler, pos: int, new_instructions: []byte),
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
+	find_class_constant:          proc(c: ^Compiler, class_name: string) -> (^ObjectClass, bool),
 }
 
 Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler
@@ -75,6 +76,7 @@ Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1
 		last_instruction_is = last_instruction_is,
 		replace_instructions = replace_instructions,
 		change_operand = change_operand,
+		find_class_constant = find_class_constant,
 	}
 }
 
@@ -95,7 +97,24 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 	
 	{
 	case Ast_Class:
-		superclass: ^ObjectClass = nil // TODO: Handle inheritance, right now we are not handling the lookup in the symbol table correctly.
+		superclass: ^ObjectClass = nil
+
+		// Resolve superclass identifiers to actual class objects
+		if len(data.super) > 0
+		{
+			// For now, support single inheritance - use the first superclass
+			super_ident := data.super[0]
+			super_class_obj, found := c->find_class_constant(super_ident.value)
+			if found
+			{
+				superclass = super_class_obj
+			}
+			 else
+			{
+				err = compiler_error(c, "superclass not found or not a class", super_ident.value)
+				return
+			}
+		}
 		methods := make(ObjectHashTable)
 		// Compile class body and collect methods
 		for stmt in data.body
@@ -667,5 +686,25 @@ change_operand :: proc(c: ^Compiler, pos: int, new_operand: int)
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
+}
+
+find_class_constant :: proc(c: ^Compiler, class_name: string) -> (^ObjectClass, bool)
+{
+	// Search through constants table to find the class object by name
+	for i := 0; i < len(c.compiler_state.constants); i += 1
+	{
+		const_obj := c.compiler_state.constants[i]
+		if class_obj, is_class := const_obj.(ObjectClass); is_class
+		{
+			if class_obj.name == class_name
+			{
+				// Create a persistent copy of the class object
+				persistent_class := new(ObjectClass, c.varena)
+				persistent_class^ = class_obj
+				return persistent_class, true
+			}
+		}
+	}
+	return nil, false
 } //end <<Compiler_helpers
 

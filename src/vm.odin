@@ -294,7 +294,9 @@ run_vm :: proc(v: ^VM) -> (err: string)
 				return
 			}
 		case .Super_Call:
-			unimplemented("Inheritance not yet implemented, have to fix the symbol table lookup")
+			// Super method call - not implemented yet
+			err = "super method calls not yet implemented"
+			return
 		case .Get_Field:
 			// Get a field from an instance
 			field_name_idx := int(read_u16(ins[ip + 1:]))
