@@ -139,13 +139,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				return
 			}
 		case .Iter_Init:
-			// Pop the collection from stack and create iterator
 			collection := v->pop_vm()
-			// fmt.printf("Iter_Init: collection type %v\n", reflect.union_variant_typeid(collection))
-
 			#partial switch coll in collection {
 			case ObjectArray:
-				// fmt.printf("Iter_Init: creating array iterator with %d elements\n", len(coll))
 				// Create iterator for array
 				iter := ObjectIterator {
 					collection = &collection,
@@ -175,7 +171,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Iter_Next:
 			// Check if iterator has next element
 			iterator := v->stack_top()
-			// fmt.printf("Iter_Next: stack top is %v\n", iterator)
 
 			#partial switch iter in iterator {
 			case ObjectIterator:
@@ -201,7 +196,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Iter_Get:
 			// Get current value from iterator and advance to next
 			iterator := v->stack_top()
-			// fmt.printf("Iter_Get: called, stack top=%v\n", iterator)
 
 			#partial switch &iter in iterator {
 			case ObjectIterator:
@@ -213,8 +207,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					case ObjectArray:
 						if iter.index < len(arr) {
 							value = arr[iter.index]
-							// fmt.printf("Iter_Get: getting array[%d] = %v\n", iter.index, value)
-							// Update iterator index directly on stack BEFORE pushing value
 							updated_iter := iter
 							updated_iter.index += 1
 							v.stack[v.sp - 1] = updated_iter
@@ -227,18 +219,14 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 						if iter.index < len(iter.keys) {
 							key := iter.keys[iter.index]
 							value = ht[key]
-							// Update iterator index directly on stack BEFORE pushing value
 							updated_iter := iter
 							updated_iter.index += 1
 							v.stack[v.sp - 1] = updated_iter
 						}
 					}
 				}
-
 				// Push value (iterator stays on stack below the new value)
 				if err = v->push_vm(value); err != "" do return
-			// fmt.printf("Iter_Get: pushed value, sp=%d, stack top=%v\n", v.sp, v->stack_top())
-
 			case:
 				err = fmt.sbprintf(&v.sb, "iter get: expected iterator, got %v", iterator)
 				return
@@ -247,16 +235,13 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			// Get a method from a class
 			method_name_idx := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
-
 			method_name_obj := v.constants[method_name_idx]
 			method_name, ok := method_name_obj.(string)
 			if !ok {
 				err = fmt.sbprintf(&v.sb, "get method: method name must be string")
 				return
 			}
-
 			class_obj := v->pop_vm()
-
 			#partial switch cls in class_obj {
 			case ObjectClass:
 				// Look up method in class
@@ -266,7 +251,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					// Method not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
 				}
-
 			case:
 				err = fmt.sbprintf(&v.sb, "get method: expected class, got %v", class_obj)
 				return

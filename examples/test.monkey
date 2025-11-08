@@ -9,7 +9,7 @@
 #
 # let p = Point.new(1, 2);
 
-foreach i in [1, 2, 3] {
+foreach i in {"a": 1, "b": 2, "c": 3} {
 	puts(i);
 }
 
