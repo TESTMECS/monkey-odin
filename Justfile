@@ -1,7 +1,7 @@
 # default configuration
 test_dir := "./examples/"
 exe := "./monkey-odin.out"
-test_file := "foreach.monkey"
+test_file := "test.monkey"
 
 default: build test
 

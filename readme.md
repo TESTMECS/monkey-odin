@@ -73,7 +73,7 @@ puts(a);
 ```
 
 # In progress:
-## Ranges:
+## Foreach:
 - Syntax:
 ```monkey
 foreach x in [1,2,3] {}
