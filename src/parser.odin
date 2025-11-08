@@ -584,6 +584,29 @@ parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
 
 	return block
 }
+parse_foreach_statement :: proc(p: ^Parser) -> Node {
+	// Parse iterator variable
+	if !expect_peek(p, .Identifier) do return nil
+	itervar := string(p.cur_token.text_slice)
+	
+	// Expect 'in' keyword
+	if !expect_peek(p, .In) do return nil
+	
+	// Parse iterable expression
+	next_token(p)
+	expr := parse_expression(p, .Lowest)
+	if expr == nil do return nil
+	new_expr := new_clone(expr, p.varena)
+	
+	// Parse body
+	if !expect_peek(p, .Left_Brace) do return nil
+	body := parse_block_statement(p)
+	
+	if peek_token_is(p, .Semicolon) do next_token(p)
+	
+	return Ast_Foreach{itervar = itervar, expr = new_expr, body = body}
+}
+
 parse_class_statement :: proc(p: ^Parser) -> Node {
 	// Parse class name
 	if !expect_peek(p, .Identifier) do return nil
@@ -618,6 +641,8 @@ parse_statement :: proc(p: ^Parser) -> Node {
 		return parse_return_statement(p)
 	case .Class:
 		return parse_class_statement(p)
+	case .Foreach:
+		return parse_foreach_statement(p)
 	}
 	return parse_expression_statement(p)
 } // end <<Statements
