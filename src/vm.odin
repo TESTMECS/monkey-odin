@@ -121,9 +121,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 		switch op {
 		case .New_Instance:
-			// Create a new instance of a class
 			class_obj := v->pop_vm()
-
 			#partial switch &cls in class_obj {
 			case ObjectClass:
 				// Create new instance with empty fields
@@ -134,7 +132,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					fields = fields,
 				}
 				if err = v->push_vm(instance); err != "" do return
-
 			case:
 				err = fmt.sbprintf(&v.sb, "new instance: expected class, got %v", class_obj)
 				return
@@ -150,7 +147,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					is_array   = true,
 				}
 				if err = v->push_vm(iter); err != "" do return
-
 			case ObjectHashTable:
 				// Create iterator for hash table - extract keys first
 				keys := make([dynamic]string, v.varena)
@@ -164,19 +160,15 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					is_array   = false,
 				}
 				if err = v->push_vm(iter); err != "" do return
-
 			case:
 				err = fmt.sbprintf(&v.sb, "iter init: unsupported type %v", collection)
 				return
 			}
 		case .Iter_Next:
-			// Check if iterator has next element
 			iterator := v->stack_top()
-
 			#partial switch iter in iterator {
 			case ObjectIterator:
 				has_next := false
-
 				if iter.is_array {
 					// Array iteration
 					#partial switch arr in iter.collection^ {
@@ -187,21 +179,16 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					// Hash table iteration
 					has_next = iter.index < len(iter.keys)
 				}
-
 				if err = v->push_vm(has_next); err != "" do return
-
 			case:
 				err = fmt.sbprintf(&v.sb, "iter next: expected iterator, got %v", iterator)
 				return
 			}
 		case .Iter_Get:
-			// Get current value from iterator and advance to next
 			iterator := v->stack_top()
-
 			#partial switch &iter in iterator {
 			case ObjectIterator:
 				value := ObjectBase(NULL)
-
 				if iter.is_array {
 					// Array iteration
 					#partial switch &arr in iter.collection^ {
@@ -215,7 +202,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 					}
 				} else {
 					// Hash table iteration
-					// TODO: KEYS, VALUES
+					// NOTE: only does Values, no support for `foreach k,v in d` , but can use `for k in keys(d)`
 					#partial switch ht in iter.collection^ {
 					case ObjectHashTable:
 						if iter.index < len(iter.keys) {
@@ -237,77 +224,24 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			// Set a method on a class
 			method_name_idx := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
-
 			method_name_obj := v.constants[method_name_idx]
 			method_name, ok := method_name_obj.(string)
 			if !ok {
 				err = fmt.sbprintf(&v.sb, "set method: method name must be string")
 				return
 			}
-
 			method := v->pop_vm()
 			class_obj := v->pop_vm()
-
 			#partial switch &cls in class_obj {
 			case ObjectClass:
-				// Set method in class
 				cls.methods[method_name] = method
-				if err = v->push_vm(method); err != "" do return // Return the set method
-
+				if err = v->push_vm(method); err != "" do return
 			case:
 				err = fmt.sbprintf(&v.sb, "set method: expected class, got %v", class_obj)
 				return
 			}
 		case .Super_Call:
-			// Call a method on a superclass
-			// TODO: Implement proper superclass method resolution
-			// For now, treat as regular method call
-			num_args := int(ins[ip + 1])
-			v->current_frame().ip += 1
-
-			// Pop arguments and method, then call it
-			args_start := v.sp - num_args
-			method := v.stack[args_start - 1]
-
-			#partial switch fn in method {
-			case ObjectCompiledFunction:
-				// Create new frame for the method call
-				if v.frames_idx >= MAX_FRAMES {
-					err = "function call depth exceeded"
-					return
-				}
-
-				frame := frame(fn.instructions[:], v.sp - num_args - 1)
-				v.frames[v.frames_idx] = frame
-				v.frames_idx += 1
-
-				// Setup local variables for parameters
-				for i in 0 ..< min(num_args, fn.num_parameters) {
-					v.stack[v.sp - fn.num_parameters + i] = v.stack[args_start + i]
-				}
-
-				v.sp = v.sp - num_args - 1
-
-			case ObjectBuilinFunction:
-				// Handle builtin function calls
-				args := make([dynamic]ObjectBase, v.varena)
-				for i in 0 ..< num_args {
-					append(&args, v.stack[args_start + i])
-				}
-
-				ret, ok := fn(nil, args) // TODO: pass proper evaluator
-				if !ok {
-					err = fmt.sbprintf(&v.sb, "builtin function call failed")
-					return
-				}
-
-				v.sp = args_start - 1
-				if err = v->push_vm(ret); err != "" do return
-
-			case:
-				err = fmt.sbprintf(&v.sb, "super call: expected callable, got %v", method)
-				return
-			}
+			unimplemented("Inheritance not yet implemented, have to fix the symbol table lookup")
 		case .Get_Field:
 			// Get a field from an instance
 			field_name_idx := int(read_u16(ins[ip + 1:]))
@@ -315,25 +249,20 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 			field_name_obj := v.constants[field_name_idx]
 			field_name, ok := field_name_obj.(string)
-			if !ok {
-				err = fmt.sbprintf(&v.sb, "get field: field name must be string")
-				return
-			}
 
+			if !ok {err = fmt.sbprintf(&v.sb, "get field: field name must be string"); return}
 			instance := v->pop_vm()
 
 			#partial switch inst in instance {
 			case ^ObjectInstance:
-				// Look up field in instance
 				if value, exists := inst.fields[field_name]; exists {
-					// fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
+					// if DEBUG_VM do fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
 					if err = v->push_vm(value); err != "" do return
-					// fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
+					// if DEBUG_VM do fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 				} else {
 					// Field not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
 				}
-
 			case:
 				err = fmt.sbprintf(&v.sb, "get field: expected instance, got %v", instance)
 				return
@@ -345,87 +274,52 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 			field_name_obj := v.constants[field_name_idx]
 			field_name, ok := field_name_obj.(string)
-			if !ok {
-				err = fmt.sbprintf(&v.sb, "set field: field name must be string")
-				return
-			}
+			if !ok {err = fmt.sbprintf(&v.sb, "set field: field name must be string"); return}
 
 			value := v->pop_vm()
 			instance := v->pop_vm()
 
 			#partial switch inst in instance {
 			case ^ObjectInstance:
-				// Set field in instance
 				inst.fields[field_name] = value
-				if err = v->push_vm(value); err != "" do return // Return the set value
+				if err = v->push_vm(value); err != "" do return
 			case:
 				err = fmt.sbprintf(&v.sb, "set field: expected instance, got %v", instance)
 				return
 			}
 		case .Get_Method:
 			// Get a method from a class or instance
-			if DEBUG_VM do fmt.printf("DEBUG: Get_Method called\n")
 			method_name_idx := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
+
 			method_name_obj := v.constants[method_name_idx]
 			method_name, ok := method_name_obj.(string)
-			if !ok {
-				err = fmt.sbprintf(&v.sb, "get method: method name must be string")
-				return
-			}
+			if !ok {err = fmt.sbprintf(&v.sb, "get method: method name must be string"); return}
+
 			obj := v->pop_vm()
-			if DEBUG_VM do fmt.printf("DEBUG: Get_Method looking for '%s' on object %v (type %T)\n", method_name, obj, obj)
+			// if DEBUG_VM do fmt.printf("DEBUG: Get_Method looking for '%s' on object %v (type %T)\n", method_name, obj, obj)
 
 			if obj_class, ok := obj.(ObjectClass); ok {
-				// Look up method in class
 				if method, method_ok := obj_class.methods[method_name]; method_ok {
-					// For class method calls, push the method only
-					// The class instance will be created separately
-					if err = v->push_vm(method); err != "" do return // method
+					// For class method calls, push the method only, instance seperate
+					if err = v->push_vm(method); err != "" do return
 				} else {
-					// Method not found, push nil
-					if err = v->push_vm(NULL); err != "" do return // method
+					if err = v->push_vm(NULL); err != "" do return
 				}
 			} else if obj_instance, ok := obj.(^ObjectInstance); ok {
-				// Look up method in instance's class (with inheritance)
-				fmt.printf(
-					"DEBUG: Looking for method '%s' in instance of class '%s'\n",
-					method_name,
-					obj_instance.class.name,
-				)
 				class := obj_instance.class
 				method_found := false
 				for class != nil {
-					fmt.printf(
-						"DEBUG: Checking class '%s' with %d methods\n",
-						class.name,
-						len(class.methods),
-					)
-					for name, method in class.methods {
-						fmt.printf("DEBUG: Found method '%s' = %T\n", name, method)
-					}
 					if method, method_ok := class.methods[method_name]; method_ok {
-						fmt.printf("DEBUG: Found method '%s'!\n", method_name)
-						fmt.printf("DEBUG: Method type=%T\n", method)
-						// For instance method calls, we need self as first parameter
-						// So push the instance back, then the method
+						// For instance method calls, we need self as first parameter. So push the instance back, then the method
 						if err = v->push_vm(obj_instance); err != "" do return // self
 						if err = v->push_vm(method); err != "" do return // method
-						fmt.printf(
-							"DEBUG: After Get_Method, sp=%d, top=%T\n",
-							v.sp,
-							v->stack_top(),
-						)
 						method_found = true
 						break
 					}
-					class = class.superclass
+					class = class.superclass // Handles lookup in superclasses when actually implemented, right now just breaks since super is nil
 				}
-				if !method_found {
-					// Method not found in class hierarchy, push nil
-					fmt.printf("DEBUG: Method '%s' not found in class hierarchy\n", method_name)
-					if err = v->push_vm(NULL); err != "" do return // method
-				}
+				if !method_found {if err = v->push_vm(NULL); err != "" do return}
 			} else {
 				err = fmt.sbprintf(&v.sb, "get method: expected class or instance, got %v", obj)
 				return
@@ -515,9 +409,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .False:
 			if err = v->push_vm(false); err != "" do return
 		case .Pop:
-			// fmt.printf("Pop: called, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 			v->pop_vm()
-		// fmt.printf("Pop: after pop, sp=%d\n", v.sp)
 		case:
 			return
 		}
@@ -888,7 +780,7 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 			for i in 0 ..< num_args {
 				v.stack[callee_idx + i] = v.stack[callee_idx + 1 + i]
 			}
-			
+
 			base_ptr := callee_idx - 1
 			frame := frame(fn.instructions[:], base_ptr)
 			v->push_frame(frame)

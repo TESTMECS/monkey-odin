@@ -6,7 +6,7 @@ import "core:log"
 import "core:mem"
 import "core:strings"
 
-DEBUG :: false
+DEBUG :: true
 
 Emitted_Instruction :: struct {
 	op_code: Opcode,
@@ -84,23 +84,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
 	case Ast_Class:
-		// Handle inheritance
-		superclass: ^ObjectClass = nil
-		if len(data.super) > 0 {
-			// For now, just handle single inheritance
-			super_class_name := data.super[0].value
-			if symbol, ok := c.symbol_table->resolve(super_class_name); ok {
-				if symbol.scope == .Global {
-					super_class_obj := c.compiler_state.constants[symbol.index]
-					if cls, is_class := super_class_obj.(ObjectClass); is_class {
-						superclass = &cls
-					}
-				}
-			}
-		}
-
+		superclass: ^ObjectClass = nil // TODO: Handle inheritance, right now we are not handling the lookup in the symbol table correctly.
 		methods := make(ObjectHashTable)
-
 		// Compile class body and collect methods
 		for stmt in data.body {
 			if let_stmt, is_let := stmt.(Ast_Let); is_let {
@@ -115,24 +100,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 						.Big,
 					)
 					method_fn := c.compiler_state.constants[int(const_idx)]
-					fmt.printf(
-						"DEBUG: Storing method '%s' = %T in class\n",
-						let_stmt.name,
-						method_fn,
-					)
-					if compiled_fn, is_compiled := method_fn.(ObjectCompiledFunction);
-					   is_compiled {
-						fmt.printf(
-							"DEBUG: Method '%s' is ObjectCompiledFunction with %d instructions\n",
-							let_stmt.name,
-							len(compiled_fn.instructions),
-						)
-					}
 					methods[let_stmt.name] = method_fn
 				}
 			}
 		}
-
+		// if DEBUG do fmt.printf("DEBUG: superclass object is '%v'\n", superclass)
 		class_obj := ObjectClass {
 			name       = data.name,
 			methods    = methods,
@@ -503,13 +475,11 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 	case Ast_Method_Call:
 		// Method call: obj@method(args)
-		fmt.printf("DEBUG: Compiling method call\n")
 		// Compile the object
 		if err = c->compile(data.object^); err != "" do return
 
 		// Get the method from the object
 		if method_ident, ok := data.method^.(Ast_Identifier); ok {
-			fmt.printf("DEBUG: Emitting Get_Method for '%s'\n", method_ident.value)
 			c->emit(.Get_Method, c->add_constant(method_ident.value))
 		} else {
 			err = "method name must be identifier"
@@ -525,7 +495,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		// For instance method calls: Get_Method pushes self then method, so we have self, method, args
 		// For class method calls: Get_Method pushes only method, so we have method, args
 		// We need to determine which case we're in based on the object type
-		fmt.printf("DEBUG: Emitting Call with %d args\n", len(data.arguments))
 		c->emit(.Call, len(data.arguments)) // Let VM handle self parameter logic
 	case Ast_Macro:
 		//
@@ -580,7 +549,6 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 }
 
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
-	// fmt.printf("emit: %v\n", op)
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)

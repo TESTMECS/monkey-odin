@@ -1,7 +1,5 @@
 #!/usr/bin/env monkey -- 1,2,3
 
-puts("Starting test...");
-
 class Point3d {
 	let new = fn(self, x, y, z) {
 		self.x = x;
@@ -30,14 +28,20 @@ class Point2d(Point3d) {
 		return self;
 	};
 	let add = fn(self, other) {
+		puts("adding");
+		puts(other.x)
 		self.x = self.x + other.x;
 		self.y = self.y + other.y;
-		return self;
 	};
 };
+
 # Instantiation
-let p = Point3d();
-p@new(1, 2, 3);
+let p = Point2d();
+p@new(1, 2);
 puts("p created");
-p@inspect();
+# p@inspect(); # should get superclass methods
+# let p2 = Point2d();
+# p2@new(1, 2);
+# p@add(p2);
+# p@inspect();
 
