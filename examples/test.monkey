@@ -29,11 +29,12 @@ class Point3D(Point) {
 		puts(self.y);
 		puts(self.z);
 	};
-	let hi = fn(self) {
+	let hi = fn(self, x) {
 		puts("hi from Point3D");
+		puts(x);
 	};
 }
 
 let p = Point3D();
 p@new(1, 2, 3);
-p@hi();
+p@hi(1);
