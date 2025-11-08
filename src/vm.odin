@@ -121,23 +121,270 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 		switch op {
 		case .New_Instance:
-			unimplemented("new instance")
+			// Create a new instance of a class
+			class_obj := v->pop_vm()
+
+			#partial switch &cls in class_obj {
+			case ObjectClass:
+				// Create new instance with empty fields
+				fields := make(ObjectHashTable)
+				instance := ObjectInstance {
+					class  = &cls,
+					fields = fields,
+				}
+				if err = v->push_vm(instance); err != "" do return
+
+			case:
+				err = fmt.sbprintf(&v.sb, "new instance: expected class, got %v", class_obj)
+				return
+			}
 		case .Iter_Init:
-			unimplemented("iter init")
+			// Pop the collection from stack and create iterator
+			collection := v->pop_vm()
+
+			#partial switch coll in collection {
+			case ObjectArray:
+				// Create iterator for array
+				iter := ObjectIterator {
+					collection = &collection,
+					index      = 0,
+					is_array   = true,
+				}
+				if err = v->push_vm(iter); err != "" do return
+
+			case ObjectHashTable:
+				// Create iterator for hash table - extract keys first
+				keys := make([dynamic]string, v.varena)
+				for key, _ in coll {
+					append(&keys, key)
+				}
+				iter := ObjectIterator {
+					collection = &collection,
+					index      = 0,
+					keys       = keys,
+					is_array   = false,
+				}
+				if err = v->push_vm(iter); err != "" do return
+
+			case:
+				err = fmt.sbprintf(&v.sb, "iter init: unsupported type %v", collection)
+				return
+			}
 		case .Iter_Next:
-			unimplemented("iter next")
+			// Check if iterator has next element
+			iterator := v->stack_top()
+
+			#partial switch iter in iterator {
+			case ObjectIterator:
+				has_next := false
+				if iter.is_array {
+					// Array iteration
+					#partial switch arr in iter.collection {
+					case ObjectArray:
+						has_next = iter.index < len(arr)
+					}
+				} else {
+					// Hash table iteration
+					has_next = iter.index < len(iter.keys)
+				}
+
+				if err = v->push_vm(has_next); err != "" do return
+
+			case:
+				err = fmt.sbprintf(&v.sb, "iter next: expected iterator, got %v", iterator)
+				return
+			}
 		case .Iter_Get:
-			unimplemented("iter get")
+			// Get current value from iterator and advance to next
+			iterator := v->pop_vm()
+
+			#partial switch &iter in iterator {
+			case ObjectIterator:
+				value := ObjectBase(NULL)
+
+				if iter.is_array {
+					// Array iteration
+					#partial switch arr in iter.collection {
+					case ObjectArray:
+						if iter.index < len(arr) {
+							value = arr[iter.index]
+							iter.index += 1
+						}
+					}
+				} else {
+					// Hash table iteration
+					#partial switch ht in iter.collection {
+					case ObjectHashTable:
+						if iter.index < len(iter.keys) {
+							key := iter.keys[iter.index]
+							value = ht[key]
+							iter.index += 1
+						}
+					}
+				}
+
+				if err = v->push_vm(value); err != "" do return
+
+			case:
+				err = fmt.sbprintf(&v.sb, "iter get: expected iterator, got %v", iterator)
+				return
+			}
 		case .Get_Method:
-			unimplemented("get method")
+			// Get a method from a class
+			method_name_idx := int(read_u16(ins[ip + 1:]))
+			v->current_frame().ip += 2
+
+			method_name_obj := v.constants[method_name_idx]
+			method_name, ok := method_name_obj.(string)
+			if !ok {
+				err = fmt.sbprintf(&v.sb, "get method: method name must be string")
+				return
+			}
+
+			class_obj := v->pop_vm()
+
+			#partial switch cls in class_obj {
+			case ObjectClass:
+				// Look up method in class
+				if method, exists := cls.methods[method_name]; exists {
+					if err = v->push_vm(method); err != "" do return
+				} else {
+					// Method not found, return nil
+					if err = v->push_vm(NULL); err != "" do return
+				}
+
+			case:
+				err = fmt.sbprintf(&v.sb, "get method: expected class, got %v", class_obj)
+				return
+			}
 		case .Set_Method:
-			unimplemented("set method")
+			// Set a method on a class
+			method_name_idx := int(read_u16(ins[ip + 1:]))
+			v->current_frame().ip += 2
+
+			method_name_obj := v.constants[method_name_idx]
+			method_name, ok := method_name_obj.(string)
+			if !ok {
+				err = fmt.sbprintf(&v.sb, "set method: method name must be string")
+				return
+			}
+
+			method := v->pop_vm()
+			class_obj := v->pop_vm()
+
+			#partial switch &cls in class_obj {
+			case ObjectClass:
+				// Set method in class
+				cls.methods[method_name] = method
+				if err = v->push_vm(method); err != "" do return // Return the set method
+
+			case:
+				err = fmt.sbprintf(&v.sb, "set method: expected class, got %v", class_obj)
+				return
+			}
 		case .Super_Call:
-			unimplemented("super call")
+			// Call a method on a superclass
+			// TODO: Implement proper superclass method resolution
+			// For now, treat as regular method call
+			num_args := int(ins[ip + 1])
+			v->current_frame().ip += 1
+
+			// Pop arguments and method, then call it
+			args_start := v.sp - num_args
+			method := v.stack[args_start - 1]
+
+			#partial switch fn in method {
+			case ObjectCompiledFunction:
+				// Create new frame for the method call
+				if v.frames_idx >= MAX_FRAMES {
+					err = "function call depth exceeded"
+					return
+				}
+
+				frame := frame(fn.instructions[:], v.sp - num_args - 1)
+				v.frames[v.frames_idx] = frame
+				v.frames_idx += 1
+
+				// Setup local variables for parameters
+				for i in 0 ..< min(num_args, fn.num_parameters) {
+					v.stack[v.sp - fn.num_parameters + i] = v.stack[args_start + i]
+				}
+
+				v.sp = v.sp - num_args - 1
+
+			case ObjectBuilinFunction:
+				// Handle builtin function calls
+				args := make([dynamic]ObjectBase, v.varena)
+				for i in 0 ..< num_args {
+					append(&args, v.stack[args_start + i])
+				}
+
+				ret, ok := fn(nil, args) // TODO: pass proper evaluator
+				if !ok {
+					err = fmt.sbprintf(&v.sb, "builtin function call failed")
+					return
+				}
+
+				v.sp = args_start - 1
+				if err = v->push_vm(ret); err != "" do return
+
+			case:
+				err = fmt.sbprintf(&v.sb, "super call: expected callable, got %v", method)
+				return
+			}
 		case .Get_Field:
-			unimplemented("get field")
+			// Get a field from an instance
+			field_name_idx := int(read_u16(ins[ip + 1:]))
+			v->current_frame().ip += 2
+
+			field_name_obj := v.constants[field_name_idx]
+			field_name, ok := field_name_obj.(string)
+			if !ok {
+				err = fmt.sbprintf(&v.sb, "get field: field name must be string")
+				return
+			}
+
+			instance := v->pop_vm()
+
+			#partial switch inst in instance {
+			case ObjectInstance:
+				// Look up field in instance
+				if value, exists := inst.fields[field_name]; exists {
+					if err = v->push_vm(value); err != "" do return
+				} else {
+					// Field not found, return nil
+					if err = v->push_vm(NULL); err != "" do return
+				}
+
+			case:
+				err = fmt.sbprintf(&v.sb, "get field: expected instance, got %v", instance)
+				return
+			}
 		case .Set_Field:
-			unimplemented("get/set field")
+			// Set a field on an instance
+			field_name_idx := int(read_u16(ins[ip + 1:]))
+			v->current_frame().ip += 2
+
+			field_name_obj := v.constants[field_name_idx]
+			field_name, ok := field_name_obj.(string)
+			if !ok {
+				err = fmt.sbprintf(&v.sb, "set field: field name must be string")
+				return
+			}
+
+			value := v->pop_vm()
+			instance := v->pop_vm()
+
+			#partial switch &inst in instance {
+			case ObjectInstance:
+				// Set field in instance
+				inst.fields[field_name] = value
+				if err = v->push_vm(value); err != "" do return // Return the set value
+
+			case:
+				err = fmt.sbprintf(&v.sb, "set field: expected instance, got %v", instance)
+				return
+			}
 		case .Cnst:
 			const_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2

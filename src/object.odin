@@ -42,6 +42,26 @@ ObjectCompiledFunction :: struct {
 	num_parameters: int,
 }
 
+// Iterator for foreach loops
+ObjectIterator :: struct {
+	collection: ^ObjectBase, // The array or hash table being iterated
+	index:      int,         // Current index for arrays, or state for hash tables
+	keys:       [dynamic]string, // Cached keys for hash table iteration
+	is_array:   bool,        // True for arrays, false for hash tables
+}
+
+// Class-related objects
+ObjectClass :: struct {
+	name:       string,
+	methods:    ObjectHashTable, // Method name -> compiled function
+	superclass: ^ObjectClass,    // Inheritance support
+}
+
+ObjectInstance :: struct {
+	class:  ^ObjectClass,
+	fields: ObjectHashTable, // Field name -> value
+}
+
 // Placeholder before iter opcodes
 ObjectRange :: struct {
 	from:        int,
@@ -63,6 +83,9 @@ ObjectBase :: union {
 	ObjectMacro,
 	ObjectQuote,
 	ObjectRange,
+	ObjectIterator,
+	ObjectClass,
+	ObjectInstance,
 }
 
 ObjectReturn :: distinct ObjectBase
