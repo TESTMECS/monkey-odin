@@ -364,9 +364,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			case ObjectInstance:
 				// Look up field in instance
 				if value, exists := inst.fields[field_name]; exists {
-					fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
+					// fmt.printf("Iter_Get: pushing value %v, current sp=%d\n", value, v.sp)
 					if err = v->push_vm(value); err != "" do return
-					fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
+					// fmt.printf("Iter_Get: after push, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 				} else {
 					// Field not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
@@ -450,48 +450,19 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			if err = v->exec_neg_op(); err != "" do return
 		case .Jmp:
 			pos := int(read_u16(ins[ip + 1:]))
-			fmt.printf(
-				"Jmp: jumping to position %d, sp=%d, stack top before jump: %v\n",
-				pos,
-				v.sp,
-				v->stack_top(),
-			)
-			if v.sp > 1 {
-				fmt.printf("Jmp: stack[sp-2]: %v\n", v.stack[v.sp - 2])
-			}
 			v->current_frame().ip = pos - 1
-			fmt.printf("Jmp: after ip change, sp=%d, stack top: %v\n", v.sp, v->stack_top())
 		case .Jmp_If_Not:
 			pos := int(read_u16(ins[ip + 1:]))
 			v->current_frame().ip += 2
 
 			cond := v->pop_vm()
-			fmt.printf(
-				"Jmp_If_Not: condition=%v, sp after pop=%d, stack top=%v\n",
-				cond,
-				v.sp,
-				v->stack_top(),
-			)
 			if !object_is_truthy(cond) {
 				v->current_frame().ip = pos - 1
 			}
 		case .Set_G:
 			global_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2
-			fmt.printf("Set_G: stack before pop, sp=%d, top=%v\n", v.sp, v->stack_top())
-			if v.sp > 1 {
-				fmt.printf("Set_G: stack element below top: %v\n", v.stack[v.sp - 2])
-			}
 			value := v->pop_vm()
-			fmt.printf(
-				"Set_G: storing value %v at global index %d, sp after pop=%d\n",
-				value,
-				global_idx,
-				v.sp,
-			)
-			if v.sp > 0 {
-				fmt.printf("Set_G: new stack top after pop: %v\n", v->stack_top())
-			}
 			v.compiler_state.globals[global_idx] = value
 		case .Get_G:
 			global_idx := read_u16(ins[ip + 1:])
@@ -514,9 +485,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .False:
 			if err = v->push_vm(false); err != "" do return
 		case .Pop:
-			fmt.printf("Pop: called, sp=%d, stack top=%v\n", v.sp, v->stack_top())
+			// fmt.printf("Pop: called, sp=%d, stack top=%v\n", v.sp, v->stack_top())
 			v->pop_vm()
-			fmt.printf("Pop: after pop, sp=%d\n", v.sp)
+		// fmt.printf("Pop: after pop, sp=%d\n", v.sp)
 		case:
 			return
 		}
