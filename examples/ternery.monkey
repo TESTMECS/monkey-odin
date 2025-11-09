@@ -1,4 +1,4 @@
-#!/usr/bin/env monkey -- 1,2,3
+#!/usr/bin/env monkey -- 
 
 # Simple ternary test
 false ? 1 : 0;
@@ -9,4 +9,3 @@ x > 3 ? "big" : "small";
 
 # Nested ternary
 true ? false ? 1 : 2 : 3;
-

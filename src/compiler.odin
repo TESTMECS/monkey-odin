@@ -84,6 +84,23 @@ compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) 
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
+	case Ast_Ternery:
+		if err = c->compile(data.condition^); err != "" do return
+		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
+		if err = c->compile(data.then^); err != "" do return
+		if c->last_instruction_is(.Pop) do c->remove_last_pop()
+		jump_pos := c->emit(.Jmp, 9999)
+		orelse_pos := len(c->current_instructions())
+		c->change_operand(jump_if_not_pos, orelse_pos)
+		if data.orelse == nil {
+			c->emit(.Nil)
+		}
+		 else {
+			if err = c->compile(data.orelse^); err != "" do return
+			if c->last_instruction_is(.Pop) do c->remove_last_pop()
+		}
+		after_orelse_pos := len(c->current_instructions())
+		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Class:
 		superclass: ^ObjectClass = nil
 		if len(data.super) > 0 {
