@@ -139,8 +139,6 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok = token_from_current_char(l, .Colon)
 	case ',':
 		tok = token_from_current_char(l, .Comma)
-	case '.':
-		tok = token_from_current_char(l, .Dot)
 	case '(':
 		tok = token_from_current_char(l, .Left_Paren)
 	case ')':
@@ -155,6 +153,8 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok = token_from_current_char(l, .Right_Bracket)
 	case '?':
 		tok = token_from_current_char(l, .Question_Mark)
+	case '@':
+		tok = token_from_current_char(l, .At)
 	case '"':
 		tok = create_string(l)
 	case '#':

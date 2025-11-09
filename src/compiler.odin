@@ -34,7 +34,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	#partial switch data in ast {
 	case Ast_Class:
-		unimplemented("class")
+		unimplemented("class definition")
 	case Ast_Method_Call:
 		unimplemented("method call")
 	case Ast_Field_Access:

@@ -121,20 +121,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 
 		#partial switch op {
 		case .New_Instance:
-			class_obj := v->pop_vm()
-			#partial switch &cls in class_obj {
-			case ObjectClass:
-				fields := make(ObjectHashTable)
-				instance := new(ObjectInstance, v.varena)
-				instance^ = ObjectInstance {
-					class  = &cls,
-					fields = fields,
-				}
-				if err = v->push_vm(instance); err != "" do return
-			case:
-				err = fmt.sbprintf(&v.sb, "new instance: expected class, got %v", class_obj)
-				return
-			}
+			unimplemented("new instance")
 		case .Iter_Init:
 			collection := v->pop_vm()
 			#partial switch coll in collection {
@@ -214,101 +201,13 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				return
 			}
 		case .Set_Method:
-			method_name_idx := int(read_u16(ins[ip + 1:]))
-			v->current_frame().ip += 2
-			method_name_obj := v.constants[method_name_idx]
-			method_name, ok := method_name_obj.(string)
-			if !ok {
-				err = fmt.sbprintf(&v.sb, "set method: method name must be string")
-				return
-			}
-			method := v->pop_vm()
-			class_obj := v->pop_vm()
-			#partial switch &cls in class_obj {
-			case ObjectClass:
-				cls.methods[method_name] = method
-				if err = v->push_vm(method); err != "" do return
-			case:
-				err = fmt.sbprintf(&v.sb, "set method: expected class, got %v", class_obj)
-				return
-			}
+			unimplemented("set method")
 		case .Get_Field:
-			field_name_idx := int(read_u16(ins[ip + 1:]))
-			v->current_frame().ip += 2
-
-			field_name_obj := v.constants[field_name_idx]
-			field_name, ok := field_name_obj.(string)
-
-			if !ok {err = fmt.sbprintf(&v.sb, "get field: field name must be string"); return}
-			instance := v->pop_vm()
-
-			#partial switch inst in instance {
-			case ^ObjectInstance:
-				if value, exists := inst.fields[field_name]; exists {
-					if err = v->push_vm(value); err != "" do return
-				}
-				 else {
-					if err = v->push_vm(NULL); err != "" do return
-				}
-			case:
-				err = fmt.sbprintf(&v.sb, "get field: expected instance, got %v", instance)
-				return
-			}
+			unimplemented("get field")
 		case .Set_Field:
-			field_name_idx := int(read_u16(ins[ip + 1:]))
-			v->current_frame().ip += 2
-
-			field_name_obj := v.constants[field_name_idx]
-			field_name, ok := field_name_obj.(string)
-			if !ok {err = fmt.sbprintf(&v.sb, "set field: field name must be string"); return}
-
-			value := v->pop_vm()
-			instance := v->pop_vm()
-
-			#partial switch inst in instance {
-			case ^ObjectInstance:
-				inst.fields[field_name] = value
-				if err = v->push_vm(value); err != "" do return
-			case:
-				err = fmt.sbprintf(&v.sb, "set field: expected instance, got %v", instance)
-				return
-			}
+			unimplemented("set field")
 		case .Get_Method:
-			method_name_idx := int(read_u16(ins[ip + 1:]))
-			v->current_frame().ip += 2
-
-			method_name_obj := v.constants[method_name_idx]
-			method_name, ok := method_name_obj.(string)
-			if !ok {err = fmt.sbprintf(&v.sb, "get method: method name must be string"); return}
-
-			obj := v->pop_vm()
-
-			if obj_class, ok := obj.(ObjectClass); ok {
-				if method, method_ok := obj_class.methods[method_name]; method_ok {
-					if err = v->push_vm(method); err != "" do return
-				}
-				 else {
-					if err = v->push_vm(NULL); err != "" do return
-				}
-			}
-			 else if obj_instance, ok := obj.(^ObjectInstance); ok {
-				class := obj_instance.class
-				method_found := false
-				for class != nil {
-					if method, method_ok := class.methods[method_name]; method_ok {
-						if err = v->push_vm(obj_instance); err != "" do return // self
-						if err = v->push_vm(method); err != "" do return // method
-						method_found = true
-						break
-					}
-					class = class.superclass
-				}
-				if !method_found {if err = v->push_vm(NULL); err != "" do return}
-			}
-			 else {
-				err = fmt.sbprintf(&v.sb, "get method: expected class or instance, got %v", obj)
-				return
-			}
+			unimplemented("get method")
 		case .Cnst:
 			const_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2
@@ -817,19 +716,6 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "macro '%v' was not expanded during compilation", callee)
 		return strings.to_string(v.sb)
-	case ObjectClass:
-		class_obj := callee.(ObjectClass)
-		persistent_class := new(ObjectClass, v.varena)
-		persistent_class^ = class_obj
-		fields := make(ObjectHashTable)
-		instance_ptr := new(ObjectInstance, v.varena)
-		instance_ptr^ = ObjectInstance {
-			class  = persistent_class,
-			fields = fields,
-		}
-		v.sp -= int(num_args)
-		v.sp -= 1
-		return v->push_vm(instance_ptr)
 	case ObjectQuote:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(

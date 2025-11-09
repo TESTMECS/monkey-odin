@@ -39,9 +39,9 @@ Token_Type :: enum {
 	Foreach,
 	In,
 	Class,
-	Dot,
 	Question_Mark,
 	Arrow,
+	At,
 }
 
 Token :: struct {

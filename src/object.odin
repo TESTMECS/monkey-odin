@@ -49,13 +49,15 @@ ObjectIterator :: struct {
 }
 
 ObjectClass :: struct {
+	selfdata:   ObjectHashTable, // dataum name -> value
 	methods:    ObjectHashTable, // Method name -> compiled function
-	superclass: ^ObjectClass,
+	superclass: ^ObjectClass, // will overwrite any selfdata or methods with the same name.
 }
 
 ObjectInstance :: struct {
-	class:  ^ObjectClass,
-	fields: ObjectHashTable, // Field name -> value
+	class:    ^ObjectClass,
+	selfdata: ObjectHashTable, // dataum name -> value
+	methods:  ObjectHashTable, // Method name -> compiled function
 }
 
 ObjectBase :: union {
