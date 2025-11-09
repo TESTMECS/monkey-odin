@@ -7,8 +7,7 @@ import "core:log"
 import "core:mem"
 import "core:strings"
 
-Evaluator :: struct
-{
+Evaluator :: struct {
 	_env:   Environment,
 	varena: mem.Allocator,
 	sb:     strings.Builder,
@@ -23,13 +22,11 @@ Evaluator :: struct
 	),
 }
 
-Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator
-{
+Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
 	return Evaluator{_env = Env_New(nil, varena), eval = eval_statements, varena = varena}
 }
 
-eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string
-{
+eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	strings.builder_reset(&e.sb)
 	fmt.sbprintf(&e.sb, str, ..args)
 	err := strings.to_string(e.sb)
@@ -38,8 +35,7 @@ eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string
 }
 
 @(private = "file")
-eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool)
-{
+eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
 	#partial switch &data in node
 	{
 	// statements=>>begin
@@ -107,16 +103,12 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		method_name, method_ok := eval(e, data.method^, current_env)
 		if !method_ok do return method_name, false
 
-		if method_str_obj, is_str := ToObjectBase(method_name).(string); is_str
-		{
+		if method_str_obj, is_str := ToObjectBase(method_name).(string); is_str {
 			// Look up method on object
-			if obj_instance, is_instance := ToObjectBase(object).(^ObjectInstance); is_instance
-			{
+			if obj_instance, is_instance := ToObjectBase(object).(^ObjectInstance); is_instance {
 				class := obj_instance.class
-				for class != nil
-				{
-					if method, ok := class.methods[method_str_obj]; ok
-					{
+				for class != nil {
+					if method, ok := class.methods[method_str_obj]; ok {
 						// Evaluate arguments
 						args, args_success := eval_array_of_expressions_fixed(
 							e,
@@ -128,8 +120,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 						// Add object as first argument (self)
 						all_args := make([dynamic]ObjectBase, 0, len(args) + 1, e.varena)
 						append(&all_args, ToObjectBase(object))
-						for arg in args
-						{
+						for arg in args {
 							append(&all_args, arg)
 						}
 
@@ -182,20 +173,17 @@ eval_statements :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	result: Object
 	ok: bool
 
-	for stmt in node
-	{
+	for stmt in node {
 		result, ok = eval(e, stmt, &e._env)
 		if !ok do return result.(ObjectBase), false
 		if _, ok_type := result.(ObjectReturn); ok_type do break
 	}
 
-	if str_obj, is_str := ToObjectBase(result).(string); is_str
-	{
+	if str_obj, is_str := ToObjectBase(result).(string); is_str {
 		result = ObjectBase(str_obj)
 	}
 	return ToObjectBase(result), true
@@ -209,29 +197,25 @@ eval_block_statements :: proc(
 ) -> (
 	Object,
 	bool,
-)
-{
+) {
 	result: Object
 	ok: bool
 
-	for stmt in program
-	{
+	for stmt in program {
 		result, ok = eval(e, stmt, current_env)
 		if !ok do return result, false
 
 		if ObjectIsReturn(result) do break
 	}
 
-	if str_obj, is_str := ToObjectBase(result).(string); is_str
-	{
+	if str_obj, is_str := ToObjectBase(result).(string); is_str {
 		result = ObjectBase(strings.clone(str_obj, e.varena))
 	}
 
 	return result, true
 } // end <<statements
 // expressions=>>begin
-eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> ObjectBase
-{
+eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> ObjectBase {
 	#partial switch data in operand
 	{
 	case bool:
@@ -244,8 +228,7 @@ eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> Obj
 	return false
 }
 
-eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (ObjectBase, bool)
-{
+eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (ObjectBase, bool) {
 	value, ok := operand.(int)
 	if !ok do return eval_new_error(e, "unknown operator: '-' on type '%v'", ObjectType(operand)), false
 
@@ -259,10 +242,8 @@ eval_prefix_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
-	switch op
-	{
+) {
+	switch op {
 	case "!":
 		return eval_bang_operator_expression(e, operand), true
 
@@ -283,10 +264,8 @@ eval_integer_infix_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
-	switch op
-	{
+) {
+	switch op {
 	case "+":
 		return left + right, true
 
@@ -327,10 +306,8 @@ eval_float_infix_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
-	switch op
-	{
+) {
+	switch op {
 	case "+":
 		return left + right, true
 
@@ -374,8 +351,7 @@ eval_string_infix_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	if op != "+" do return eval_new_error(e, "unknown string infix operator '%s'", op), false
 
 	strings.builder_reset(&e.sb)
@@ -392,36 +368,28 @@ eval_infix_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
-	if Ast__Type__(left) == int && Ast__Type__(right) == int
-	{
+) {
+	if Ast__Type__(left) == int && Ast__Type__(right) == int {
 		return eval_integer_infix_expression(e, op, left.(int), right.(int))
 	}
-	 else if Ast__Type__(left) == f64 && Ast__Type__(right) == f64
-	{
+	 else if Ast__Type__(left) == f64 && Ast__Type__(right) == f64 {
 		return eval_float_infix_expression(e, op, left.(f64), right.(f64))
 	}
-	 else if Ast__Type__(left) == int && Ast__Type__(right) == f64
-	{
+	 else if Ast__Type__(left) == int && Ast__Type__(right) == f64 {
 		// Promote int to f64 and use float operations
 		return eval_float_infix_expression(e, op, f64(left.(int)), right.(f64))
 	}
-	 else if Ast__Type__(left) == f64 && Ast__Type__(right) == int
-	{
+	 else if Ast__Type__(left) == f64 && Ast__Type__(right) == int {
 		// Promote int to f64 and use float operations
 		return eval_float_infix_expression(e, op, left.(f64), f64(right.(int)))
 	}
-	 else if Ast__Type__(left) == string && Ast__Type__(right) == string
-	{
+	 else if Ast__Type__(left) == string && Ast__Type__(right) == string {
 		return eval_string_infix_expression(e, op, left.(string), right.(string))
 	}
 
-	switch op
-	{
+	switch op {
 	case "==":
-		switch ObjectType(left)
-		{
+		switch ObjectType(left) {
 		case ObjectArray,
 		     ObjectHashTable,
 		     ObjectBuilinFunction,
@@ -431,35 +399,28 @@ eval_infix_expression :: proc(
 		case ObjectNil:
 			return false, true
 		case int, f64, string, bool:
-			if ObjectType(left) == bool && ObjectType(right) == bool
-			{
+			if ObjectType(left) == bool && ObjectType(right) == bool {
 				return left.(bool) == right.(bool), true
 			}
-			if ObjectType(left) == int && ObjectType(right) == int
-			{
+			if ObjectType(left) == int && ObjectType(right) == int {
 				return left.(int) == right.(int), true
 			}
-			if ObjectType(left) == f64 && ObjectType(right) == f64
-			{
+			if ObjectType(left) == f64 && ObjectType(right) == f64 {
 				return left.(f64) == right.(f64), true
 			}
-			if ObjectType(left) == int && ObjectType(right) == f64
-			{
+			if ObjectType(left) == int && ObjectType(right) == f64 {
 				return f64(left.(int)) == right.(f64), true
 			}
-			if ObjectType(left) == f64 && ObjectType(right) == int
-			{
+			if ObjectType(left) == f64 && ObjectType(right) == int {
 				return left.(f64) == f64(right.(int)), true
 			}
-			if ObjectType(left) == string && ObjectType(right) == string
-			{
+			if ObjectType(left) == string && ObjectType(right) == string {
 				return left.(string) == right.(string), true
 			}
 			return false, true
 		}
 	case "!=":
-		switch ObjectType(left)
-		{
+		switch ObjectType(left) {
 		case ObjectArray,
 		     ObjectHashTable,
 		     ObjectBuilinFunction,
@@ -469,28 +430,22 @@ eval_infix_expression :: proc(
 		case ObjectNil:
 			return true, true
 		case int, f64, string, bool:
-			if ObjectType(left) == bool && ObjectType(right) == bool
-			{
+			if ObjectType(left) == bool && ObjectType(right) == bool {
 				return left.(bool) == right.(bool), true
 			}
-			if ObjectType(left) == int && ObjectType(right) == int
-			{
+			if ObjectType(left) == int && ObjectType(right) == int {
 				return left.(int) == right.(int), true
 			}
-			if ObjectType(left) == f64 && ObjectType(right) == f64
-			{
+			if ObjectType(left) == f64 && ObjectType(right) == f64 {
 				return left.(f64) == right.(f64), true
 			}
-			if ObjectType(left) == int && ObjectType(right) == f64
-			{
+			if ObjectType(left) == int && ObjectType(right) == f64 {
 				return f64(left.(int)) == right.(f64), true
 			}
-			if ObjectType(left) == f64 && ObjectType(right) == int
-			{
+			if ObjectType(left) == f64 && ObjectType(right) == int {
 				return left.(f64) == f64(right.(int)), true
 			}
-			if ObjectType(left) == string && ObjectType(right) == string
-			{
+			if ObjectType(left) == string && ObjectType(right) == string {
 				return left.(string) == right.(string), true
 			}
 			return false, true
@@ -508,8 +463,7 @@ eval_infix_expression :: proc(
 }
 
 @(private = "file")
-is_truthy :: proc(obj: Object) -> bool
-{
+is_truthy :: proc(obj: Object) -> bool {
 	#partial switch data in ToObjectBase(obj)
 	{
 	case ObjectNil:
@@ -528,16 +482,13 @@ eval_if_expression :: proc(
 ) -> (
 	Object,
 	bool,
-)
-{
+) {
 	condition, ok := eval(e, node.condition^, current_env)
 	if !ok do return condition, false
-	if is_truthy(condition)
-	{
+	if is_truthy(condition) {
 		return eval(e, node.then, current_env)
 	}
-	 else if node.orelse != nil
-	{
+	 else if node.orelse != nil {
 		return eval(e, node.orelse, current_env)
 	}
 	return ObjectBase(NULL), true
@@ -551,8 +502,7 @@ eval_identifier :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	if val, ok := current_env->get(node.value); ok do return val, true
 
 	if builtin := find_builtin_fn(node.value); builtin != nil do return builtin, true
@@ -568,12 +518,10 @@ eval_array_of_expressions_fixed :: proc(
 ) -> (
 	[dynamic]ObjectBase,
 	bool,
-)
-{
+) {
 	args := make([dynamic]ObjectBase, 0, len(expressions), e.varena)
 
-	for expr in expressions
-	{
+	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
 		append(&args, ToObjectBase(evaluated))
 		if !ok do return args, false
@@ -591,12 +539,10 @@ eval_array_of_expressions_registered :: proc(
 ) -> (
 	ObjectArray,
 	bool,
-)
-{
+) {
 	args := make(ObjectArray, 0, len(expressions), e.varena)
 
-	for expr in expressions
-	{
+	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
 		append(&args, ToObjectBase(evaluated))
 		if !ok do return args, false
@@ -610,12 +556,10 @@ extend_function_env :: proc(
 	e: ^Evaluator,
 	fn: ^ObjectFunction,
 	args: [dynamic]ObjectBase,
-) -> ^Environment
-{
+) -> ^Environment {
 	env := Env_Enclosed(fn.env, len(fn.parameters), e.varena)
 
-	for param, idx in fn.parameters
-	{
+	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
 	}
 
@@ -630,13 +574,11 @@ apply_function :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	#partial switch function in fn
 	{
 	case ^ObjectFunction:
-		if len(function.parameters) != len(args)
-		{
+		if len(function.parameters) != len(args) {
 			return eval_new_error(
 					e,
 					"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
@@ -666,12 +608,10 @@ eval_hash_table_literal :: proc(
 ) -> (
 	Object,
 	bool,
-)
-{
+) {
 	ht := make(ObjectHashTable, len(node.pairs), e.varena)
 
-	for pair in node.pairs
-	{
+	for pair in node.pairs {
 		key_obj, key_ok := eval(e, pair.key, current_env)
 		if !key_ok do return key_obj, false
 
@@ -682,8 +622,7 @@ eval_hash_table_literal :: proc(
 		val_base := ToObjectBase(val_obj)
 
 		key_str, key_is_string := key_base.(string)
-		if !key_is_string
-		{
+		if !key_is_string {
 			log.errorf(
 				"hash literal key must evaluate to a string, got: %v",
 				typeid_of(type_of(key_base)),
@@ -705,12 +644,10 @@ eval_array_index_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	max := len(array) - 1
 
-	if index < 0 || index > max
-	{
+	if index < 0 || index > max {
 		return eval_new_error(e, "index out of boundary expect '0..%d', got='%d'", max, index),
 			false
 	}
@@ -726,12 +663,10 @@ eval_hash_table_index_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
+) {
 	value, ok := ht[key]
 
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(e, "key '%s' does not exists", key), false
 	}
 
@@ -746,14 +681,11 @@ eval_index_expression :: proc(
 ) -> (
 	ObjectBase,
 	bool,
-)
-{
-	if ObjectType(operand) == ObjectArray && ObjectType(index) == int
-	{
+) {
+	if ObjectType(operand) == ObjectArray && ObjectType(index) == int {
 		return eval_array_index_expression(e, operand.(ObjectArray), index.(int))
 	}
-	if ObjectType(operand) == ObjectHashTable && ObjectType(index) == string
-	{
+	if ObjectType(operand) == ObjectHashTable && ObjectType(index) == string {
 		return eval_hash_table_index_expression(e, operand.(ObjectHashTable), index.(string))
 	}
 	return eval_new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false

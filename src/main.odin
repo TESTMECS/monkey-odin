@@ -19,8 +19,7 @@ Commands:
   help     Show this help message`
 
 
-main :: proc()
-{
+main :: proc() {
 	// Arena for the whole program.
 	v: virtual.Arena
 	err := virtual.arena_init_growing(&v)
@@ -34,8 +33,7 @@ main :: proc()
 	sb := strings.builder_make(varena)
 	defer strings.builder_destroy(&sb)
 
-	if len(os.args) < 2
-	{
+	if len(os.args) < 2 {
 		monkey_print_help(&sb)
 		err_msg :=
 			ansi.CSI +
@@ -48,8 +46,7 @@ main :: proc()
 		monkey_err(err_msg, 1, &sb)
 	}
 
-	switch os.args[1]
-	{
+	switch os.args[1] {
 	case "repl":
 		reader: bufio.Reader
 		bufio.reader_init(&reader, os.stream_from_handle(os.stdin), bufio.DEFAULT_BUF_SIZE, varena)
@@ -59,8 +56,7 @@ main :: proc()
 			ansi.CSI + ansi.FG_BRIGHT_GREEN + ansi.SGR + "Monkey REPL. Type 'exit' to quit.",
 			ansi.CSI + ansi.RESET + ansi.SGR,
 		)
-		for
-		{ 	//repl
+		for { 	//repl
 			fmt.print(">> ")
 			// readline
 			line, err := bufio.reader_read_string(&reader, '\n')
@@ -74,15 +70,12 @@ main :: proc()
 		stmts, shebang_args := Monkey_Read_File(os.args[2], &sb, varena)
 		// Combine shebang args with command line args (os.args[3:])
 		all_args := make([dynamic]string, 0, varena)
-		for arg in shebang_args
-		{
+		for arg in shebang_args {
 			append(&all_args, arg)
 		}
-		if len(os.args) > 3
-		{
+		if len(os.args) > 3 {
 			// Append command line args after the file path
-			for arg in os.args[3:]
-			{
+			for arg in os.args[3:] {
 				append(&all_args, arg)
 			}
 		}

@@ -3,8 +3,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Print obj">>
 				printf(format, obj)
@@ -13,8 +12,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: printf("%d", 1)=>>1<<`
 
 
-	if len(args) < 1
-	{
+	if len(args) < 1 {
 		return eval_new_error(
 				e,
 				"'printf' function error: wrong number of arguments, wants=<<Greater than or equal to 1>>, got='%d'.%s",
@@ -24,8 +22,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	format_str, ok := args[0].(string)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'printf' function error: first argument must be a valid format string, got '%v'.%s",
@@ -38,25 +35,19 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 	// Count format specifiers to validate argument count
 	specifier_count := 0
-	for i := 0; i < len(format_str); i += 1
-	{
-		if format_str[i] == '%'
-		{
-			if i + 1 >= len(format_str)
-			{break} 	// dangling '%'
-			if format_str[i + 1] != '%'
-			{
+	for i := 0; i < len(format_str); i += 1 {
+		if format_str[i] == '%' {
+			if i + 1 >= len(format_str) {break} 	// dangling '%'
+			if format_str[i + 1] != '%' {
 				specifier_count += 1
 			}
-			 else
-			{
+			 else {
 				i += 1 // skip escaped %%
 			}
 		}
 	}
 
-	if specifier_count != len(args) - 1
-	{
+	if specifier_count != len(args) - 1 {
 		return eval_new_error(
 				e,
 				"'printf' function error: format string expects %d arguments, got %d.%s",
@@ -69,8 +60,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 	// Convert arguments to any type for fmt.sbprintf
 	fmt_args := make([]any, len(args) - 1, e.varena)
-	for i in 1 ..< len(args)
-	{
+	for i in 1 ..< len(args) {
 		fmt_args[i - 1] = args[i]
 	}
 
@@ -79,8 +69,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	fmt.println(strings.to_string(e.sb))
 	return strings.to_string(e.sb), true
 }
-b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get args">>
 				args()
@@ -88,8 +77,7 @@ b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: args()=>>["arg1", "arg2"]<<`
 
 
-	if len(args) != 0
-	{
+	if len(args) != 0 {
 		return eval_new_error(
 				e,
 				"'args' function error: wrong number of arguments, wants='0', got='%d'.%s",
@@ -100,8 +88,7 @@ b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	args_array := make([dynamic]ObjectBase, 0, e.varena)
-	for arg in e.args
-	{
+	for arg in e.args {
 		arg_clone := strings.clone(arg, e.varena)
 		append(&args_array, arg_clone)
 	}
@@ -109,8 +96,7 @@ b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return ObjectArray(args_array), true
 }
 
-b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Print obj">>
 				puts(arr)
@@ -120,8 +106,7 @@ b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 	strings.builder_reset(&e.sb)
 
-	for arg in args
-	{
+	for arg in args {
 		ObjectInspect(arg, &e.sb)
 		fmt.sbprintln(&e.sb)
 	}
@@ -130,8 +115,7 @@ b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return strings.to_string(e.sb), true
 }
 
-b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"read file"
 				readf(file)
@@ -139,8 +123,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: readf("file.txt")=>>"line1\nline2\n"<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'readf' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -150,8 +133,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	file, ok := args[0].(string)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'readf' function error: not supported for argument of type '%v'.%s",
@@ -165,8 +147,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return string(file_content), true
 }
 
-b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Write obj to file">>
 				writef(file, obj)
@@ -175,8 +156,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: writef("file.txt", "hello monkey")=>>true|false<<`
 
 
-	if len(args) != 2
-	{
+	if len(args) != 2 {
 		return eval_new_error(
 				e,
 				"'writef' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -186,8 +166,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	file, ok := args[0].(string)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'writef' function error: not supported for argument of type '%v'.%s",
@@ -197,8 +176,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	str_obj, okk := args[1].(string)
-	if !okk
-	{
+	if !okk {
 		return eval_new_error(
 				e,
 				"'writef' function error: not supported for argument of type '%v'.%s",

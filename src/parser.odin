@@ -5,8 +5,7 @@ import "core:mem"
 import "core:strconv"
 import "core:strings"
 
-Parser :: struct
-{
+Parser :: struct {
 	l:          Lexer,
 	cur_token:  Token,
 	peek_token: Token,
@@ -17,8 +16,7 @@ Parser :: struct
 	free:       proc(p: ^Parser),
 }
 
-Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser
-{
+Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
 	init_precedences()
 	return Parser {
 		varena = varena,
@@ -28,18 +26,15 @@ Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser
 	}
 }
 
-parse_program :: proc(p: ^Parser) -> Ast_Program
-{
+parse_program :: proc(p: ^Parser) -> Ast_Program {
 	next_token(p)
 	next_token(p)
 
 	program := make(Ast_Program, 0, 16, p.varena)
 	defer delete(program)
 
-	for p.cur_token.type != .EOF
-	{
-		if stmt := parse_statement(p); stmt != nil
-		{
+	for p.cur_token.type != .EOF {
+		if stmt := parse_statement(p); stmt != nil {
 			append(&program, stmt)
 		}
 		next_token(p)
@@ -47,8 +42,7 @@ parse_program :: proc(p: ^Parser) -> Ast_Program
 	return program
 }
 
-parser_new_error :: proc(p: ^Parser, str: string, args: ..any)
-{
+parser_new_error :: proc(p: ^Parser, str: string, args: ..any) {
 	strings.builder_reset(&p.sb)
 	fmt.sbprintf(&p.sb, str, ..args)
 	err := strings.to_string(p.sb)
@@ -57,30 +51,24 @@ parser_new_error :: proc(p: ^Parser, str: string, args: ..any)
 }
 
 // Parse_Helpers=>>begin
-peek_error :: proc(p: ^Parser, t: Token_Type)
-{
+peek_error :: proc(p: ^Parser, t: Token_Type) {
 	parser_new_error(p, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
 }
 
-no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type)
-{
+no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
 	parser_new_error(p, "unexpected token '%v'", t)
 }
 
-current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool
-{
+current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return p.cur_token.type == t
 }
 
-peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool
-{
+peek_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
 	return p.peek_token.type == t
 }
 
-expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool
-{
-	if peek_token_is(p, t)
-	{
+expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool {
+	if peek_token_is(p, t) {
 		next_token(p)
 		return true
 	}
@@ -88,14 +76,12 @@ expect_peek :: proc(p: ^Parser, t: Token_Type) -> bool
 	return false
 }
 
-next_token :: proc(p: ^Parser)
-{
+next_token :: proc(p: ^Parser) {
 	p.cur_token = p.peek_token
 	p.peek_token = p.l->next_token()
 } //end <<Parse_Helpers
 // Precedence=>>begin
-Precedence :: enum
-{
+Precedence :: enum {
 	Lowest, // 0
 	Assign, // Assignment precedence
 	Equals,
@@ -109,10 +95,8 @@ Precedence :: enum
 
 GetPrecedence: [Token_Type]Precedence
 
-init_precedences :: proc()
-{
-	GetPrecedence = #partial \
-	{
+init_precedences :: proc() {
+	GetPrecedence = #partial {
 		.Plus               = .Sum,
 		.Minus              = .Sum,
 		.Asterisk           = .Product,
@@ -133,20 +117,17 @@ init_precedences :: proc()
 	}
 }
 
-peek_precedence :: proc(p: ^Parser) -> Precedence
-{
+peek_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.peek_token.type]
 }
 
-cur_precedence :: proc(p: ^Parser) -> Precedence
-{
+cur_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.cur_token.type]
 } //end <<Precedence
 // Expressions_types=>>begin
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-prefix_parse_fns := #partial [Token_Type]prefix_parse_fn \
-{
+prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.Identifier   = parse_identifier,
 	.Int          = parse_integer_literal,
 	.String       = parse_string_literal,
@@ -165,8 +146,7 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn \
 	.Class        = parse_class_expression,
 	.Self         = parse_self_expression,
 }
-infix_parse_fns := #partial [Token_Type]infix_parse_fn \
-{
+infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Plus               = parse_infix_expression,
 	.Minus              = parse_infix_expression,
 	.Asterisk           = parse_infix_expression,
@@ -184,61 +164,49 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn \
 	.At                 = parse_at_expression,
 } // end <<Expressions_types
 // Literals=>>begin
-parse_identifier :: proc(p: ^Parser) -> Node
-{
+parse_identifier :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{string(p.cur_token.text_slice)}
 }
-parse_string_literal :: proc(p: ^Parser) -> Node
-{
+parse_string_literal :: proc(p: ^Parser) -> Node {
 	return string(p.cur_token.text_slice)
 }
-parse_integer_literal :: proc(p: ^Parser) -> Node
-{
+parse_integer_literal :: proc(p: ^Parser) -> Node {
 	// trying to parse as float first.
 	text := string(p.cur_token.text_slice)
-	if strings.contains(text, ".")
-	{
+	if strings.contains(text, ".") {
 		value, ok := strconv.parse_f64(text)
-		if !ok
-		{
+		if !ok {
 			parser_new_error(p, "could not parse %s as float", p.l.input)
 			return nil
 		}
 		return value
 	}
 	value, ok := strconv.parse_int(text)
-	if !ok
-	{
+	if !ok {
 		parser_new_error(p, "could not parse %s as integer", p.l.input)
 		return nil
 	}
 	return value
 }
-parse_boolean_literal :: proc(p: ^Parser) -> Node
-{
+parse_boolean_literal :: proc(p: ^Parser) -> Node {
 	return current_token_is(p, .True)
 }
-parse_array_literal :: proc(p: ^Parser) -> Node
-{
+parse_array_literal :: proc(p: ^Parser) -> Node {
 	result, ok := parse_expression_list(p, .Right_Bracket)
 	if !ok do return nil
 	return Ast_Array(result)
 }
-parse_hash_table_literal :: proc(p: ^Parser) -> Node
-{
-	result := Ast_Hash_Table \
-	{
+parse_hash_table_literal :: proc(p: ^Parser) -> Node {
+	result := Ast_Hash_Table {
 		pairs = make([dynamic]kvpair, 0, p.varena),
 		table = make(map[string]Node, p.varena),
 	}
 	next_token(p)
-	for !current_token_is(p, .Right_Brace)
-	{
+	for !current_token_is(p, .Right_Brace) {
 		key_expr := parse_expression(p, .Lowest)
 
 		key_str_node, ok := key_expr.(string)
-		if !ok
-		{
+		if !ok {
 			parser_new_error(
 				p,
 				"expected hash key to be a string literal, got '%s' instead.",
@@ -252,14 +220,12 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node
 
 		next_token(p)
 		value_expr := parse_expression(p, .Lowest)
-		if key_str in result.table
-		{
+		if key_str in result.table {
 			parser_new_error(p, "duplicate key '%s' in hash literal", key_str)
 			return nil
 		}
 
-		new_pair := kvpair \
-		{
+		new_pair := kvpair {
 			key   = key_expr,
 			value = value_expr,
 		}
@@ -267,30 +233,25 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node
 		append(&result.pairs, new_pair)
 		result.table[key_str] = value_expr
 
-		if peek_token_is(p, .Comma)
-		{
+		if peek_token_is(p, .Comma) {
 			next_token(p)
 			next_token(p)
 		}
-		 else
-		{
+		 else {
 			break
 		}
 	}
 
-	if current_token_is(p, .Right_Brace)
-	{
+	if current_token_is(p, .Right_Brace) {
 	}
-	 else
-	{
+	 else {
 		if !expect_peek(p, .Right_Brace) do return nil
 	}
 
 	return result
 } // end << Literals
 // Expressions=>>begin
-parse_prefix_expression :: proc(p: ^Parser) -> Node
-{
+parse_prefix_expression :: proc(p: ^Parser) -> Node {
 	op := string(p.cur_token.text_slice)
 
 	next_token(p)
@@ -301,8 +262,7 @@ parse_prefix_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_Prefix{op = op, operand = operand}
 }
-parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node
-{
+parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node {
 	op := string(p.cur_token.text_slice)
 	prec := cur_precedence(p)
 
@@ -316,16 +276,14 @@ parse_infix_expression :: proc(p: ^Parser, left: Node) -> Node
 
 	return Ast_Infix{op = op, left = new_left, right = new_right}
 }
-parse_grouped_expression :: proc(p: ^Parser) -> Node
-{
+parse_grouped_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	expr := parse_expression(p, .Lowest)
 
 	if !expect_peek(p, .Right_Paren) do return nil
 	return expr
 }
-parse_if_expression :: proc(p: ^Parser) -> Node
-{
+parse_if_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 
 	condition_expr := parse_expression(p, .Lowest)
@@ -336,8 +294,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node
 	then := parse_block_statement(p)
 
 	orelse: Ast_Block = nil
-	if peek_token_is(p, .Else)
-	{
+	if peek_token_is(p, .Else) {
 		next_token(p)
 		if !expect_peek(p, .Left_Brace) do return nil
 		orelse = parse_block_statement(p)
@@ -346,8 +303,7 @@ parse_if_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_If{condition = condition, then = then, orelse = orelse}
 }
-parse_function_literal :: proc(p: ^Parser) -> Node
-{
+parse_function_literal :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Left_Paren) do return nil
 
 	parameters := parse_function_parameters(p)
@@ -358,12 +314,10 @@ parse_function_literal :: proc(p: ^Parser) -> Node
 
 	return Ast_Function{body = body, parameters = parameters}
 }
-parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
-{
+parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
 
-	if peek_token_is(p, .Right_Paren)
-	{
+	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
 		return identifiers
 	}
@@ -372,8 +326,7 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 
 	append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
 
-	for peek_token_is(p, .Comma)
-	{
+	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
 		append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
@@ -383,13 +336,11 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 
 	return identifiers
 }
-parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool)
-{
+parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	args := make([dynamic]Node, 0, 16, p.varena)
 	defer delete(args)
 
-	if peek_token_is(p, end)
-	{
+	if peek_token_is(p, end) {
 		next_token(p)
 		return args, true
 	}
@@ -398,8 +349,7 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 	arg := parse_expression(p, .Lowest)
 
 	append(&args, arg)
-	for peek_token_is(p, .Comma)
-	{
+	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
 
@@ -413,15 +363,13 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 
 	return args, true
 }
-parse_call_expression :: proc(p: ^Parser, function: Node) -> Node
-{
+parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)
 	if !ok do return nil
 	f := new_clone(function, p.varena)
 	return Ast_Call{function = f, arguments = arguments}
 }
-parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node
-{
+parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	next_token(p)
 	index := parse_expression(p, .Lowest)
 
@@ -432,16 +380,13 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node
 
 	return Ast_Index{operand = new_op, index = new_index}
 }
-parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node
-{
+parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
 	next_token(p)
-	if !current_token_is(p, .Identifier)
-	{
+	if !current_token_is(p, .Identifier) {
 		parser_new_error(p, "expected identifier after '.', got '%s' instead.", p.cur_token.type)
 		return nil
 	}
-	property := Ast_Identifier \
-	{
+	property := Ast_Identifier {
 		value = string(p.cur_token.text_slice),
 	}
 	new_left := new_clone(left, p.varena)
@@ -449,26 +394,22 @@ parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node
 	new_property := new_clone(property_node, p.varena)
 	return Ast_Index{operand = new_left, index = new_property}
 }
-parse_at_expression :: proc(p: ^Parser, left: Node) -> Node
-{
+parse_at_expression :: proc(p: ^Parser, left: Node) -> Node {
 	next_token(p)
 
-	if !current_token_is(p, .Identifier)
-	{
+	if !current_token_is(p, .Identifier) {
 		parser_new_error(p, "expected identifier after '@', got '%s' instead.", p.cur_token.type)
 		return nil
 	}
 
-	method_name := Ast_Identifier \
-	{
+	method_name := Ast_Identifier {
 		value = string(p.cur_token.text_slice),
 	}
 	new_left := new_clone(left, p.varena)
 	method_node := Node(method_name)
 	new_method := new_clone(method_node, p.varena)
 
-	if peek_token_is(p, .Left_Paren)
-	{
+	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
 
 		arguments, ok := parse_expression_list(p, .Right_Paren)
@@ -476,27 +417,23 @@ parse_at_expression :: proc(p: ^Parser, left: Node) -> Node
 
 		return Ast_Method_Call{object = new_left, method = new_method, arguments = arguments}
 	}
-	 else
-	{
+	 else {
 		// Method reference without call: obj@method
 		return Ast_Method_Call{object = new_left, method = new_method, arguments = [dynamic]Node{}}
 	}
 }
 
-parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node
-{
+parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
 
-	if prefix == nil
-	{
+	if prefix == nil {
 		no_prefix_parse_fn_error(p, p.cur_token.type)
 		return nil
 	}
 
 	left_expr := prefix(p)
 
-	for !peek_token_is(p, .Semicolon) && prec < peek_precedence(p)
-	{
+	for !peek_token_is(p, .Semicolon) && prec < peek_precedence(p) {
 
 		infix := infix_parse_fns[p.peek_token.type]
 		if infix == nil do return left_expr
@@ -507,8 +444,7 @@ parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node
 	}
 	return left_expr
 }
-parse_macro_expression :: proc(p: ^Parser) -> Node
-{
+parse_macro_expression :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Left_Paren) do return nil
 
 	parameters := parse_function_parameters(p)
@@ -518,8 +454,7 @@ parse_macro_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_Macro{parameters = parameters, body = body}
 }
-parse_for_expression :: proc(p: ^Parser) -> Node
-{
+parse_for_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 
 	cond_expr := parse_expression(p, .Lowest)
@@ -532,8 +467,7 @@ parse_for_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_For{cond = condition, body = body}
 }
-parse_foreach_expression :: proc(p: ^Parser) -> Node
-{
+parse_foreach_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
@@ -546,14 +480,12 @@ parse_foreach_expression :: proc(p: ^Parser) -> Node
 	body := parse_block_statement(p)
 	return Ast_Foreach{itervar = name, expr = new_expr, body = body}
 }
-parse_class_expression :: proc(p: ^Parser) -> Node
-{
+parse_class_expression :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
 	super: [dynamic]Ast_Identifier
-	if peek_token_is(p, .Left_Paren)
-	{
+	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
 		super = parse_super_class(p)
 	}
@@ -563,19 +495,16 @@ parse_class_expression :: proc(p: ^Parser) -> Node
 
 	return Ast_Class{name = name, super = super, body = body}
 }
-parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
-{
+parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
 	//empty
-	if peek_token_is(p, .Right_Paren)
-	{
+	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
 		return identifiers
 	}
 	next_token(p)
 	append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
-	for peek_token_is(p, .Comma)
-	{
+	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
 		append(&identifiers, Ast_Identifier{value = string(p.cur_token.text_slice)})
@@ -583,13 +512,11 @@ parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier
 	if !expect_peek(p, .Right_Paren) do return nil
 	return identifiers
 }
-parse_self_expression :: proc(p: ^Parser) -> Node
-{
+parse_self_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{value = "self"}
 } // end <<Expressions
 // Statements=>>begin
-parse_let_statement :: proc(p: ^Parser) -> Node
-{
+parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
@@ -603,8 +530,7 @@ parse_let_statement :: proc(p: ^Parser) -> Node
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return Ast_Let{name = name, value = value}
 }
-parse_return_statement :: proc(p: ^Parser) -> Node
-{
+parse_return_statement :: proc(p: ^Parser) -> Node {
 	next_token(p)
 
 	return_value_expr := parse_expression(p, .Lowest)
@@ -615,14 +541,12 @@ parse_return_statement :: proc(p: ^Parser) -> Node
 
 	return Ast_Ret{return_value = return_value}
 }
-parse_block_statement :: proc(p: ^Parser) -> Ast_Block
-{
+parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
 	block := make(Ast_Block, 0, 16, p.varena)
 
 	next_token(p)
 
-	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF)
-	{
+	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
 		stmt := parse_statement(p)
 		if stmt != nil do append(&block, stmt)
 		next_token(p)
@@ -630,8 +554,7 @@ parse_block_statement :: proc(p: ^Parser) -> Ast_Block
 
 	return block
 }
-parse_foreach_statement :: proc(p: ^Parser) -> Node
-{
+parse_foreach_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	itervar := string(p.cur_token.text_slice)
 
@@ -650,14 +573,12 @@ parse_foreach_statement :: proc(p: ^Parser) -> Node
 	return Ast_Foreach{itervar = itervar, expr = new_expr, body = body}
 }
 
-parse_class_statement :: proc(p: ^Parser) -> Node
-{
+parse_class_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
 
 	super: [dynamic]Ast_Identifier
-	if peek_token_is(p, .Left_Paren)
-	{
+	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
 		super = parse_super_class(p)
 	}
@@ -670,17 +591,14 @@ parse_class_statement :: proc(p: ^Parser) -> Node
 	return Ast_Class{name = name, super = super, body = body}
 }
 
-parse_expression_statement :: proc(p: ^Parser) -> Node
-{
+parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
 	if peek_token_is(p, .Semicolon) do next_token(p)
 
 	return expr
 }
-parse_statement :: proc(p: ^Parser) -> Node
-{
-	#partial switch p.cur_token.type
-	{
+parse_statement :: proc(p: ^Parser) -> Node {
+	#partial switch p.cur_token.type {
 	case .Let:
 		return parse_let_statement(p)
 	case .Return:

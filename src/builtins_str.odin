@@ -4,8 +4,7 @@ import "core:fmt"
 import "core:strings"
 import r "core:text/regex"
 
-b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Hash a string">>
 				hash(str)
@@ -14,8 +13,7 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'hash' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -28,14 +26,12 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	#partial switch arg in args[0]
 
 
-	
 	{
 	case string:
 		s_copy := strings.clone(arg, e.varena)
 		digest := hash.hash_string(hash.Algorithm.SHA256, s_copy)
 		sb := strings.builder_make(e.varena)
-		for b in digest
-		{
+		for b in digest {
 			fmt.sbprintf(&sb, "%02x", b)
 		}
 		hex_str := strings.to_string(sb)
@@ -51,8 +47,7 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 		false
 }
 
-b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Convert string to uppercase">>
 				upper(str)
@@ -60,8 +55,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: upper("hello")=>>"HELLO"<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'upper' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -74,7 +68,6 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	#partial switch arg in args[0]
 
 
-	
 	{
 	case string:
 		return strings.to_upper(arg), true
@@ -89,8 +82,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 		false
 }
 
-b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Convert string to lowercase">>
 				lower(str)
@@ -98,8 +90,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: lower("HELLO")=>>"hello"<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'lower' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -112,7 +103,6 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	#partial switch arg in args[0]
 
 
-	
 	{
 	case string:
 		return strings.to_lower(arg), true
@@ -127,8 +117,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 		false
 }
 
-b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Split string by delimiter">>
 				split(str, delimiter)
@@ -137,8 +126,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: split("a,b,c", ",")=>>["a", "b", "c"]<<`
 
 
-	if len(args) != 2
-	{
+	if len(args) != 2 {
 		return eval_new_error(
 				e,
 				"'split' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -149,8 +137,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	str, str_ok := args[0].(string)
-	if !str_ok
-	{
+	if !str_ok {
 		return eval_new_error(
 				e,
 				"'split' function error: first argument must be string, got '%v'.%s",
@@ -161,8 +148,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	delimiter, delim_ok := args[1].(string)
-	if !delim_ok
-	{
+	if !delim_ok {
 		return eval_new_error(
 				e,
 				"'split' function error: second argument must be string, got '%v'.%s",
@@ -173,16 +159,14 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 	parts := strings.split(str, delimiter)
 	result := make([dynamic]ObjectBase, 0, e.varena)
-	for part in parts
-	{
+	for part in parts {
 		append(&result, ObjectBase(part))
 	}
 
 	return ObjectArray(result), true
 }
 
-b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Join array of strings with delimiter">>
 				join(arr, delimiter)
@@ -191,8 +175,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: join(["a", "b", "c"], ",")=>>"a,b,c"<<`
 
 
-	if len(args) != 2
-	{
+	if len(args) != 2 {
 		return eval_new_error(
 				e,
 				"'join' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -203,8 +186,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	arr, arr_ok := args[0].(ObjectArray)
-	if !arr_ok
-	{
+	if !arr_ok {
 		return eval_new_error(
 				e,
 				"'join' function error: first argument must be array, got '%v'.%s",
@@ -215,8 +197,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	delimiter, delim_ok := args[1].(string)
-	if !delim_ok
-	{
+	if !delim_ok {
 		return eval_new_error(
 				e,
 				"'join' function error: second argument must be string, got '%v'.%s",
@@ -227,11 +208,9 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	str_parts := make([]string, len(arr), e.varena)
-	for i, item in arr
-	{
+	for i, item in arr {
 		str, ok := i.(string)
-		if !ok
-		{
+		if !ok {
 			return eval_new_error(
 					e,
 					"'join' function error: array elements must be strings, got '%v' at index %d.%s",
@@ -247,8 +226,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return strings.join(str_parts, delimiter), true
 }
 
-b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Match string against regex, return array of groups captured >>
 				match(str, regex)
@@ -257,8 +235,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: match("hello monkey", "hello (.*)")=>>"monkey"<<`
 
 
-	if len(args) != 2
-	{
+	if len(args) != 2 {
 		return eval_new_error(
 				e,
 				"'match' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -268,8 +245,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	str, str_ok := args[0].(string)
-	if !str_ok
-	{
+	if !str_ok {
 		return eval_new_error(
 				e,
 				"'match' function error: first argument must be string, got '%v'.%s",
@@ -279,8 +255,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	regex, regex_ok := args[1].(string)
-	if !regex_ok
-	{
+	if !regex_ok {
 		return eval_new_error(
 				e,
 				"'match' function error: second argument must be string, got '%v'.%s",
@@ -296,15 +271,13 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	if !ok do return eval_new_error(e, "'match' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	new_arr := make([dynamic]ObjectBase, 0, e.varena)
 	// skip first group which is original string.
-	for i in c.groups[1:]
-	{
+	for i in c.groups[1:] {
 		append(&new_arr, ObjectBase(i))
 	}
 	return ObjectArray(new_arr), true
 }
 
-b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Replace string with regex, return string >>
 				replace(str, regex, replacement)
@@ -314,8 +287,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 				Usage: replace("hello monkey", "hello (.*)", "BANANAS")=>>"hello BANANAS"<<`
 
 
-	if len(args) != 3
-	{
+	if len(args) != 3 {
 		return eval_new_error(
 				e,
 				"'replace' function error: wrong number of arguments, wants='3', got='%d'.%s",
@@ -325,8 +297,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			false
 	}
 	str, str_ok := args[0].(string)
-	if !str_ok
-	{
+	if !str_ok {
 		return eval_new_error(
 				e,
 				"'replace' function error: first argument must be string, got '%v'.%s",
@@ -336,8 +307,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			false
 	}
 	regex, regex_ok := args[1].(string)
-	if !regex_ok
-	{
+	if !regex_ok {
 		return eval_new_error(
 				e,
 				"'replace' function error: second argument must be string, got '%v'.%s",
@@ -347,8 +317,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			false
 	}
 	replacement, replacement_ok := args[2].(string)
-	if !replacement_ok
-	{
+	if !replacement_ok {
 		return eval_new_error(
 				e,
 				"'replace' function error: third argument must be string, got '%v'.%s",
@@ -369,8 +338,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	return out, true
 }
 
-b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Check if string contains substring">>
 				contains(str, substring)
@@ -379,8 +347,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 				Usage: contains("hello monkey", "monkey")=>>true<<`
 
 
-	if len(args) != 2
-	{
+	if len(args) != 2 {
 		return eval_new_error(
 				e,
 				"'contains' function error: wrong number of arguments, wants='2', got='%d'.%s",
@@ -391,8 +358,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 	}
 
 	str, str_ok := args[0].(string)
-	if !str_ok
-	{
+	if !str_ok {
 		return eval_new_error(
 				e,
 				"'contains' function error: first argument must be string, got '%v'.%s",
@@ -403,8 +369,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 	}
 
 	substring, substring_ok := args[1].(string)
-	if !substring_ok
-	{
+	if !substring_ok {
 		return eval_new_error(
 				e,
 				"'contains' function error: second argument must be string, got '%v'.%s",

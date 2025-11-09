@@ -1,7 +1,6 @@
 package monkey
 
-Token_Type :: enum
-{
+Token_Type :: enum {
 	Illegal,
 	EOF,
 	Identifier,
@@ -45,21 +44,17 @@ Token_Type :: enum
 	At,
 }
 
-Token :: struct
-{
+Token :: struct {
 	type:       Token_Type,
 	text_slice: []u8,
 }
 
-GetToken :: proc(type: Token_Type, input: []u8, start: int, length: int) -> Token
-{
+GetToken :: proc(type: Token_Type, input: []u8, start: int, length: int) -> Token {
 	return {type, input[start:start + length]}
 }
 
-UpdateKwType :: proc(tok: ^Token)
-{
-	switch (string(tok.text_slice))
-	{
+UpdateKwType :: proc(tok: ^Token) {
+	switch (string(tok.text_slice)) {
 	case "fn":
 		tok.type = .Function
 	case "let":

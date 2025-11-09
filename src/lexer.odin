@@ -1,16 +1,13 @@
 package monkey
-Lexer :: struct
-{
+Lexer :: struct {
 	input:      []u8,
 	pos:        int,
 	read_pos:   int,
 	ch:         u8,
 	next_token: proc(l: ^Lexer) -> Token,
 }
-Lexer_New :: proc(input: string) -> Lexer
-{
-	l := Lexer \
-	{
+Lexer_New :: proc(input: string) -> Lexer {
+	l := Lexer {
 		ch         = 0,
 		input      = transmute([]u8)input,
 		pos        = 0,
@@ -22,32 +19,27 @@ Lexer_New :: proc(input: string) -> Lexer
 }
 
 @(private = "file")
-is_letter :: proc(ch: u8) -> bool
-{
+is_letter :: proc(ch: u8) -> bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
 
 @(private = "file")
-is_digit :: proc(ch: u8) -> bool
-{
+is_digit :: proc(ch: u8) -> bool {
 	return '0' <= ch && ch <= '9'
 }
 
 @(private = "file")
-token_from_current_char :: proc(l: ^Lexer, type: Token_Type) -> Token
-{
+token_from_current_char :: proc(l: ^Lexer, type: Token_Type) -> Token {
 	return GetToken(type, l.input, l.pos, 1)
 }
 
 @(private = "file")
-skip_whitespace :: proc(l: ^Lexer)
-{
+skip_whitespace :: proc(l: ^Lexer) {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' do read_char(l)
 }
 
 @(private = "file")
-create_identifier :: proc(l: ^Lexer) -> Token
-{
+create_identifier :: proc(l: ^Lexer) -> Token {
 	start := l.pos
 	read_char(l)
 	for is_letter(l.ch) || is_digit(l.ch) do read_char(l)
@@ -55,12 +47,10 @@ create_identifier :: proc(l: ^Lexer) -> Token
 }
 
 @(private = "file")
-create_number :: proc(l: ^Lexer) -> Token
-{
+create_number :: proc(l: ^Lexer) -> Token {
 	start := l.pos
 	for is_digit(l.ch) do read_char(l)
-	if l.ch == '.'
-	{
+	if l.ch == '.' {
 		read_char(l)
 		for is_digit(l.ch) do read_char(l)
 		return GetToken(.Int, l.input, start, l.pos - start)
@@ -69,11 +59,9 @@ create_number :: proc(l: ^Lexer) -> Token
 }
 
 @(private = "file")
-create_string :: proc(l: ^Lexer) -> Token
-{
+create_string :: proc(l: ^Lexer) -> Token {
 	start := l.pos + 1
-	for
-	{
+	for {
 		read_char(l)
 		if l.ch == '"' || l.ch == 0 do break
 	}
@@ -81,14 +69,11 @@ create_string :: proc(l: ^Lexer) -> Token
 }
 
 @(private = "file")
-read_char :: proc(l: ^Lexer)
-{
-	if l.read_pos >= len(l.input)
-	{
+read_char :: proc(l: ^Lexer) {
+	if l.read_pos >= len(l.input) {
 		l.ch = 0
 	}
-	 else
-	{
+	 else {
 		l.ch = l.input[l.read_pos]
 	}
 	l.pos = l.read_pos
@@ -96,23 +81,19 @@ read_char :: proc(l: ^Lexer)
 }
 
 @(private = "file")
-peek_char :: proc(l: ^Lexer) -> u8
-{
+peek_char :: proc(l: ^Lexer) -> u8 {
 	return l.read_pos >= len(l.input) ? 0 : l.input[l.read_pos]
 }
 
 @(private = "file")
-next_token :: proc(l: ^Lexer) -> Token
-{
+next_token :: proc(l: ^Lexer) -> Token {
 	tok: Token
 
 	skip_whitespace(l)
 
-	switch l.ch
-	{
+	switch l.ch {
 	case '=':
-		if peek_char(l) == '='
-		{
+		if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Equal, l.input, start, 2)
@@ -123,8 +104,7 @@ next_token :: proc(l: ^Lexer) -> Token
 	case '-':
 		tok = token_from_current_char(l, .Minus)
 	case '!':
-		if peek_char(l) == '='
-		{
+		if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Not_Equal, l.input, start, 2)
@@ -135,16 +115,14 @@ next_token :: proc(l: ^Lexer) -> Token
 	case '*':
 		tok = token_from_current_char(l, .Asterisk)
 	case '<':
-		if peek_char(l) == '='
-		{
+		if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Less_Than_Equal, l.input, start, 2)
 		}
 		 else do tok = token_from_current_char(l, .Less_Than)
 	case '>':
-		if peek_char(l) == '='
-		{
+		if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Greater_Than_Equal, l.input, start, 2)
@@ -182,8 +160,7 @@ next_token :: proc(l: ^Lexer) -> Token
 		tok.type = .EOF
 	case:
 		// Identifiers, numbers, and keywords
-		if is_letter(l.ch)
-		{
+		if is_letter(l.ch) {
 			tok = create_identifier(l)
 			UpdateKwType(&tok)
 			return tok

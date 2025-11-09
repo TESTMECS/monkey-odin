@@ -3,8 +3,7 @@ package monkey
 import "core:math"
 import "core:math/rand"
 
-b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get absolute value of int">>
 				abs(value)
@@ -12,8 +11,7 @@ b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: abs(-1)=>>1<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'abs' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -24,8 +22,7 @@ b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	value, ok := args[0].(int)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'abs' function error: not supported for argument of type '%v'.%s",
@@ -39,8 +36,7 @@ b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return value, true
 }
 
-b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get random int">>
 				rand()
@@ -49,8 +45,7 @@ b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				`
 
 
-	if len(args) != 0
-	{
+	if len(args) != 0 {
 		return eval_new_error(
 				e,
 				"'rand' function error: wrong number of arguments, wants='0', got='%d'.%s",
@@ -63,8 +58,7 @@ b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return int(rand.int31()), true
 }
 
-b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Choose rand element from array">>
 				choose(arr)
@@ -73,8 +67,7 @@ b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'choose' function error: wrong number of arguments, wants='1', got='%d'",
@@ -84,8 +77,7 @@ b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 
 	arr, ok := args[0].(ObjectArray)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'choose' function error: not supported for argument of type '%v'",
@@ -94,16 +86,14 @@ b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 
-	if len(arr) == 0
-	{
+	if len(arr) == 0 {
 		return eval_new_error(e, "'choose' function error: cannot choose from empty array"), false
 	}
 
 	return arr[int(rand.int31()) % len(arr)], true
 }
 
-b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Sine of angle in degrees
 				sin(angle)
@@ -111,8 +101,7 @@ b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: sin(90)=>>1<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'sin' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -122,8 +111,7 @@ b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	angle, ok := args[0].(f64)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'sin' function error: not supported for argument of type '%v'.%s",
@@ -136,8 +124,7 @@ b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return math.sin(angle), true
 }
 
-b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Cosine of angle in degrees
 				cos(angle)
@@ -145,8 +132,7 @@ b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: cos(90)=>>0<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'cos' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -156,8 +142,7 @@ b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	angle, ok := args[0].(f64)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'cos' function error: not supported for argument of type '%v'.%s",
@@ -170,8 +155,7 @@ b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	return math.cos(angle), true
 }
 
-b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
-{
+b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Tangent of angle in degrees
 				tan(angle)
@@ -179,8 +163,7 @@ b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 				Usage: tan(90)=>>1<<`
 
 
-	if len(args) != 1
-	{
+	if len(args) != 1 {
 		return eval_new_error(
 				e,
 				"'tan' function error: wrong number of arguments, wants='1', got='%d'.%s",
@@ -190,8 +173,7 @@ b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	angle, ok := args[0].(f64)
-	if !ok
-	{
+	if !ok {
 		return eval_new_error(
 				e,
 				"'tan' function error: not supported for argument of type '%v'.%s",
