@@ -18,30 +18,7 @@ let fibonacci = fn(x) {
   }
 };
 fibonacci(5);
-# classes
-class Animal() {
-	let speak = fn(self) {
-		puts("Animal sound");
-	};
-	let whoami = fn(self) {
-		printf("I am who I am");
-	};
-	let num_eyes = fn(self) {
-		puts("I see all");
-	}
-}
-class Dog(Animal) {
-	let speak = fn(self) {
-		puts("WOOF");
-	};
-	let num_eyes = fn(self, num) {
-		printf("I have %d eyes", num);
-	}
-}
-let dog = Dog(); # Instantiation
-dog@speak(); # =>> "WOOF"
-dog@whoami(); # =>> "I am who I am", inherited from Superclass
-dog@num_eyes(2); # =>> I have 2 eyes, inherited by name only. 
+
 # for loops
 let i = 0;
 let a = [1, 2, 3, 4, 5];
@@ -52,7 +29,7 @@ for( i < len(a) ) {
 a; #=>>[2, 4, 6, 8, 10]
 # foreach loops
 foreach i in [1,2,3,4] {
-	
+	puts(i);
 }
 let d = {"a": 1, "b": 2, "c": 3};
 foreach k in reverse(keys(d)) {

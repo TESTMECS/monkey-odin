@@ -25,32 +25,6 @@ let fibonacci = fn(x) {
 };
 puts(fibonacci(5));
 
-# classes
-class Animal() {
-	let speak = fn(self) {
-		puts("Animal sound");
-	};
-	let whoami = fn(self) {
-		printf("I am who I am");
-	};
-	let num_eyes = fn(self) {
-		puts("I see all");
-	}
-}
-class Dog(Animal) {
-	let speak = fn(self) {
-		puts("Dog barks!");
-	};
-	let num_eyes = fn(self, num) {
-		printf("I have %d eyes", num);
-	}
-}
-let dog = Dog(); # Instantiation
-dog@speak(); # =>> Dog barks!
-dog@whoami(); # =>> I am who I am
-dog@num_eyes(2); # =>> I have 2 eyes, Super method DOES NOT override on parameters only method_name:
-# dog@num_eyes() =>> err
-
 # for loops
 let i = 0;
 let a = [1, 2, 3, 4, 5];
@@ -121,5 +95,19 @@ let my_cos = cos(float(0));
 let my_tan = tan(float(0));
 ```
 # now: 
-- Making sure its readable and lots more examples to make sure its working.
-- Class (Self) broken.
+- Breaking up the compiler into multiple functions. Adding in a compilation stack for better error handling. Removing the `@` operator for method calls and using `.method()`  instead.
+```monkey
+#!/usr/bin/env monkey -- classes-refactored
+
+let my_class = class() {
+    let new = fn(self) {
+        self.x = 10;
+        self.y = 20;
+    };
+}
+let a = my_class();
+a.new();
+a.x;
+a.y;
+```
+

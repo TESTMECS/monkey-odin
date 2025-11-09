@@ -43,11 +43,6 @@ Ast_Call :: struct {
 	arguments: [dynamic]Node,
 }
 
-Ast_Method_Call :: struct {
-	object:    ^Node, // The object the method is being called on
-	method:    ^Node, // The method name (identifier)
-	arguments: [dynamic]Node, // Arguments to the method (excluding self)
-}
 
 Ast_Ternery :: struct {
 	condition: ^Node,
@@ -82,7 +77,17 @@ Ast_Class :: struct {
 	super: [dynamic]Ast_Identifier,
 	body:  Ast_Block,
 }
-//
+Ast_Field_Access :: struct {
+	object: ^Node,
+	field:  string,
+}
+
+Ast_Method_Call :: struct {
+	object:    ^Node, // The object the method is being called on
+	method:    ^Node, // The method name (identifier)
+	arguments: [dynamic]Node, // Arguments to the method (excluding self)
+}
+
 
 Ast_Ret :: struct {
 	return_value: ^Node,

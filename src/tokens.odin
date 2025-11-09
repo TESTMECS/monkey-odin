@@ -39,9 +39,7 @@ Token_Type :: enum {
 	Foreach,
 	In,
 	Class,
-	Self,
 	Dot,
-	At,
 	Question_Mark,
 }
 
@@ -80,8 +78,6 @@ UpdateKwType :: proc(tok: ^Token) {
 		tok.type = .In
 	case "class":
 		tok.type = .Class
-	case "self":
-		tok.type = .Self
 	}
 }
 

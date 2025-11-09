@@ -113,7 +113,6 @@ init_precedences :: proc() {
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
 		.Dot                = .Call,
-		.At                 = .Call,
 		// All others lowest
 	}
 }
@@ -145,7 +144,6 @@ prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
 	.For          = parse_for_expression,
 	.Foreach      = parse_foreach_expression,
 	.Class        = parse_class_expression,
-	.Self         = parse_self_expression,
 }
 infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Plus               = parse_infix_expression,
@@ -162,7 +160,6 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren         = parse_call_expression,
 	.Left_Bracket       = parse_index_expression,
 	.Dot                = parse_dot_expression,
-	.At                 = parse_at_expression,
 	.Question_Mark      = parse_ternary_expression,
 } // end <<Expressions_types
 // Literals=>>begin
@@ -396,34 +393,6 @@ parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
 	new_property := new_clone(property_node, p.varena)
 	return Ast_Index{operand = new_left, index = new_property}
 }
-parse_at_expression :: proc(p: ^Parser, left: Node) -> Node {
-	next_token(p)
-
-	if !current_token_is(p, .Identifier) {
-		parser_new_error(p, "expected identifier after '@', got '%s' instead.", p.cur_token.type)
-		return nil
-	}
-
-	method_name := Ast_Identifier {
-		value = string(p.cur_token.text_slice),
-	}
-	new_left := new_clone(left, p.varena)
-	method_node := Node(method_name)
-	new_method := new_clone(method_node, p.varena)
-
-	if peek_token_is(p, .Left_Paren) {
-		next_token(p)
-
-		arguments, ok := parse_expression_list(p, .Right_Paren)
-		if !ok do return nil
-
-		return Ast_Method_Call{object = new_left, method = new_method, arguments = arguments}
-	}
-	 else {
-		// Method reference without call: obj@method
-		return Ast_Method_Call{object = new_left, method = new_method, arguments = [dynamic]Node{}}
-	}
-}
 
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
@@ -483,8 +452,6 @@ parse_foreach_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Foreach{itervar = name, expr = new_expr, body = body}
 }
 parse_class_expression :: proc(p: ^Parser) -> Node {
-	if !expect_peek(p, .Identifier) do return nil
-	name := string(p.cur_token.text_slice)
 
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren) {
@@ -495,7 +462,7 @@ parse_class_expression :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
 
-	return Ast_Class{name = name, super = super, body = body}
+	return Ast_Class{name = "", super = super, body = body}
 }
 parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
@@ -514,16 +481,13 @@ parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	if !expect_peek(p, .Right_Paren) do return nil
 	return identifiers
 }
-parse_self_expression :: proc(p: ^Parser) -> Node {
-	return Ast_Identifier{value = "self"}
-}
 parse_ternary_expression :: proc(p: ^Parser, left: Node) -> Node {
 	// left is the condition, we're currently on the ? token
 	next_token(p)
 
 	then_expr := parse_expression(p, .Lowest)
 	if then_expr == nil do return nil
-	
+
 	if !expect_peek(p, .Colon) do return nil
 	next_token(p)
 
@@ -596,9 +560,6 @@ parse_foreach_statement :: proc(p: ^Parser) -> Node {
 }
 
 parse_class_statement :: proc(p: ^Parser) -> Node {
-	if !expect_peek(p, .Identifier) do return nil
-	name := string(p.cur_token.text_slice)
-
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
@@ -610,7 +571,7 @@ parse_class_statement :: proc(p: ^Parser) -> Node {
 
 	if peek_token_is(p, .Semicolon) do next_token(p)
 
-	return Ast_Class{name = name, super = super, body = body}
+	return Ast_Class{name = "", super = super, body = body}
 }
 
 parse_expression_statement :: proc(p: ^Parser) -> Node {
@@ -625,8 +586,6 @@ parse_statement :: proc(p: ^Parser) -> Node {
 		return parse_let_statement(p)
 	case .Return:
 		return parse_return_statement(p)
-	case .Class:
-		return parse_class_statement(p)
 	case .Foreach:
 		return parse_foreach_statement(p)
 	}
