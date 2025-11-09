@@ -15,10 +15,7 @@ ast_to_string_value :: proc(ast: Node, sb: ^strings.Builder) {
 
 @(private = "file")
 ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
-	#partial switch data in ast
-
-
-	{
+	switch data in ast {
 	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
 
@@ -175,6 +172,15 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 		ast_to_string(data.expr, sb)
 		fmt.sbprint(sb, " ")
 		ast_to_string(data.body, sb)
+	case Ast_Ternery:
+		fmt.sbprint(sb, "if ")
+		ast_to_string(data.condition, sb)
+		fmt.sbprint(sb, " ")
+		ast_to_string(data.then, sb)
+		if data.orelse != nil {
+			fmt.sbprint(sb, " else ")
+			ast_to_string(data.orelse, sb)
+		}
 	}
 }
 

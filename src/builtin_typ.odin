@@ -29,6 +29,13 @@ b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 b_arr :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	// Str to arr
+	usage := `
+				"Convert str to arr">>
+				arr(value)
+				$ arr | str
+				Usage: arr(1)=>>[1]<<`
+
+
 	if len(args) != 1 {
 		return eval_new_error(
 				e,

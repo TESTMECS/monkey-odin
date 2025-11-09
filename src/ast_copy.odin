@@ -47,8 +47,7 @@ new_clone :: proc(value: $T, allocator: mem.Allocator) -> ^T {
 }
 
 ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
-	#partial switch &data in ast
-	{
+	#partial switch &data in ast {
 	case int, bool, f64:
 		return data
 
@@ -173,6 +172,6 @@ ast_copy :: proc(ast: ^Node, allocator: mem.Allocator) -> Node {
 		return Ast_Function{parameters = parameters, body = body}
 
 	}
-	unimplemented()
+	unimplemented("Copy for Ternery, class, foreach not implemented")
 }
 

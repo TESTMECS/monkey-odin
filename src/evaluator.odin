@@ -12,14 +12,7 @@ Evaluator :: struct {
 	varena: mem.Allocator,
 	sb:     strings.Builder,
 	args:   []string,
-	eval:   proc(
-		e: ^Evaluator,
-		node: Ast_Program,
-		allocator: runtime.Allocator,
-	) -> (
-		ObjectBase,
-		bool,
-	),
+	eval:   proc(e: ^Evaluator, node: Ast_Program, allocator: mem.Allocator) -> (ObjectBase, bool),
 }
 
 Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
@@ -36,23 +29,19 @@ eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
-	#partial switch &data in node
-	{
+	#partial switch &data in node {
 	// statements=>>begin
 	case Ast_Ret:
 		val, ok := eval(e, data.return_value^, current_env)
 		if !ok do return val, false
 		return ObjectReturn(ToObjectBase(val)), true
-
 	case Ast_Let:
 		val, ok := eval(e, data.value^, current_env)
 		if !ok do return val, false
 		_, ok = current_env->get(data.name)
 		if ok do return ObjectBase(eval_new_error(e, "identifier '%s' is already declared", data.name)), false
 		current_env->set(data.name, ToObjectBase(val))
-
-		return ObjectBase(NULL), true
-	// end <<statements
+		return ObjectBase(NULL), true // end <<statements
 	// expressions=>>begin
 	case Ast_Identifier:
 		return eval_identifier(e, data, current_env)

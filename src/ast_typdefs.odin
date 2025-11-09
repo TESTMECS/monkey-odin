@@ -1,6 +1,18 @@
 package monkey
 import "core:reflect"
 
+Ast__Type__ :: proc {
+	Ast_Type_Value,
+	ast_type_pointer,
+}
+
+@(private = "file")
+ast_type_pointer :: proc(ast: ^Node) -> typeid {
+	return reflect.union_variant_typeid(ast^)
+}
+
+Ast_Type_Value :: reflect.union_variant_typeid
+
 Node :: union {
 	f64,
 	int,
@@ -26,57 +38,31 @@ Node :: union {
 	Ast_Class,
 	Ast_Ternery,
 }
-
-Ast_Program :: distinct [dynamic]Node
-
-Ast_Block :: distinct [dynamic]Node
-
+// arr
 Ast_Array :: distinct [dynamic]Node
 
-Ast_For :: struct {
-	cond: ^Node,
-	body: Ast_Block,
+// map
+kvpair :: struct {
+	key:   Node,
+	value: Node,
 }
-
-Ast_Call :: struct {
-	function:  ^Node,
-	arguments: [dynamic]Node,
-}
-
-
-Ast_Ternery :: struct {
-	condition: ^Node,
-	then:      ^Node,
-	orelse:    ^Node,
-}
-
 Ast_Hash_Table :: struct {
 	pairs: [dynamic]kvpair,
 	table: map[string]Node,
 }
 
+// fn
 Ast_Function :: struct {
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 }
 
-Ast_Let :: struct {
-	name:  string,
-	value: ^Node,
+// macro
+Ast_Macro :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
 }
 
-//New
-Ast_Foreach :: struct {
-	itervar: string,
-	expr:    ^Node, // arr or map
-	body:    Ast_Block,
-}
-
-Ast_Class :: struct {
-	name:  string,
-	super: [dynamic]Ast_Identifier,
-	body:  Ast_Block,
-}
 Ast_Field_Access :: struct {
 	object: ^Node,
 	field:  string,
@@ -86,63 +72,5 @@ Ast_Method_Call :: struct {
 	object:    ^Node, // The object the method is being called on
 	method:    ^Node, // The method name (identifier)
 	arguments: [dynamic]Node, // Arguments to the method (excluding self)
-}
-
-
-Ast_Ret :: struct {
-	return_value: ^Node,
-}
-
-Ast_Identifier :: struct {
-	value: string,
-}
-
-Ast_Prefix :: struct {
-	op:      string,
-	operand: ^Node,
-}
-
-Ast_Infix :: struct {
-	op:    string,
-	left:  ^Node,
-	right: ^Node,
-}
-
-Ast_If :: struct {
-	condition: ^Node,
-	then:      Ast_Block,
-	orelse:    Ast_Block,
-}
-
-kvpair :: struct {
-	key:   Node,
-	value: Node,
-}
-
-Ast_Index :: struct {
-	operand: ^Node,
-	index:   ^Node,
-}
-
-Ast_Macro :: struct {
-	parameters: [dynamic]Ast_Identifier,
-	body:       Ast_Block,
-}
-
-Ast_Type_Value :: reflect.union_variant_typeid
-
-Ast_IsExpr :: proc(ast: Node) -> bool {
-	t := Ast__Type__(ast)
-	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class && t != Ast_Foreach
-}
-
-Ast__Type__ :: proc {
-	Ast_Type_Value,
-	ast_type_pointer,
-}
-
-@(private = "file")
-ast_type_pointer :: proc(ast: ^Node) -> typeid {
-	return reflect.union_variant_typeid(ast^)
 }
 
