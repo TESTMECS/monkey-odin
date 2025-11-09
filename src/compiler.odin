@@ -83,10 +83,7 @@ compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) 
 
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
-	#partial switch data in ast
-
-
-	{
+	#partial switch data in ast {
 	case Ast_Class:
 		superclass: ^ObjectClass = nil
 		if len(data.super) > 0 {
@@ -194,10 +191,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 	case Ast_Infix:
 		if data.op == "=" {
-			#partial switch left in data.left^
-
-
-			{
+			#partial switch left in data.left^ {
 			case Ast_Identifier:
 				// Assignment
 				if err = c->compile(data.right^); err != "" do return
@@ -211,10 +205,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			// index
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return
-				switch idx_type in left.index^
-
-
-				{
+				switch idx_type in left.index^ {
 				case Ast_Identifier:
 					// a[i]
 					idx := left.index.(Ast_Identifier)
@@ -331,10 +322,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
 		if err = c->compile(data.operand^); err != "" do return
-		switch idx_type in data.index^
-
-
-		{
+		switch idx_type in data.index^ {
 		case Ast_Identifier:
 			if err = c->compile(data.index^); err != "" do return
 			c->emit(.Idx)
@@ -390,10 +378,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Call:
 		if fn_node, ok := data.function^.(Ast_Identifier); ok && len(data.arguments) > 0 {
 			first_arg_is_identifier := false
-			#partial switch arg_type in data.arguments[0]
-
-
-			{
+			#partial switch arg_type in data.arguments[0] {
 			case Ast_Identifier:
 				first_arg_is_identifier = true
 			case:

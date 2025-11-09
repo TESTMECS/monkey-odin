@@ -19,7 +19,7 @@ if (cond) {
 
 # Arrays
 let my_arr = arr(args()[4]);
-puts(typeof(my_arr));
+printf("%s", typeof(my_arr));
 let i = 0;
 for ( i < len(my_arr) ) {
 	let j = my_arr[i];

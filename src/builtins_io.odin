@@ -110,7 +110,7 @@ b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		ObjectInspect(arg, &e.sb)
 		fmt.sbprintln(&e.sb)
 	}
-	dbg(strings.to_string(e.sb)) // also print for multiple statements.
+	fmt.println(strings.to_string(e.sb)) // also print for multiple statements.
 
 	return strings.to_string(e.sb), true
 }
