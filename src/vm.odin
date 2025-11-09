@@ -120,8 +120,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		op = Opcode(ins[ip])
 
 		#partial switch op {
-		case .New_Instance:
-			unimplemented("new instance")
 		case .Iter_Init:
 			collection := v->pop_vm()
 			#partial switch coll in collection {
@@ -200,14 +198,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 				err = fmt.sbprintf(&v.sb, "iter get: expected iterator, got %v", iterator)
 				return
 			}
-		case .Set_Method:
-			unimplemented("set method")
-		case .Get_Field:
-			unimplemented("get field")
-		case .Set_Field:
-			unimplemented("set field")
-		case .Get_Method:
-			unimplemented("get method")
 		case .Cnst:
 			const_idx := read_u16(ins[ip + 1:])
 			v->current_frame().ip += 2
