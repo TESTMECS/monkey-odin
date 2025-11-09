@@ -31,6 +31,7 @@ Node :: union {
 	Ast_Function,
 	Ast_Call,
 	Ast_Method_Call,
+	Ast_Field_Access,
 	Ast_Index,
 	Ast_Macro,
 	Ast_For,
@@ -69,6 +70,7 @@ Ast_Class :: struct {
 	super: [dynamic]Ast_Identifier,
 	body:  Ast_Block,
 }
+
 Ast_Field_Access :: struct {
 	object: ^Node,
 	field:  string,

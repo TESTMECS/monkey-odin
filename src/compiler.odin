@@ -35,6 +35,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	#partial switch data in ast {
 	case Ast_Class:
 		unimplemented("class")
+	case Ast_Method_Call:
+		unimplemented("method call")
+	case Ast_Field_Access:
+		unimplemented("field access")
 	case Ast_If, Ast_Ternery:
 		ifdata := data.(Ast_If)
 		if err = c->compile(ifdata.condition^); err != "" do return err
@@ -211,18 +215,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.function^); err != "" do return err
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return err
-		}
-		c->emit(.Call, len(data.arguments))
-	case Ast_Method_Call:
-		if err = c->compile(data.object^); err != "" do return err
-		if method_ident, ok := data.method^.(Ast_Identifier); !ok {
-			return compiler_error(c, "method name must be identifier")
-		}
-		 else {
-			c->emit(.Get_Method, c->add_constant(method_ident.value))
-		}
-		for arg in data.arguments {
-			if err = c->compile(arg); err != "" do return
 		}
 		c->emit(.Call, len(data.arguments))
 	case Ast_Macro:
