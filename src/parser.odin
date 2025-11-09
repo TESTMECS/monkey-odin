@@ -338,28 +338,21 @@ parse_function_parameters :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic]Node, ok: bool) {
 	args := make([dynamic]Node, 0, 16, p.varena)
 	defer delete(args)
-
 	if peek_token_is(p, end) {
 		next_token(p)
 		return args, true
 	}
-
 	next_token(p)
 	arg := parse_expression(p, .Lowest)
-
 	append(&args, arg)
 	for peek_token_is(p, .Comma) {
 		next_token(p)
 		next_token(p)
-
 		arg1 := parse_expression(p, .Lowest)
 		if arg1 == nil do return nil, false
-
 		append(&args, arg1)
 	}
-
 	if !expect_peek(p, end) do return nil, false
-
 	return args, true
 }
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
@@ -371,12 +364,9 @@ parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	next_token(p)
 	index := parse_expression(p, .Lowest)
-
 	if !expect_peek(p, .Right_Bracket) do return nil
-
 	new_op := new_clone(operand, p.varena)
 	new_index := new_clone(index, p.varena)
-
 	return Ast_Index{operand = new_op, index = new_index}
 }
 parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
@@ -393,49 +383,35 @@ parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
 	new_property := new_clone(property_node, p.varena)
 	return Ast_Index{operand = new_left, index = new_property}
 }
-
 parse_expression :: proc(p: ^Parser, prec: Precedence) -> Node {
 	prefix := prefix_parse_fns[p.cur_token.type]
-
 	if prefix == nil {
 		no_prefix_parse_fn_error(p, p.cur_token.type)
 		return nil
 	}
-
 	left_expr := prefix(p)
-
 	for !peek_token_is(p, .Semicolon) && prec < peek_precedence(p) {
-
 		infix := infix_parse_fns[p.peek_token.type]
 		if infix == nil do return left_expr
-
 		next_token(p)
-
 		left_expr = infix(p, left_expr)
 	}
 	return left_expr
 }
 parse_macro_expression :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Left_Paren) do return nil
-
 	parameters := parse_function_parameters(p)
 	if !expect_peek(p, .Left_Brace) do return nil
-
 	body := parse_block_statement(p)
-
 	return Ast_Macro{parameters = parameters, body = body}
 }
 parse_for_expression :: proc(p: ^Parser) -> Node {
 	next_token(p)
-
 	cond_expr := parse_expression(p, .Lowest)
 	if cond_expr == nil do return nil
-
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
-
 	condition := new_clone(cond_expr, p.varena)
-
 	return Ast_For{cond = condition, body = body}
 }
 parse_foreach_expression :: proc(p: ^Parser) -> Node {
@@ -452,21 +428,17 @@ parse_foreach_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Foreach{itervar = name, expr = new_expr, body = body}
 }
 parse_class_expression :: proc(p: ^Parser) -> Node {
-
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
 		super = parse_super_class(p)
 	}
-
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
-
 	return Ast_Class{name = "", super = super, body = body}
 }
 parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	identifiers := make([dynamic]Ast_Identifier, 0, 16, p.varena)
-	//empty
 	if peek_token_is(p, .Right_Paren) {
 		next_token(p)
 		return identifiers
@@ -482,102 +454,75 @@ parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 	return identifiers
 }
 parse_ternary_expression :: proc(p: ^Parser, left: Node) -> Node {
-	// left is the condition, we're currently on the ? token
 	next_token(p)
-
 	then_expr := parse_expression(p, .Lowest)
 	if then_expr == nil do return nil
-
 	if !expect_peek(p, .Colon) do return nil
 	next_token(p)
-
 	else_expr := parse_expression(p, .Lowest)
 	if else_expr == nil do return nil
-
 	new_left := new_clone(left, p.varena)
 	new_then := new_clone(then_expr, p.varena)
 	new_else := new_clone(else_expr, p.varena)
-
 	return Ast_Ternery{condition = new_left, then = new_then, orelse = new_else}
-}
-// end <<Expressions
+} // end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	name := string(p.cur_token.text_slice)
-
 	if !expect_peek(p, .Assign) do return nil
 	next_token(p)
-
 	value_expr := parse_expression(p, .Lowest)
 	if value_expr == nil do return nil
 	value := new_clone(value_expr, p.varena)
-
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return Ast_Let{name = name, value = value}
 }
 parse_return_statement :: proc(p: ^Parser) -> Node {
 	next_token(p)
-
 	return_value_expr := parse_expression(p, .Lowest)
 	if return_value_expr == nil do return nil
-
 	if peek_token_is(p, .Semicolon) do next_token(p)
 	return_value := new_clone(return_value_expr, p.varena)
-
 	return Ast_Ret{return_value = return_value}
 }
 parse_block_statement :: proc(p: ^Parser) -> Ast_Block {
 	block := make(Ast_Block, 0, 16, p.varena)
-
 	next_token(p)
-
 	for !current_token_is(p, .Right_Brace) && !current_token_is(p, .EOF) {
 		stmt := parse_statement(p)
 		if stmt != nil do append(&block, stmt)
 		next_token(p)
 	}
-
 	return block
 }
 parse_foreach_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
 	itervar := string(p.cur_token.text_slice)
-
 	if !expect_peek(p, .In) do return nil
-
 	next_token(p)
 	expr := parse_expression(p, .Lowest)
 	if expr == nil do return nil
 	new_expr := new_clone(expr, p.varena)
-
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
-
 	if peek_token_is(p, .Semicolon) do next_token(p)
-
 	return Ast_Foreach{itervar = itervar, expr = new_expr, body = body}
 }
-
 parse_class_statement :: proc(p: ^Parser) -> Node {
 	super: [dynamic]Ast_Identifier
 	if peek_token_is(p, .Left_Paren) {
 		next_token(p)
 		super = parse_super_class(p)
 	}
-
 	if !expect_peek(p, .Left_Brace) do return nil
 	body := parse_block_statement(p)
-
 	if peek_token_is(p, .Semicolon) do next_token(p)
-
 	return Ast_Class{name = "", super = super, body = body}
 }
-
 parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
 	if peek_token_is(p, .Semicolon) do next_token(p)
-
 	return expr
 }
 parse_statement :: proc(p: ^Parser) -> Node {

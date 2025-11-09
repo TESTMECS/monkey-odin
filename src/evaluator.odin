@@ -55,58 +55,40 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		right, ok2 := eval(e, data.right^, current_env)
 		if !ok2 do return right, ok2
 		return eval_infix_expression(e, data.op, ToObjectBase(left), ToObjectBase(right))
-
 	case Ast_Block:
 		return eval_block_statements(e, data, current_env)
-
 	case Ast_If:
 		return eval_if_expression(e, data, current_env)
-
 	case Ast_Function:
 		fn := new(ObjectFunction, e.varena)
-
 		fn.parameters = make([dynamic]Ast_Identifier, 0, len(data.parameters), e.varena)
 		Ast__Copy__(&data.parameters, &fn.parameters, e.varena)
-
 		fn.body = make(Ast_Block, 0, len(data.body), e.varena)
 		Ast__Copy__(&data.body, &fn.body, e.varena)
-
 		fn.env = current_env
 		return ObjectBase(fn), true
-
 	case Ast_Call:
 		function, ok := eval(e, data.function^, current_env)
 		if !ok do return function, false
-
 		args, args_success := eval_array_of_expressions_fixed(e, data.arguments, current_env)
 		if !args_success do return args[0], false
-
 		return apply_function(e, ToObjectBase(function), args)
-
 	case Ast_Method_Call:
-		// Evaluate the object
 		object, obj_ok := eval(e, data.object^, current_env)
 		if !obj_ok do return object, false
-
-		// Get the method name
 		method_name, method_ok := eval(e, data.method^, current_env)
 		if !method_ok do return method_name, false
-
 		if method_str_obj, is_str := ToObjectBase(method_name).(string); is_str {
-			// Look up method on object
 			if obj_instance, is_instance := ToObjectBase(object).(^ObjectInstance); is_instance {
 				class := obj_instance.class
 				for class != nil {
 					if method, ok := class.methods[method_str_obj]; ok {
-						// Evaluate arguments
 						args, args_success := eval_array_of_expressions_fixed(
 							e,
 							data.arguments,
 							current_env,
 						)
 						if !args_success do return args[0], false
-
-						// Add object as first argument (self)
 						all_args := make([dynamic]ObjectBase, 0, len(args) + 1, e.varena)
 						append(&all_args, ToObjectBase(object))
 						for arg in args {
@@ -122,7 +104,6 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 			}
 		}
 		return ObjectBase(fmt.sbprintf(&e.sb, "invalid method call")), false
-
 	case Ast_Index:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
@@ -130,8 +111,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		index, index_ok := eval(e, data.index^, current_env)
 		if !index_ok do return index, false
 
-		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index))
-	// end <<expressions
+		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index)) // end <<expressions
 	// literals=>>begin
 	case int:
 		return ObjectBase(data), true
@@ -142,6 +122,9 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case string:
 		return ObjectBase(strings.clone(data, e.varena)), true
 
+	case f64:
+		return ObjectBase(data), true
+
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
 		if !ok do return ObjectBase(elements), false
@@ -149,8 +132,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
-	}
-	// end <<literals
+	} // end <<literals
 	return ObjectBase(eval_new_error(e, "unrecognized Node of type '%v'", Ast__Type__(node))),
 		false
 }

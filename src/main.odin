@@ -68,13 +68,11 @@ main :: proc() {
 		}
 	case "file":
 		stmts, shebang_args := Monkey_Read_File(os.args[2], &sb, varena)
-		// Combine shebang args with command line args (os.args[3:])
 		all_args := make([dynamic]string, 0, varena)
 		for arg in shebang_args {
 			append(&all_args, arg)
 		}
 		if len(os.args) > 3 {
-			// Append command line args after the file path
 			for arg in os.args[3:] {
 				append(&all_args, arg)
 			}

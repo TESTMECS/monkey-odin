@@ -25,6 +25,10 @@ ast:
 	echo "AST for {{test_file}}"
 	just build && {{exe}} ast {{test_dir}}{{test_file}}
 
+bytes:
+	echo "Bytecode for {{test_file}}"
+	just build && {{exe}} bytes {{test_dir}}{{test_file}}
+
 # for odin tests. 
 alias ta := test-all
 test-all:
