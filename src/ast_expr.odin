@@ -2,7 +2,7 @@ package monkey
 
 Ast_IsExpr :: proc(ast: Node) -> bool {
 	t := Ast__Type__(ast)
-	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Class && t != Ast_Foreach
+	return t != Node && t != Ast_Let && t != Ast_Ret && t != Ast_Foreach
 }
 
 Ast_Index :: struct {

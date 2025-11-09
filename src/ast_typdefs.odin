@@ -30,13 +30,10 @@ Node :: union {
 	Ast_Hash_Table,
 	Ast_Function,
 	Ast_Call,
-	Ast_Method_Call,
-	Ast_Field_Access,
 	Ast_Index,
 	Ast_Macro,
 	Ast_For,
 	Ast_Foreach,
-	Ast_Class,
 	Ast_Ternery,
 }
 // arr
@@ -62,23 +59,5 @@ Ast_Function :: struct {
 Ast_Macro :: struct {
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
-}
-
-// Class
-Ast_Class :: struct {
-	name:  string,
-	super: [dynamic]Ast_Identifier,
-	body:  Ast_Block,
-}
-
-Ast_Field_Access :: struct {
-	object: ^Node,
-	field:  string,
-}
-
-Ast_Method_Call :: struct {
-	object:    ^Node,
-	method:    ^Node,
-	arguments: [dynamic]Node,
 }
 

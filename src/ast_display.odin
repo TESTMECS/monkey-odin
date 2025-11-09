@@ -134,37 +134,6 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			if i < len(data.arguments) - 1 do fmt.sbprint(sb, ", ")
 		}
 		fmt.sbprint(sb, ")")
-	case Ast_Method_Call:
-		ast_to_string(data.object, sb)
-		fmt.sbprint(sb, "->")
-		ast_to_string(data.method, sb)
-		fmt.sbprint(sb, "(")
-		for arg, i in data.arguments {
-			ast_to_string(arg, sb)
-
-			if i < len(data.arguments) - 1 do fmt.sbprint(sb, ", ")
-		}
-		fmt.sbprint(sb, ")")
-	case Ast_Class:
-		fmt.sbprint(sb, "Class ")
-		ast_to_string(data.name, sb)
-		if data.super != nil {
-			fmt.sbprint(sb, "(super:")
-			for super, i in data.super {
-				ast_to_string(super, sb)
-				if i < len(data.super) - 1 do fmt.sbprint(sb, ", ")
-			}
-			fmt.sbprint(sb, ")\n")
-		}
-		 else {fmt.sbprint(sb, "(super:nil)\n")}
-
-		fmt.sbprint(sb, "{\n")
-		for stmt, i in data.body {
-			fmt.sbprint(sb, "\t")
-			ast_to_string(stmt, sb)
-			if i < len(data.body) - 1 do fmt.sbprint(sb, "\n")
-		}
-		fmt.sbprint(sb, "\n}")
 	case Ast_Foreach:
 		fmt.sbprint(sb, "foreach ")
 		ast_to_string(data.itervar, sb)
@@ -181,10 +150,6 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			fmt.sbprint(sb, " else ")
 			ast_to_string(data.orelse, sb)
 		}
-	case Ast_Field_Access:
-		ast_to_string(data.object, sb)
-		fmt.sbprint(sb, "->")
-		ast_to_string(data.field, sb)
 	}
 }
 

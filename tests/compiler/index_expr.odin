@@ -29,8 +29,8 @@ test_compile_index_expressions :: proc(t: ^testing.T) {
 			},
 		},
 		{
-			`{"name": "Navid"}["name"]`,
-			{"name", "Navid", "name"},
+			`{"name": "drew"}["name"]`,
+			{"name", "drew", "name"},
 			{
 				make_instructions(a, .Cnst, 0),
 				make_instructions(a, .Cnst, 1),

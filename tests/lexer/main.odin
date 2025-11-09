@@ -33,7 +33,6 @@ test_lexer :: proc(t: ^testing.T) {
               # comment
 							foreach 
 							in
-							class
 							?
 							@
 	`
@@ -144,7 +143,6 @@ test_lexer :: proc(t: ^testing.T) {
 		//
 		{.Foreach, "foreach"},
 		{.In, "in"},
-		{.Class, "class"},
 		{.Question_Mark, "?"},
 		{.At, "@"},
 

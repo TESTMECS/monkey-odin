@@ -32,13 +32,12 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 }
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
-	#partial switch data in ast {
-	case Ast_Class:
-		unimplemented("class definition")
-	case Ast_Method_Call:
-		unimplemented("method call")
-	case Ast_Field_Access:
-		unimplemented("field access")
+	switch data in ast {
+	case Ast_Program:
+		return compiler_error(
+			c,
+			"program encountered during compilation - should have been expanded",
+		)
 	case Ast_If:
 		if err = c->compile(data.condition^); err != "" do return err
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
@@ -94,8 +93,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Pop)
 	case Ast_Let:
 		_, is_function := data.value^.(Ast_Function)
-		_, is_class := data.value^.(Ast_Class)
-		if is_function || is_class {
+		if is_function {
 			symbol := c.symbol_table->define(data.name, c.varena)
 			if err = c->compile(data.value^); err != "" do return
 			c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
@@ -198,14 +196,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
-		if err = c->compile(data.operand^); err != "" do return err
-		#partial switch idx_type in data.index^ {
-		case Ast_Identifier:
-			if err = c->compile(data.index^); err != "" do return err
-			c->emit(.Idx)
-		case:
-			return compiler_error(c, "Only Identifer or literal can be used as index")
-		}
+		if err = c->compile(data.operand^); err != "" do return
+		if err = c->compile(data.index^); err != "" do return
+		c->emit(.Idx)
 	case Ast_Function:
 		c->enter_scope()
 		self_param_idx := -1

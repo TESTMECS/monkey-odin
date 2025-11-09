@@ -10,8 +10,8 @@ test_vm_index_expressions :: proc(t: ^testing.T) {
 		{"[][0]", nil},
 		{"[1, 2, 3][99]", nil},
 		{"[1][-1]", nil},
-		{`{"name": "Navid"}["name"]`, "Navid"},
-		{`{"name": "Navid"}["age"]`, nil},
+		{`{"name": "drew"}["name"]`, "drew"},
+		{`{"name": "drew"}["age"]`, nil},
 		{`{}["name"]`, nil},
 	}
 

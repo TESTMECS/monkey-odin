@@ -38,7 +38,6 @@ Token_Type :: enum {
 	For,
 	Foreach,
 	In,
-	Class,
 	Question_Mark,
 	Arrow,
 	At,
@@ -77,8 +76,6 @@ UpdateKwType :: proc(tok: ^Token) {
 		tok.type = .Foreach
 	case "in":
 		tok.type = .In
-	case "class":
-		tok.type = .Class
 	}
 }
 
