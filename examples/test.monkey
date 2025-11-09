@@ -1,19 +1,24 @@
-#!/usr/bin/env monkey -- 1,2,3
+#!/usr/bin/env monkey -- 
 
 
 class Animal() {
-	let speak = fn(self, me) {
-		# puts("Animal sound");
-		# puts(me)
+	let speak = fn(self) {
+		self.x = "me"
+		puts("Animal sound");
+	};
+	let whoami = fn(self) {
+		printf("I am who I am %s", self.x);
+	}
+}
+
+class Dog(Animal) {
+	let speak = fn(self) {
+		puts("Dog barks");
 	};
 }
 
-let speak = fn(me) {
-	puts("mememe");
-	puts(me)
-};
+let dog = Dog();
+dog@speak();
+dog@whoami(); # =>> I am who I am
 
-let a = "me";
-let dog = Animal();
-dog@speak(a);
-speak(a);
+
