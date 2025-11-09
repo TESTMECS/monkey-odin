@@ -1,7 +1,19 @@
 #!/usr/bin/env monkey -- 1,2,3
 
 
-# comment
-let arr = [1, 2, 3];
-arr = pop(arr);
-arr;
+class Animal() {
+	let speak = fn(self, me) {
+		# puts("Animal sound");
+		# puts(me)
+	};
+}
+
+let speak = fn(me) {
+	puts("mememe");
+	puts(me)
+};
+
+let a = "me";
+let dog = Animal();
+dog@speak(a);
+speak(a);

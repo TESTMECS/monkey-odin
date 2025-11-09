@@ -348,37 +348,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
-		if fn_node, ok := data.function^.(Ast_Identifier); ok && len(data.arguments) > 0 {
-			first_arg_is_identifier := false
-			#partial switch arg_type in data.arguments[0] {
-			case Ast_Identifier:
-				first_arg_is_identifier = true
-			case:
-			}
-			builtin_fn := find_builtin_fn(fn_node.value)
-			if first_arg_is_identifier && builtin_fn == nil {
-				if err = c->compile(data.arguments[0]); err != "" do return
-				c->emit(.Get_Method, c->add_constant(fn_node.value))
-				for i in 1 ..< len(data.arguments) {
-					if err = c->compile(data.arguments[i]); err != "" do return
-				}
-				c->emit(.Call, len(data.arguments))
-			}
-			 else {
-				if err = c->compile(data.function^); err != "" do return
-				for arg in data.arguments {
-					if err = c->compile(arg); err != "" do return
-				}
-				c->emit(.Call, len(data.arguments))
-			}
+		// fmt.println(data.arguments)
+		if err = c->compile(data.function^); err != "" do return
+		for arg in data.arguments {
+			if err = c->compile(arg); err != "" do return
 		}
-		 else {
-			if err = c->compile(data.function^); err != "" do return
-			for arg in data.arguments {
-				if err = c->compile(arg); err != "" do return
-			}
-			c->emit(.Call, len(data.arguments))
-		}
+		c->emit(.Call, len(data.arguments))
 	case Ast_Method_Call:
 		if err = c->compile(data.object^); err != "" do return
 		if method_ident, ok := data.method^.(Ast_Identifier); ok {
