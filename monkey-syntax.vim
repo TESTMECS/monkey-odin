@@ -1,38 +1,88 @@
-if exists('b:current_syntax')
+" Vim syntax file
+" Language: Monkey (custom language)
+" Maintainer: Drew
+" Version: 1.0
+
+if exists("b:current_syntax")
   finish
 endif
 
-" Constant
-syn match mString /".\{-}"/
-syn match mNumber /[[:digit:]]\+/
-syn keyword mBoolean true false
+" ---------------------------------------------------------
+" Comments
+" ---------------------------------------------------------
+syntax match monkeyComment "#.*$"
 
-hi def link mString String
-hi def link mNumber Number
-hi def link mBoolean Boolean
+highlight link monkeyComment Comment
 
-" BuilinFn
-syn match mBuiltinFn "printf\|puts\|first\|last\|copy\|open\|close\|read\|bool\|int\|float\|str\|typeof\|choose\|rand\|hash\|len\|args\|sum\|min\|max\|reverse\|sort\|slice\|indexOf\|arr\|"
-hi def link mBuiltinFn Function
+" ---------------------------------------------------------
+" Strings
+" ---------------------------------------------------------
+syntax region monkeyString start=+"+ skip=+\\."+ end=+"+
+highlight link monkeyString String
 
-" Statement
-syn keyword mConditional if else
-syn keyword mRepeat while
-syn match mOperator '+\|-\|*\|/'
-syn match mOperator '==\|!=\|<\|>'
-syn keyword mKeyword fn return import let macro for
+" ---------------------------------------------------------
+" Numbers
+" ---------------------------------------------------------
+syntax match monkeyNumber "\v<\d+(\.\d+)?([eE][+-]?\d+)?"
+highlight link monkeyNumber Number
 
-hi def link mConditional Conditional
-hi def link mRepeat Repeat
-hi def link mOperator Operator
-hi def link mKeyword Keyword
+" ---------------------------------------------------------
+" Booleans & Nulls
+" ---------------------------------------------------------
+syntax keyword monkeyBoolean true false
+highlight link monkeyBoolean Boolean
 
-" Todo
-syn keyword mTodo TODO FIXME XXX contained
-hi def link mTodo Todo
+" ---------------------------------------------------------
+" Keywords
+" ---------------------------------------------------------
+syntax keyword monkeyKeyword
+      \ let fn class return if else for foreach in macro quote unquote
+      \ break continue
+highlight link monkeyKeyword Keyword
 
-" Comment
-syn match mComment /\/\/.*/ contains=mTodo
-hi def link mComment Comment
+" ---------------------------------------------------------
+" Builtins and stdlib functions
+" ---------------------------------------------------------
+syntax keyword monkeyBuiltin
+      \ args printf puts readf writef len split upper lower int float bool
+      \ sum min max hash rand sin cos tan
+      \ indexOf slice map keys values has reverse contains replace match
+      \ quote unquote
+highlight link monkeyBuiltin Function
 
-let b:current_syntax = 'monkey'
+" ---------------------------------------------------------
+" Operators and Symbols
+" ---------------------------------------------------------
+syntax match monkeyOperator "==\|!=\|<=\|>=\|<\|>\|=\|@\|+\|-\|*\|/\|%"
+highlight link monkeyOperator Operator
+
+" ---------------------------------------------------------
+" Braces, brackets, parens
+" ---------------------------------------------------------
+syntax match monkeyBraces "[{}()\[\]]"
+highlight link monkeyBraces Delimiter
+
+" ---------------------------------------------------------
+" Class and function names
+" ---------------------------------------------------------
+syntax match monkeyClassName "\v<class\s+\zs[A-Za-z_]\w*"
+syntax match monkeyFunctionName "\v<fn\s+\zs[A-Za-z_]\w*"
+highlight link monkeyClassName Type
+highlight link monkeyFunctionName Function
+
+" ---------------------------------------------------------
+" Constants / identifiers
+" ---------------------------------------------------------
+syntax match monkeyIdentifier "\<[A-Za-z_][A-Za-z0-9_]*\>"
+highlight link monkeyIdentifier Identifier
+
+" ---------------------------------------------------------
+" Special
+" ---------------------------------------------------------
+syntax match monkeyAnnotation "#!.*$"
+highlight link monkeyAnnotation PreProc
+
+" ---------------------------------------------------------
+" Define the syntax
+" ---------------------------------------------------------
+let b:current_syntax = "monkey"

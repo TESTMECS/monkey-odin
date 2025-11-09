@@ -438,10 +438,12 @@ b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
+	// Create a new array with the appended element
+	new_arr := make([dynamic]ObjectBase, len(arr), e.varena)
+	copy(new_arr[:], arr[:])
+	append(&new_arr, args[1])
 
-	append(&arr, args[1])
-
-	return NULL, true
+	return ObjectArray(new_arr), true
 }
 b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
@@ -654,5 +656,46 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 
 	return ObjectArray(arr), true
+}
+
+b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
+	usage := `
+				"Pop element from array">>
+				pop(arr)
+				$ arr :: int, int
+				Usage: pop([1,2,3])=>>3<<`
+
+
+	if len(args) != 1 {
+		return eval_new_error(
+				e,
+				"'pop' function error: wrong number of arguments, wants='1', got='%d'.%s",
+				len(args),
+				usage,
+			),
+			false
+	}
+
+	arr, ok := args[0].(ObjectArray)
+	if !ok {
+		return eval_new_error(
+				e,
+				"'pop' function error: not supported for argument of type '%v'.%s",
+				ObjectType(args[0]),
+				usage,
+			),
+			false
+	}
+
+	if len(arr) == 0 {
+		return eval_new_error(e, "'pop' function error: cannot pop from empty array.%s", usage),
+			false
+	}
+
+	new_arr := make([dynamic]ObjectBase, len(arr), e.varena)
+	copy(new_arr[:], arr[:])
+	pop(&new_arr)
+
+	return ObjectArray(new_arr), true
 }
 

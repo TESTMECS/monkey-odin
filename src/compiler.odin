@@ -239,9 +239,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 					if err = c->compile(data.right^); err != "" do return
 					c->emit(.SetIdx)
 				}
-				return
 			}
-			err = compiler_error(c, "assignment to is not supported", Ast__Type__(data.left^))
 			return
 		}
 		if err = c->compile(data.left^); err != "" do return

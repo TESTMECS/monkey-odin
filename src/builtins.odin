@@ -19,6 +19,8 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	case "contains":
 		return b_contains
 	// Arr
+	case "pop":
+		return b_pop
 	case "len":
 		return b_len
 	case "first":
