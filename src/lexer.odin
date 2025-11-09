@@ -102,7 +102,12 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case '+':
 		tok = token_from_current_char(l, .Plus)
 	case '-':
-		tok = token_from_current_char(l, .Minus)
+		if peek_char(l) == '>' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.Arrow, l.input, start, 2)
+		}
+		 else do tok = token_from_current_char(l, .Minus)
 	case '!':
 		if peek_char(l) == '=' {
 			start := l.pos

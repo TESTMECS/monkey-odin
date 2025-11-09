@@ -69,8 +69,8 @@ Ast_Field_Access :: struct {
 }
 
 Ast_Method_Call :: struct {
-	object:    ^Node, // The object the method is being called on
-	method:    ^Node, // The method name (identifier)
-	arguments: [dynamic]Node, // Arguments to the method (excluding self)
+	object:    ^Node,
+	method:    ^Node,
+	arguments: [dynamic]Node,
 }
 

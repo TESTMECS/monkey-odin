@@ -99,7 +99,7 @@ test_class_with_methods :: proc(t: ^testing.T) {
 		log.errorf("expected class name 'point', got '%s'", class_decl.name)
 		return
 	}
-	log.info(class_decl)
+	// log.info(class_decl)
 	class_node, okk := class_decl.value.(monkey.Ast_Class)
 	if !okk {
 		log.errorf("expected Ast_Class, got %v", monkey.Ast__Type__(class_decl.value))

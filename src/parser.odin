@@ -112,7 +112,8 @@ init_precedences :: proc() {
 		.Left_Paren         = .Call,
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
-		.Dot                = .Call,
+		.Dot                = .Index,
+		.Arrow              = .Call,
 		// All others lowest
 	}
 }
@@ -160,6 +161,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Paren         = parse_call_expression,
 	.Left_Bracket       = parse_index_expression,
 	.Dot                = parse_dot_expression,
+	.Arrow              = parse_arrow_expression,
 	.Question_Mark      = parse_ternary_expression,
 } // end <<Expressions_types
 // Literals=>>begin
@@ -368,6 +370,20 @@ parse_index_expression :: proc(p: ^Parser, operand: Node) -> Node {
 	new_op := new_clone(operand, p.varena)
 	new_index := new_clone(index, p.varena)
 	return Ast_Index{operand = new_op, index = new_index}
+}
+parse_arrow_expression :: proc(p: ^Parser, operand: Node) -> Node {
+	next_token(p)
+	func_name := string(p.cur_token.text_slice)
+	if !expect_peek(p, .Left_Paren) do return nil
+	arguments, ok := parse_expression_list(p, .Right_Paren)
+	if !ok do return nil
+	f := new_clone(operand, p.varena)
+	method_name := Ast_Identifier {
+		value = func_name,
+	}
+	method_node := Node(method_name)
+	new_method := new_clone(method_node, p.varena)
+	return Ast_Method_Call{object = f, method = new_method, arguments = arguments}
 }
 parse_dot_expression :: proc(p: ^Parser, left: Node) -> Node {
 	next_token(p)

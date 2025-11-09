@@ -41,6 +41,7 @@ Token_Type :: enum {
 	Class,
 	Dot,
 	Question_Mark,
+	Arrow,
 }
 
 Token :: struct {
