@@ -95,7 +95,7 @@ let my_cos = cos(float(0));
 let my_tan = tan(float(0));
 ```
 # now: 
-- Breaking up the compiler into multiple functions. Adding in a compilation stack for better error handling. Removing the `@` operator for method calls and using `.method()`  instead.
+- Breaking up the compiler into multiple functions. Adding in a compilation stack for better error handling. Removing the `@` operator for method calls and using `->method()`  instead.
 ```monkey
 #!/usr/bin/env monkey -- classes-refactored
 
@@ -106,8 +106,6 @@ let my_class = class() {
     };
 }
 let a = my_class();
-a.new();
-a.x;
-a.y;
+a->new();
 ```
 

@@ -342,7 +342,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if len(data.parameters) > 0 && data.parameters[0].value == "self" {
 			is_method = true
 			self_param_idx = 0
-			for i in 1 ..= len(data.parameters) {
+			for i in 1 ..= len(data.parameters) - 1 {
 				c.symbol_table->define(data.parameters[i].value, c.varena)
 			}
 		}
@@ -381,7 +381,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Call, len(data.arguments))
 	case Ast_Method_Call:
-		fmt.println("Ast Method Call")
+		// fmt.println("Ast Method Call")
 		if err = c->compile(data.object^); err != "" do return
 		if method_ident, ok := data.method^.(Ast_Identifier); ok {
 			c->emit(.Get_Method, c->add_constant(method_ident.value))

@@ -19,6 +19,9 @@ test_method_parsing :: proc(t: ^testing.T) {
 	input := "let point = class() { let new = fn(self, x, y) { self.x = x; self.y = y; }; }; let p = point(); p->new(1, 2);"
 	parser := monkey.Parser_New(input, a)
 	program := parser.parse(&parser)
+	for stmt in program {
+		log.infof("%v", stmt)
+	}
 
 	if len(parser.errors) > 0 {
 		log.errorf("parser has errors: %v", parser.errors)

@@ -7,7 +7,9 @@ import "core:log"
 import "core:mem"
 import "core:mem/virtual"
 import "core:reflect"
+import "core:strings"
 import "core:testing"
+
 
 @(private = "file")
 Compiler_Test_Data :: union {
@@ -102,7 +104,8 @@ test_constants :: proc(
 			fn, ok := actual[i].(ObjectCompiledFunction)
 			if !ok {
 				err = fmt.tprintf("not a function: '%v'", ObjectType(actual[i]))
-			} else {
+			}
+			 else {
 				err = test_instructions(constant_value, fn.instructions[:], alloc)
 			}
 		}
@@ -128,23 +131,59 @@ test_instructions :: proc(
 	using tc
 
 	concatenated := concat_instructions(expected)
-	if (len(actual) != len(concatenated)) {
-		return fmt.tprintf(
-			"wrong number of instructions. wants='%v', got='%v'",
-			concatenated,
-			actual,
-		)
-	}
-	for ins, i in concatenated {
-		if actual[i] != ins {
-			return fmt.tprintf(
-				"wrong instruction at '%d'. wants='%v', got='%v'",
-				i,
-				concatenated,
-				actual,
-			)
+	expected_ins := byte_to_instruction(concatenated[:])
+	actual_ins := byte_to_instruction(actual)
+
+	max_len := max(len(expected_ins), len(actual_ins))
+	builder := strings.builder_make(alloc)
+	defer strings.builder_destroy(&builder)
+
+	fmt.sbprintf(
+		&builder,
+		"Instruction mismatch:\n\n%-5s | %-15s | %-15s | %s\n",
+		"Idx",
+		"Expected",
+		"Actual",
+		"Match?",
+	)
+	fmt.sbprintf(&builder, "-------------------------------------------------------------\n")
+
+	exp: string
+	act: string
+	match: string
+	i: int
+	for i in 0 ..< max_len {
+		if i < len(expected_ins) {
+			exp = expected_ins[i]
 		}
+		 else {
+			exp = "<none>"
+		}
+		if i < len(actual_ins) {
+			act = actual_ins[i]
+		}
+		 else {
+			act = "<none>"
+		}
+		if exp == act {
+			match = "✓"
+		}
+		 else {
+			match = "✗"
+		}
+		fmt.sbprintf(&builder, "%-5d | %-15s | %-15s | %s\n", i, exp, act, match)
 	}
-	return ""
+
+	return strings.to_string(builder)
+}
+
+byte_to_instruction :: proc(bs: []byte) -> []string {
+	using monkey
+	ins := make([dynamic]string, 0, len(bs))
+	for opcode_val, idx in bs {
+		val := fmt.tprintf("%v", Opcode(opcode_val)) // Convert to Opcode string instead of enum int.
+		append(&ins, val)
+	}
+	return ins[:]
 }
 
