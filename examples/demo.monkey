@@ -3,8 +3,8 @@
 # io
 let arr = args(); # =>>["1", "2", "3", "T", "24"]
 printf("args[1]='%d'", int(args()[2]));
-# let str_of_file = readf("tests.txt");
-# let res = writef("tests.txt", "hello BANANAS")
+let str_of_file = readf("tests.txt");
+let res = writef("tests.txt", "hello BANANAS")
 # fn
 let fibonacci = fn(x) {
   if (x == 0) {
@@ -17,7 +17,7 @@ let fibonacci = fn(x) {
     }
   }
 };
-puts(fibonacci(5));
+fibonacci(5);
 # classes
 class Animal() {
 	let speak = fn(self) {
@@ -30,20 +30,18 @@ class Animal() {
 		puts("I see all");
 	}
 }
-
 class Dog(Animal) {
 	let speak = fn(self) {
-		puts("Dog barks!");
+		puts("WOOF");
 	};
 	let num_eyes = fn(self, num) {
 		printf("I have %d eyes", num);
 	}
 }
 let dog = Dog(); # Instantiation
-dog@speak(); # =>> Dog barks!
-dog@whoami(); # =>> I am who I am
-dog@num_eyes(2); # =>> I have 2 eyes, Super method DOES NOT override on parameters only name ie. dog@num_eyes() =>> err
-# p.x; # =>2
+dog@speak(); # =>> "WOOF"
+dog@whoami(); # =>> "I am who I am", inherited from Superclass
+dog@num_eyes(2); # =>> I have 2 eyes, inherited by name only. 
 # for loops
 let i = 0;
 let a = [1, 2, 3, 4, 5];
@@ -51,10 +49,10 @@ for( i < len(a) ) {
 	 a[i] = a[i] * 2;
    i = i + 1
 }
-puts(a);
+a; #=>>[2, 4, 6, 8, 10]
 # foreach loops
 foreach i in [1,2,3,4] {
-	puts(i);
+	
 }
 let d = {"a": 1, "b": 2, "c": 3};
 foreach k in reverse(keys(d)) {

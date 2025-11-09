@@ -255,16 +255,20 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return // object (self)
+				// if err = c->compile(left.index^); err != "" do return // index
+				// fmt.println("left.index: ", left.index)
+
+
 				switch idx_type in left.index^
 
 
 				
 				{
 				case Ast_Identifier:
-					// Field access: object.field = value - treat field name as string constant
 					idx := left.index.(Ast_Identifier)
+					fmt.println("idx: ", idx)
 					if err = c->compile(data.right^); err != "" do return // value
-					c->emit(.Set_Field, c->add_constant(idx.value))
+					c->emit(.Idx)
 				case:
 					// Array indexing: object[index] = value - compile index as expression
 					if err = c->compile(left.index^); err != "" do return
@@ -394,15 +398,17 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string)
 		
 		{
 		case Ast_Identifier:
-			// Field access: object.field - treat field name as string constant
-			idx := data.index.(Ast_Identifier)
-			c->emit(.Get_Field, c->add_constant(idx.value))
+			// Also happens for array indexing: object[index]
+			// if err = c->compile(data.operand^); err != "" do return
+			if err = c->compile(data.index^); err != "" do return
+			c->emit(.Idx)
+		// idx := data.index.(Ast_Identifier)
+		// c->emit(.Get_Field, c->add_constant(idx.value))
 		case Ast_Method_Call:
 			// This shouldn't happen in normal indexing, but handle it
 			err = "method call cannot be used as index"
 			return
 		case:
-			// Array indexing: object[index] - compile index as expression
 			if err = c->compile(data.index^); err != "" do return
 			c->emit(.Idx)
 		case f64,

@@ -326,6 +326,9 @@ run_vm :: proc(v: ^VM) -> (err: string)
 					// Field not found, return nil
 					if err = v->push_vm(NULL); err != "" do return
 				}
+			case ObjectArray:
+			// Array indexing: object[index] - compile index as expression
+
 			case:
 				err = fmt.sbprintf(&v.sb, "get field: expected instance, got %v", instance)
 				return
