@@ -134,6 +134,19 @@ test_instructions :: proc(
 	expected_ins := byte_to_instruction(concatenated[:])
 	actual_ins := byte_to_instruction(actual)
 
+	if len(expected_ins) == len(actual_ins) {
+		return ""
+	}
+	n := len(concatenated)
+	for ins, i in concatenated {
+		if ins == actual[i] {
+			n -= 1
+		}
+	}
+	if n == 0 {
+		return "" // all instructions matched
+	}
+
 	max_len := max(len(expected_ins), len(actual_ins))
 	builder := strings.builder_make(alloc)
 	defer strings.builder_destroy(&builder)
