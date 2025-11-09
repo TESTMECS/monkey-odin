@@ -114,10 +114,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				return
 			}
 		}
+
 		methods := make(ObjectHashTable)
 		for stmt in data.body {
 			if let_stmt, is_let := stmt.(Ast_Let); is_let {
+				c.is_compiling_method = true
 				if err = c->compile(let_stmt.value^); err != "" do return // method function
+				c.is_compiling_method = false
 				if c->last_instruction_is(.Cnst) {
 					last_instr := c.scopes[c.scopes_idx].last_instruction
 					const_idx, _ := endian.get_u16(
@@ -173,6 +176,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.return_value^); err != "" do return
 		c->emit(.Ret_V)
 	case Ast_Identifier:
+		if c.is_compiling_method && data.value == "self" {
+			c->emit(.Get_L, 0)
+			return
+		}
 		if symbol, ok := c.symbol_table->resolve(data.value); !ok {
 			builtin_fn := find_builtin_fn(data.value)
 			if builtin_fn != nil {
@@ -189,6 +196,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				c->emit(.Cnst, c->add_constant(builtin_fn))
 			}
 			 else {
+				// Here
 				err = compiler_error(c, "identifier is not declared", data.value)
 				return
 			}
@@ -225,19 +233,17 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 
 				#partial switch idx_type in left.index^ {
 				case Ast_Identifier:
-					// a[i] AND self[x]
-					idx := left.index.(Ast_Identifier)
-					if err = c->compile(data.right^); err != "" do return
-					if left.operand.(Ast_Identifier).value == "self" {
-						c->emit(.Set_Field, c->add_constant(idx.value))
+					if ident, ok := left.operand^.(Ast_Identifier);
+					   ok && ident.value == "self" && c.is_compiling_method {
+						field_name := left.index.(Ast_Identifier).value
+						c->emit(.Get_Field, c->add_constant(field_name))
+						return
 					}
-					 else {
-						c->emit(.Idx)
-					}
+					if err = c->compile(left.index^); err != "" do return
+					c->emit(.Idx)
 				case:
 					if err = c->compile(left.index^); err != "" do return
-					if err = c->compile(data.right^); err != "" do return
-					c->emit(.SetIdx)
+					c->emit(.Idx)
 				}
 			}
 			return
@@ -331,12 +337,31 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	case Ast_Function:
 		// Function
 		c->enter_scope()
-		for param in data.parameters {
-			c.symbol_table->define(param.value, c.varena)
+		is_method := false
+		self_param_idx := -1
+		if len(data.parameters) > 0 && data.parameters[0].value == "self" {
+			is_method = true
+			self_param_idx = 0
+			for i in 1 ..= len(data.parameters) {
+				c.symbol_table->define(data.parameters[i].value, c.varena)
+			}
 		}
+		 else {
+			for param in data.parameters {
+				c.symbol_table->define(param.value, c.varena)
+			}
+		}
+
+		was_compiling_method := c.is_compiling_method
+		c.is_compiling_method = is_method
+
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return() // implicit return
 		if !c->last_instruction_is(.Ret_V) && !c->last_instruction_is(.Ret) do c->emit(.Ret_V if len(c->current_instructions()) > 0 else .Ret) // explicit
+
+		// restore contxt
+		c.is_compiling_method = was_compiling_method
+
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
 		instr_copy := make(Instructions, len(instructions), c.varena)
@@ -344,9 +369,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		compiled_fn := ObjectCompiledFunction {
 			instructions   = instr_copy,
 			num_locals     = num_locals,
-			num_parameters = len(data.parameters),
+			num_parameters = len(data.parameters) - (is_method ? 1 : 0),
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
+
 	case Ast_Call:
 		// fmt.println(data.arguments)
 		if err = c->compile(data.function^); err != "" do return
