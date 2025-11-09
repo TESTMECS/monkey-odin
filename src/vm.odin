@@ -329,6 +329,7 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		case .Add, .Sub, .Mul, .Div:
 			if err = v->exec_binary_op(op); err != "" do return
 		case .Idx:
+			//
 			index := v->pop_vm()
 			operand := v->pop_vm()
 			if err = v->exec_idx_expr(operand, index); err != "" do return

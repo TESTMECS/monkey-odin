@@ -205,13 +205,18 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			// index
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return
+
 				switch idx_type in left.index^ {
 				case Ast_Identifier:
-					// a[i]
+					// a[i] AND self[x]
 					idx := left.index.(Ast_Identifier)
-					fmt.println("idx: ", idx)
 					if err = c->compile(data.right^); err != "" do return
-					c->emit(.Idx)
+					if left.operand.(Ast_Identifier).value == "self" {
+						c->emit(.Set_Field, c->add_constant(idx.value))
+					}
+					 else {
+						c->emit(.Idx)
+					}
 				case:
 					if err = c->compile(left.index^); err != "" do return
 					if err = c->compile(data.right^); err != "" do return
