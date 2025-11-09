@@ -181,6 +181,10 @@ ast_to_string_pointer :: proc(ast: ^Node, sb: ^strings.Builder) {
 			fmt.sbprint(sb, " else ")
 			ast_to_string(data.orelse, sb)
 		}
+	case Ast_Field_Access:
+		ast_to_string(data.object, sb)
+		fmt.sbprint(sb, "->")
+		ast_to_string(data.field, sb)
 	}
 }
 

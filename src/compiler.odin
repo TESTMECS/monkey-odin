@@ -39,20 +39,36 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		unimplemented("method call")
 	case Ast_Field_Access:
 		unimplemented("field access")
-	case Ast_If, Ast_Ternery:
-		ifdata := data.(Ast_If)
-		if err = c->compile(ifdata.condition^); err != "" do return err
+	case Ast_If:
+		if err = c->compile(data.condition^); err != "" do return err
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
-		if err = c->compile(ifdata.then); err != "" do return err
+		if err = c->compile(data.then); err != "" do return err
 		if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		jump_pos := c->emit(.Jmp, 9999)
 		orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_if_not_pos, orelse_pos)
-		if ifdata.orelse == nil {
+		if data.orelse == nil {
 			c->emit(.Nil)
 		}
 		 else {
-			if err = c->compile(ifdata.orelse); err != "" do return err
+			if err = c->compile(data.orelse); err != "" do return err
+			if c->last_instruction_is(.Pop) do c->remove_last_pop()
+		}
+		after_orelse_pos := len(c->current_instructions())
+		c->change_operand(jump_pos, after_orelse_pos)
+	case Ast_Ternery:
+		if err = c->compile(data.condition^); err != "" do return err
+		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
+		if err = c->compile(data.then^); err != "" do return err
+		if c->last_instruction_is(.Pop) do c->remove_last_pop()
+		jump_pos := c->emit(.Jmp, 9999)
+		orelse_pos := len(c->current_instructions())
+		c->change_operand(jump_if_not_pos, orelse_pos)
+		if data.orelse == nil {
+			c->emit(.Nil)
+		}
+		 else {
+			if err = c->compile(data.orelse^); err != "" do return err
 			if c->last_instruction_is(.Pop) do c->remove_last_pop()
 		}
 		after_orelse_pos := len(c->current_instructions())
