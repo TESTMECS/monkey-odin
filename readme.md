@@ -121,4 +121,4 @@ let my_cos = cos(float(0));
 let my_tan = tan(float(0));
 ```
 # now: 
-- Readability of Compiler and VM and tests are quite dogwater.
+- Making sure its readable and lots more examples to make sure its working.
