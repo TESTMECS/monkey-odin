@@ -1,4 +1,4 @@
-Work in progress !!
+#### Work in progress !!
 
 ![monkey](logo.png)
 # demo.monkey 
@@ -122,3 +122,4 @@ let my_tan = tan(float(0));
 ```
 # now: 
 - Making sure its readable and lots more examples to make sure its working.
+- Also Ternery operator `true ? 1 : 0`

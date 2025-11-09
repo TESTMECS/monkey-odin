@@ -42,6 +42,7 @@ Token_Type :: enum {
 	Self,
 	Dot,
 	At,
+	Question_Mark,
 }
 
 Token :: struct {

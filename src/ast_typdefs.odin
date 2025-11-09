@@ -24,6 +24,7 @@ Node :: union {
 	Ast_For,
 	Ast_Foreach,
 	Ast_Class,
+	Ast_Ternery,
 }
 
 Ast_Program :: distinct [dynamic]Node
@@ -46,6 +47,12 @@ Ast_Method_Call :: struct {
 	object:    ^Node, // The object the method is being called on
 	method:    ^Node, // The method name (identifier)
 	arguments: [dynamic]Node, // Arguments to the method (excluding self)
+}
+
+Ast_Ternery :: struct {
+	condition: ^Node,
+	then:      ^Node,
+	orelse:    ^Node,
 }
 
 Ast_Hash_Table :: struct {

@@ -206,7 +206,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			case Ast_Index:
 				if err = c->compile(left.operand^); err != "" do return
 
-				switch idx_type in left.index^ {
+				#partial switch idx_type in left.index^ {
 				case Ast_Identifier:
 					// a[i] AND self[x]
 					idx := left.index.(Ast_Identifier)
@@ -221,35 +221,10 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 					if err = c->compile(left.index^); err != "" do return
 					if err = c->compile(data.right^); err != "" do return
 					c->emit(.SetIdx)
-				case f64,
-				     int,
-				     bool,
-				     string,
-				     Ast_Program,
-				     Ast_Let,
-				     Ast_Ret,
-				     Ast_Block,
-				     Ast_Prefix,
-				     Ast_Infix,
-				     Ast_If,
-				     Ast_Array,
-				     Ast_Hash_Table,
-				     Ast_Function,
-				     Ast_Call,
-				     Ast_Method_Call,
-				     Ast_Index,
-				     Ast_Macro,
-				     Ast_For,
-				     Ast_Foreach,
-				     Ast_Class:
-					if err = c->compile(left.index^); err != "" do return
-					if err = c->compile(data.right^); err != "" do return
-					c->emit(.SetIdx)
 				}
-			case:
-				err = compiler_error(c, "assignment to is not supported", Ast__Type__(data.left^))
 				return
 			}
+			err = compiler_error(c, "assignment to is not supported", Ast__Type__(data.left^))
 			return
 		}
 		if err = c->compile(data.left^); err != "" do return
@@ -327,36 +302,13 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		c->emit(.Ht, len(data.pairs) * 2)
 	case Ast_Index:
 		if err = c->compile(data.operand^); err != "" do return
-		switch idx_type in data.index^ {
+		#partial switch idx_type in data.index^ {
 		case Ast_Identifier:
 			if err = c->compile(data.index^); err != "" do return
 			c->emit(.Idx)
 		case Ast_Method_Call:
 			err = "method call cannot be used as index"
 			return
-		case f64,
-		     int,
-		     bool,
-		     string,
-		     Ast_Program,
-		     Ast_Let,
-		     Ast_Ret,
-		     Ast_Block,
-		     Ast_Prefix,
-		     Ast_Infix,
-		     Ast_If,
-		     Ast_Array,
-		     Ast_Hash_Table,
-		     Ast_Function,
-		     Ast_Call,
-		     Ast_Index,
-		     Ast_Macro,
-		     Ast_For,
-		     Ast_Foreach,
-		     Ast_Class:
-			// Array indexing: object[index] - compile index as expression
-			if err = c->compile(data.index^); err != "" do return
-			c->emit(.Idx)
 		case:
 			if err = c->compile(data.index^); err != "" do return
 			c->emit(.Idx)

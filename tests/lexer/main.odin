@@ -35,6 +35,7 @@ test_lexer :: proc(t: ^testing.T) {
 							in
 							class
 							self
+							?
 	`
 
 
@@ -145,6 +146,7 @@ test_lexer :: proc(t: ^testing.T) {
 		{.In, "in"},
 		{.Class, "class"},
 		{.Self, "self"},
+		{.Question_Mark, "?"},
 
 		// end of file
 		{.EOF, ""},

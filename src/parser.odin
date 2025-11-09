@@ -107,6 +107,7 @@ init_precedences :: proc() {
 		.Less_Than_Equal    = .Less_Greater,
 		.Equal              = .Equals,
 		.Not_Equal          = .Equals,
+		.Question_Mark      = .Equals,
 		.Assign             = .Assign,
 		.Left_Paren         = .Call,
 		.Macro              = .Lowest,
@@ -162,6 +163,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Left_Bracket       = parse_index_expression,
 	.Dot                = parse_dot_expression,
 	.At                 = parse_at_expression,
+	.Question_Mark      = parse_ternary_expression,
 } // end <<Expressions_types
 // Literals=>>begin
 parse_identifier :: proc(p: ^Parser) -> Node {
@@ -514,7 +516,27 @@ parse_super_class :: proc(p: ^Parser) -> [dynamic]Ast_Identifier {
 }
 parse_self_expression :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{value = "self"}
-} // end <<Expressions
+}
+parse_ternary_expression :: proc(p: ^Parser, left: Node) -> Node {
+	// left is the condition, we're currently on the ? token
+	next_token(p)
+
+	then_expr := parse_expression(p, .Lowest)
+	if then_expr == nil do return nil
+	
+	if !expect_peek(p, .Colon) do return nil
+	next_token(p)
+
+	else_expr := parse_expression(p, .Lowest)
+	if else_expr == nil do return nil
+
+	new_left := new_clone(left, p.varena)
+	new_then := new_clone(then_expr, p.varena)
+	new_else := new_clone(else_expr, p.varena)
+
+	return Ast_Ternery{condition = new_left, then = new_then, orelse = new_else}
+}
+// end <<Expressions
 // Statements=>>begin
 parse_let_statement :: proc(p: ^Parser) -> Node {
 	if !expect_peek(p, .Identifier) do return nil
