@@ -4,15 +4,14 @@ import "core:mem"
 import "core:strings"
 
 Compiler_State :: struct {
-	varena:              mem.Allocator,
-	symbol_table:        Symbol_Table,
-	globals:             []ObjectBase,
-	constants:           [dynamic]ObjectBase,
-	scopes:              [dynamic]Compilation_Scope,
-	cli_arguments:       []string,
-	sb:                  strings.Builder,
-	mexpand_rec:         int,
-	is_compiling_method: bool,
+	varena:        mem.Allocator,
+	symbol_table:  Symbol_Table,
+	globals:       []ObjectBase,
+	constants:     [dynamic]ObjectBase,
+	scopes:        [dynamic]Compilation_Scope,
+	cli_arguments: []string,
+	sb:            strings.Builder,
+	mexpand_rec:   int,
 }
 
 Compiler_State_New :: proc(

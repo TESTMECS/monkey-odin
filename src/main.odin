@@ -90,7 +90,7 @@ main :: proc() {
 		if err != "" do monkey_err("Error compiling file", 1, &sb, true, err)
 		// Print bytecode
 		bytecode := c->bytecode()
-		fmt.println(bytecode)
+		fmt.println(byte_to_instruction(bytecode.instructions))
 	case "ast":
 		fmt.println(os.args[2])
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)

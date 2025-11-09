@@ -49,7 +49,6 @@ ObjectIterator :: struct {
 }
 
 ObjectClass :: struct {
-	name:       string,
 	methods:    ObjectHashTable, // Method name -> compiled function
 	superclass: ^ObjectClass,
 }

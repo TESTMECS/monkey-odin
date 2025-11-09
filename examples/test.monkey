@@ -1,7 +1,5 @@
 #!/usr/bin/env monkey -- 
 
-
-#!/usr/bin/env monkey -- classes-refactored
 let my_class = class() {
     let new = fn(self) {
         self.x = 10;
@@ -9,7 +7,7 @@ let my_class = class() {
     };
 };
 
-let a = my_class();
-a->new();
+# let a = my_class();
+# a->new();
 
 

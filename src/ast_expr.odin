@@ -20,12 +20,6 @@ Ast_Foreach :: struct {
 	body:    Ast_Block,
 }
 
-Ast_Class :: struct {
-	name:  string,
-	super: [dynamic]Ast_Identifier,
-	body:  Ast_Block,
-}
-
 Ast_Let :: struct {
 	name:  string,
 	value: ^Node,

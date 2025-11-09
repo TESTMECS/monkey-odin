@@ -63,6 +63,12 @@ Ast_Macro :: struct {
 	body:       Ast_Block,
 }
 
+// Class
+Ast_Class :: struct {
+	name:  string,
+	super: [dynamic]Ast_Identifier,
+	body:  Ast_Block,
+}
 Ast_Field_Access :: struct {
 	object: ^Node,
 	field:  string,

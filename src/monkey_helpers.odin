@@ -141,3 +141,12 @@ dbg :: proc(fstring: string, args: ..any) {
 	fmt.printfln(fstring, ..args)
 }
 
+byte_to_instruction :: proc(bs: []byte) -> []string {
+	ins := make([dynamic]string, 0, len(bs))
+	for opcode_val, idx in bs {
+		val := fmt.tprintf("%v", Opcode(opcode_val)) // Convert to Opcode string instead of enum int.
+		append(&ins, val)
+	}
+	return ins[:]
+}
+
