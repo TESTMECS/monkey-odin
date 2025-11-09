@@ -25,7 +25,6 @@ test_method_parsing :: proc(t: ^testing.T) {
 		return
 	}
 
-
 	if stmt, ok := program[0].(monkey.Ast_Let); !ok {
 		log.errorf("expected Ast_Let, got %v", monkey.Ast__Type__(stmt))
 		return
@@ -75,7 +74,5 @@ test_method_parsing :: proc(t: ^testing.T) {
 		log.errorf("expected 2 arguments in method call, got %d", len(method_call.arguments))
 		return
 	}
-
-
 }
 

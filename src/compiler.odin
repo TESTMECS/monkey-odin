@@ -381,6 +381,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Call, len(data.arguments))
 	case Ast_Method_Call:
+		fmt.println("Ast Method Call")
 		if err = c->compile(data.object^); err != "" do return
 		if method_ident, ok := data.method^.(Ast_Identifier); ok {
 			c->emit(.Get_Method, c->add_constant(method_ident.value))

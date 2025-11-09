@@ -10,8 +10,6 @@ let my_class = class() {
 };
 
 let a = my_class();
-a.new();
-a.x;
-a.y;
+a->new();
 
 
