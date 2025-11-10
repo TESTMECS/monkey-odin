@@ -1,4 +1,4 @@
-#!/usr/bin/env monkey -- 
+#!/usr/bin/env monkey --
 
 let bor = 1 | 2; puts(bor);
 let bxor = 1 ^ 2; puts(bxor);
@@ -11,8 +11,4 @@ let blshift = 1 << 2; puts(blshift);
 
 let lor = true || false; puts(lor);
 let land = true && false; puts(land);
-
-
-
-
 
