@@ -176,6 +176,8 @@ next_token :: proc(l: ^Lexer) -> Token {
 		 else do tok = token_from_current_char(l, .Ampersand)
 	case '^':
 		tok = token_from_current_char(l, .Caret)
+	case '~':
+		tok = token_from_current_char(l, .Tilde)
 	case '"':
 		tok = create_string(l)
 	case '#':

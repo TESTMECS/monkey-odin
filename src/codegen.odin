@@ -44,6 +44,14 @@ Opcode :: enum byte {
 	Iter_Init,
 	Iter_Next,
 	Iter_Get,
+	Bor,
+	Ban,
+	Bxor,
+	Bnot,
+	Shl,
+	Shr,
+	And,
+	Or,
 }
 
 Definition :: struct {
@@ -85,6 +93,14 @@ Definition__Map__ := [Opcode]Definition {
 	.Iter_Init  = {"OpIterInit", {}},
 	.Iter_Next  = {"OpIterNext", {}},
 	.Iter_Get   = {"OpIterGet", {}},
+	.Bor        = {"OpBitwiseOr", {}},
+	.Ban        = {"OpBitwiseAnd", {}},
+	.Bxor       = {"OpBitwiseXor", {}},
+	.Bnot       = {"OpBitwiseNot", {}},
+	.Shl        = {"OpShiftLeft", {}},
+	.Shr        = {"OpShiftRight", {}},
+	.And        = {"OpLogicalAnd", {}},
+	.Or         = {"OpLogicalOr", {}},
 }
 
 lookup :: proc(op: Opcode) -> (Definition, bool) {

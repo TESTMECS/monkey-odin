@@ -47,6 +47,7 @@ Token_Type :: enum {
 	Caret,
 	Lor,
 	Land,
+	Tilde,
 }
 
 Token :: struct {
