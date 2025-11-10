@@ -40,6 +40,8 @@ test_lexer :: proc(t: ^testing.T) {
 							<<
 							&
 							^
+							||
+							&&
 	`
 
 
@@ -155,6 +157,8 @@ test_lexer :: proc(t: ^testing.T) {
 		{.LShift, "<<"},
 		{.Ampersand, "&"},
 		{.Caret, "^"},
+		{.Lor, "||"},
+		{.Land, "&&"},
 
 		// end of file
 		{.EOF, ""},

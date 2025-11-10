@@ -45,6 +45,8 @@ Token_Type :: enum {
 	LShift,
 	Ampersand,
 	Caret,
+	Lor,
+	Land,
 }
 
 Token :: struct {

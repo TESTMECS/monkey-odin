@@ -161,9 +161,19 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case '%':
 		tok = token_from_current_char(l, .Percent)
 	case '|':
-		tok = token_from_current_char(l, .Pipe)
+		if peek_char(l) == '|' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.Lor, l.input, start, 2)
+		}
+		 else do tok = token_from_current_char(l, .Pipe)
 	case '&':
-		tok = token_from_current_char(l, .Ampersand)
+		if peek_char(l) == '&' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.Land, l.input, start, 2)
+		}
+		 else do tok = token_from_current_char(l, .Ampersand)
 	case '^':
 		tok = token_from_current_char(l, .Caret)
 	case '"':
