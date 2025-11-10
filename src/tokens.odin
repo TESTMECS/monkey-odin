@@ -39,8 +39,12 @@ Token_Type :: enum {
 	Foreach,
 	In,
 	Question_Mark,
-	Arrow,
-	At,
+	Percent,
+	Pipe,
+	RShift,
+	LShift,
+	Ampersand,
+	Caret,
 }
 
 Token :: struct {

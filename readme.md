@@ -95,48 +95,17 @@ let my_cos = cos(float(0));
 let my_tan = tan(float(0));
 ```
 # now: 
-- Breaking up the compiler into smaller parts. 
-- Decided that I don't want to use classes. Instead we are going to use Go/Umka's static Captures and then I can focus on adding and enums. 
-- Goal:
+- Adding more ops.
 ```monkey
-#!/usr/bin/env monkey -- 
-let a = {"x": 10, "y": 20};
-
-let my_function = fn(x, y) *a* {
-    x + y + @x + @y;
-};
-
-my_function(5, 10); # => 35
-
-# Later adding
-let my_struct = struct {
-    x -> int
-    y -> float
-};
-let my_function = fn(x, y) *my_struct* {...}
-let directions = enum {
-   up, down, left, right 
-};
-let my_fn = fn(x, y) *directions* {
-    match @directions {
-        up -> "up";
-        down -> "down";
-        left -> "left";
-        right -> "right";
-    };
-};
-
-# Also support for more ops
-
 % #=>> modulo
 & #=>> bitwise and
 ^ #=>> bitwise xor
 | #=>> bitwise or
 << #=>> shift left
 >> #=>> shift right
-
-
-
-
 ```
+
+
+
+
 

@@ -102,12 +102,7 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case '+':
 		tok = token_from_current_char(l, .Plus)
 	case '-':
-		if peek_char(l) == '>' {
-			start := l.pos
-			read_char(l)
-			tok = GetToken(.Arrow, l.input, start, 2)
-		}
-		 else do tok = token_from_current_char(l, .Minus)
+		tok = token_from_current_char(l, .Minus)
 	case '!':
 		if peek_char(l) == '=' {
 			start := l.pos
@@ -120,14 +115,24 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case '*':
 		tok = token_from_current_char(l, .Asterisk)
 	case '<':
-		if peek_char(l) == '=' {
+		if peek_char(l) == '<' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.LShift, l.input, start, 2)
+		}
+		 else if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Less_Than_Equal, l.input, start, 2)
 		}
 		 else do tok = token_from_current_char(l, .Less_Than)
 	case '>':
-		if peek_char(l) == '=' {
+		if peek_char(l) == '>' {
+			start := l.pos
+			read_char(l)
+			tok = GetToken(.RShift, l.input, start, 2)
+		}
+		 else if peek_char(l) == '=' {
 			start := l.pos
 			read_char(l)
 			tok = GetToken(.Greater_Than_Equal, l.input, start, 2)
@@ -153,8 +158,14 @@ next_token :: proc(l: ^Lexer) -> Token {
 		tok = token_from_current_char(l, .Right_Bracket)
 	case '?':
 		tok = token_from_current_char(l, .Question_Mark)
-	case '@':
-		tok = token_from_current_char(l, .At)
+	case '%':
+		tok = token_from_current_char(l, .Percent)
+	case '|':
+		tok = token_from_current_char(l, .Pipe)
+	case '&':
+		tok = token_from_current_char(l, .Ampersand)
+	case '^':
+		tok = token_from_current_char(l, .Caret)
 	case '"':
 		tok = create_string(l)
 	case '#':

@@ -112,8 +112,6 @@ init_precedences :: proc() {
 		.Left_Paren         = .Call,
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
-		.At                 = .Index,
-		.Arrow              = .Call,
 		// All others lowest
 	}
 }

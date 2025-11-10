@@ -34,7 +34,12 @@ test_lexer :: proc(t: ^testing.T) {
 							foreach 
 							in
 							?
-							@
+							%
+							|
+							>>
+							<<
+							&
+							^
 	`
 
 
@@ -144,7 +149,12 @@ test_lexer :: proc(t: ^testing.T) {
 		{.Foreach, "foreach"},
 		{.In, "in"},
 		{.Question_Mark, "?"},
-		{.At, "@"},
+		{.Percent, "%"},
+		{.Pipe, "|"},
+		{.RShift, ">>"},
+		{.LShift, "<<"},
+		{.Ampersand, "&"},
+		{.Caret, "^"},
 
 		// end of file
 		{.EOF, ""},
