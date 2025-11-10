@@ -1,5 +1,4 @@
 package monkey
-
 b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get keys of hash table">>
@@ -17,7 +16,6 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
 		return eval_new_error(
@@ -28,16 +26,12 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	keys_arr := make([dynamic]ObjectBase, 0, e.varena)
-
 	for key, _ in hash_table {
 		append(&keys_arr, key)
 	}
-
 	return ObjectArray(keys_arr), true
 }
-
 b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get values of hash table">>
@@ -55,7 +49,6 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
 		return eval_new_error(
@@ -66,16 +59,12 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
 	values_arr := make([dynamic]ObjectBase, 0, e.varena)
-
 	for _, value in hash_table {
 		append(&values_arr, value)
 	}
-
 	return ObjectArray(values_arr), true
 }
-
 b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Check if hash table has key">>
@@ -94,7 +83,6 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
 		return eval_new_error(
@@ -105,7 +93,6 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	key_str, key_ok := args[1].(string)
 	if !key_ok {
 		return eval_new_error(
@@ -116,11 +103,9 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	_, exists := hash_table[key_str]
 	return exists, true
 }
-
 b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Create hash table from two arrays">>
@@ -139,7 +124,6 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	keys_arr, keys_ok := args[0].(ObjectArray)
 	if !keys_ok {
 		return eval_new_error(
@@ -150,7 +134,6 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	values_arr, values_ok := args[1].(ObjectArray)
 	if !values_ok {
 		return eval_new_error(
@@ -161,7 +144,6 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(keys_arr) != len(values_arr) {
 		return eval_new_error(
 				e,
@@ -172,9 +154,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	result := make(map[string]ObjectBase, e.varena)
-
 	for i in 0 ..< len(keys_arr) {
 		key_str, key_ok := keys_arr[i].(string)
 		if !key_ok {
@@ -189,7 +169,6 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		}
 		result[key_str] = values_arr[i]
 	}
-
 	return result, true
 }
 

@@ -1,30 +1,23 @@
 package monkey
-
 import "core:fmt"
 import "core:reflect"
 import "core:strings"
-
 NULL :: ObjectNil{}
 ObjectNil :: struct {}
-
 ObjectFunction :: struct {
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 	env:        ^Environment,
 }
-
 ObjectMacro :: struct {
 	parameters: [dynamic]Ast_Identifier,
 	body:       Ast_Block,
 	env:        ^Environment,
 }
-
 ObjectQuote :: struct {
 	node: Node,
 }
-
 ObjectHashTable :: map[string]ObjectBase
-
 ObjectBuilinFunction :: #type proc(
 	e: ^Evaluator,
 	args: [dynamic]ObjectBase,
@@ -32,34 +25,18 @@ ObjectBuilinFunction :: #type proc(
 	ret: ObjectBase,
 	ok: bool,
 )
-
 ObjectArray :: distinct [dynamic]ObjectBase
-
 ObjectCompiledFunction :: struct {
 	instructions:   Instructions,
 	num_locals:     int,
 	num_parameters: int,
 }
-
 ObjectIterator :: struct {
 	collection: ^ObjectBase,
 	index:      int,
 	keys:       [dynamic]string,
 	is_array:   bool,
 }
-
-ObjectClass :: struct {
-	selfdata:   ObjectHashTable, // dataum name -> value
-	methods:    ObjectHashTable, // Method name -> compiled function
-	superclass: ^ObjectClass, // will overwrite any selfdata or methods with the same name.
-}
-
-ObjectInstance :: struct {
-	class:    ^ObjectClass,
-	selfdata: ObjectHashTable, // dataum name -> value
-	methods:  ObjectHashTable, // Method name -> compiled function
-}
-
 ObjectBase :: union {
 	int,
 	f64,
@@ -74,22 +51,16 @@ ObjectBase :: union {
 	ObjectMacro,
 	ObjectQuote,
 	ObjectIterator,
-	ObjectClass,
-	^ObjectInstance,
 }
-
 ObjectReturn :: distinct ObjectBase
-
 Object :: union {
 	ObjectBase,
 	ObjectReturn,
 }
-
 ToObjectBase :: proc {
 	to_object_base_val,
 	to_object_base_ptr,
 }
-
 @(private = "file")
 to_object_base_val :: proc(obj: Object) -> ObjectBase {
 	obj := obj
@@ -97,10 +68,7 @@ to_object_base_val :: proc(obj: Object) -> ObjectBase {
 }
 @(private = "file")
 to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase {
-	switch data in obj
-
-
-	{
+	switch data in obj {
 	case ObjectBase:
 		return data
 	case ObjectReturn:
@@ -109,10 +77,7 @@ to_object_base_ptr :: proc(obj: ^Object) -> ObjectBase {
 	unreachable()
 }
 object_is_truthy :: proc(obj: ObjectBase) -> bool {
-	#partial switch o in obj
-
-
-	{
+	#partial switch o in obj {
 	case bool:
 		return o
 	case ObjectNil:
@@ -122,12 +87,10 @@ object_is_truthy :: proc(obj: ObjectBase) -> bool {
 	}
 	unreachable()
 }
-
 ObjectIsReturn :: proc {
 	object_is_return_ptr,
 	object_is_return_val,
 }
-
 @(private = "file")
 object_is_return_ptr :: proc(o: ^Object) -> bool {
 	return reflect.union_variant_typeid(o^) == ObjectReturn
@@ -136,40 +99,31 @@ object_is_return_ptr :: proc(o: ^Object) -> bool {
 object_is_return_val :: proc(o: Object) -> bool {
 	return reflect.union_variant_typeid(o) == ObjectReturn
 }
-
 ObjectType :: proc {
 	object_type_val,
 	object_type_ptr,
 }
-
 @(private = "file")
 object_type_val :: proc(o: Object) -> typeid {
 	return reflect.union_variant_typeid(ToObjectBase(o))
 }
-
 object_type_ptr :: proc(o: ^Object) -> typeid {
 	return reflect.union_variant_typeid(ToObjectBase(o^))
 }
-
 ObjectInspect :: proc {
 	object_inspect_ptr,
 	object_inspect_val,
 }
-
 @(private = "file")
 object_inspect_val :: proc(o: Object, sb: ^strings.Builder) {
 	obj := o
 	object_inspect_ptr(&obj, sb)
 }
-
 @(private = "file")
 object_inspect_ptr :: proc(o: ^Object, sb: ^strings.Builder) {
 	obj := o
 	obj_base := ToObjectBase(obj)
-	#partial switch data in obj_base
-
-
-	{
+	#partial switch data in obj_base {
 	case bool, int, f64, string:
 		fmt.sbprint(sb, data)
 	case ObjectNil:

@@ -1,8 +1,6 @@
 package monkey
-
 import "core:mem"
 import "core:strings"
-
 Compiler_State :: struct {
 	varena:        mem.Allocator,
 	symbol_table:  Symbol_Table,
@@ -13,7 +11,6 @@ Compiler_State :: struct {
 	sb:            strings.Builder,
 	mexpand_rec:   int,
 }
-
 Compiler_State_New :: proc(
 	varena: mem.Allocator,
 	cli_args: []string,
@@ -24,7 +21,6 @@ Compiler_State_New :: proc(
 	main_scope_instructions := make(Instructions, 0, varena)
 	main_scope.instructions = main_scope_instructions
 	append(&scopes, main_scope)
-
 	return Compiler_State {
 		constants = make([dynamic]ObjectBase, 0, varena),
 		globals = make([]ObjectBase, GLOBALS_SIZE, varena),
@@ -35,23 +31,19 @@ Compiler_State_New :: proc(
 		mexpand_rec = mexpand_rec,
 	}
 }
-
 Emitted_Instruction :: struct {
 	op_code: Opcode,
 	pos:     int,
 }
-
 Bytecode :: struct {
 	instructions: []byte,
 	constants:    []ObjectBase,
 }
-
 Compilation_Scope :: struct {
 	instructions:         Instructions,
 	last_instruction:     ^Emitted_Instruction,
 	previous_instruction: ^Emitted_Instruction,
 }
-
 Compiler :: struct {
 	using compiler_state:         Compiler_State,
 	scopes_idx:                   int, // lowkey should be in compiler state
@@ -77,7 +69,6 @@ Compiler :: struct {
 	replace_instructions:         proc(c: ^Compiler, pos: int, new_instructions: []byte),
 	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
 }
-
 Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {
 	return Compiler {
 		compiler_state = Compiler_State_New(varena, cli_args, mexpand_rec),

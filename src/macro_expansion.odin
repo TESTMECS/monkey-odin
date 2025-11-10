@@ -1,15 +1,12 @@
 package monkey
-
 import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:strings"
-
 Macro_Expansion_Result :: struct {
 	expanded: Node,
 	error:    string,
 }
-
 expand_macros :: proc(
 	program: Ast_Program,
 	macro_rec := 1,
@@ -22,7 +19,6 @@ expand_macros :: proc(
 		return program, ""
 	}
 	macros := make(map[string]ObjectMacro, varena)
-
 	for stmt in program {
 		if let_stmt, ok := stmt.(Ast_Let); ok {
 			if macro_lit, ok := let_stmt.value^.(Ast_Macro); ok {
@@ -35,7 +31,6 @@ expand_macros :: proc(
 			}
 		}
 	}
-
 	expanded_program := make(Ast_Program, 0, len(program), varena)
 	for stmt in program {
 		if let_stmt, ok := stmt.(Ast_Let); ok {
@@ -47,22 +42,17 @@ expand_macros :: proc(
 		if err != "" do return nil, err
 		append(&expanded_program, expanded_stmt)
 	}
-
-
 	final_program := make(Ast_Program, 0, len(expanded_program), varena)
 	for stmt in expanded_program {
 		final_stmt, err := evaluate_remaining_quotes(stmt, varena)
 		if err != "" do return nil, err
 		append(&final_program, final_stmt)
 	}
-
 	if macro_rec > 1 {
 		return expand_macros(final_program, macro_rec - 1, varena)
 	}
-
 	return final_program, ""
 }
-
 expand_node :: proc(
 	node: Node,
 	macros: map[string]ObjectMacro,
@@ -84,10 +74,8 @@ expand_node :: proc(
 			if err != "" do return nil, err
 			append(&expanded_args, expanded_arg)
 		}
-
 		expanded_function, err := expand_node(data.function^, macros, varena)
 		if err != "" do return nil, err
-
 		return Ast_Call {
 				function = new_clone(expanded_function, varena),
 				arguments = expanded_args,
@@ -101,7 +89,6 @@ expand_node :: proc(
 			append(&expanded, expanded_stmt)
 		}
 		return expanded, ""
-
 	case Ast_Block:
 		expanded := make(Ast_Block, 0, len(data), varena)
 		for stmt in data {
@@ -110,7 +97,6 @@ expand_node :: proc(
 			append(&expanded, expanded_stmt)
 		}
 		return expanded, ""
-
 	case Ast_Array:
 		expanded := make(Ast_Array, 0, len(data), varena)
 		for elem in data {
@@ -119,7 +105,6 @@ expand_node :: proc(
 			append(&expanded, expanded_elem)
 		}
 		return expanded, ""
-
 	case Ast_Hash_Table:
 		expanded_pairs := make([dynamic]kvpair, 0, len(data.pairs), varena)
 		for pair in data.pairs {
@@ -130,22 +115,18 @@ expand_node :: proc(
 			append(&expanded_pairs, kvpair{key = expanded_key, value = expanded_value})
 		}
 		return Ast_Hash_Table{pairs = expanded_pairs}, ""
-
 	case Ast_Let:
 		expanded_value, err := expand_node(data.value^, macros, varena)
 		if err != "" do return nil, err
 		return Ast_Let{name = data.name, value = new_clone(expanded_value, varena)}, ""
-
 	case Ast_Ret:
 		expanded_value, err := expand_node(data.return_value^, macros, varena)
 		if err != "" do return nil, err
 		return Ast_Ret{return_value = new_clone(expanded_value, varena)}, ""
-
 	case Ast_Prefix:
 		expanded_operand, err := expand_node(data.operand^, macros, varena)
 		if err != "" do return nil, err
 		return Ast_Prefix{op = data.op, operand = new_clone(expanded_operand, varena)}, ""
-
 	case Ast_Infix:
 		expanded_left, left_err := expand_node(data.left^, macros, varena)
 		if left_err != "" do return nil, left_err
@@ -157,14 +138,11 @@ expand_node :: proc(
 				right = new_clone(expanded_right, varena),
 			},
 			""
-
 	case:
 		return node, ""
 	}
-
 	return node, ""
 }
-
 expand_macro_call :: proc(
 	macro: ObjectMacro,
 	args: [dynamic]Node,
@@ -180,9 +158,7 @@ expand_macro_call :: proc(
 			len(args),
 		)
 	}
-
 	extended_env := Env_New(nil, varena)
-
 	for i in 0 ..< len(macro.parameters) {
 		param := macro.parameters[i]
 		arg_obj, err := eval_node_to_object(args[i], varena)
@@ -193,7 +169,6 @@ expand_macro_call :: proc(
 	if err != "" do return nil, err
 	return result, ""
 }
-
 eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, string) {
 	e := Evaluator_New(varena)
 	#partial switch data in node
@@ -228,7 +203,6 @@ eval_node_to_object :: proc(node: Node, varena: mem.Allocator) -> (ObjectBase, s
 	}
 	return nil, "unsupported node type for macro argument"
 }
-
 evaluate_macro_body :: proc(
 	body: Ast_Block,
 	env: ^Environment,
@@ -250,7 +224,6 @@ evaluate_macro_body :: proc(
 	}
 	return nil, "macro body must contain a quote expression"
 }
-
 expand_unquote_calls :: proc(
 	node: Node,
 	env: ^Environment,
@@ -279,17 +252,14 @@ expand_unquote_calls :: proc(
 				}
 			}
 		}
-
 		expanded_function, err := expand_unquote_calls(data.function^, env, varena)
 		if err != "" do return nil, err
-
 		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
 		for arg in data.arguments {
 			expanded_arg, arg_err := expand_unquote_calls(arg, env, varena)
 			if arg_err != "" do return nil, arg_err
 			append(&expanded_args, expanded_arg)
 		}
-
 		return Ast_Call {
 				function = new_clone(expanded_function, varena),
 				arguments = expanded_args,
@@ -300,54 +270,44 @@ expand_unquote_calls :: proc(
 		if left_err != "" do return nil, left_err
 		expanded_right, right_err := expand_unquote_calls(data.right^, env, varena)
 		if right_err != "" do return nil, right_err
-
 		return Ast_Infix {
 				op = data.op,
 				left = new_clone(expanded_left, varena),
 				right = new_clone(expanded_right, varena),
 			},
 			""
-
 	case Ast_For:
 		expanded_condition, cond_err := expand_unquote_calls(data.cond^, env, varena)
 		if cond_err != "" do return nil, cond_err
-
 		expanded_body := make(Ast_Block, 0, len(data.body), varena)
 		for stmt in data.body {
 			expanded_stmt, stmt_err := expand_unquote_calls(stmt, env, varena)
 			if stmt_err != "" do return nil, stmt_err
 			append(&expanded_body, expanded_stmt)
 		}
-
 		return Ast_For{cond = new_clone(expanded_condition, varena), body = expanded_body}, ""
-
 	case Ast_If:
 		expanded_condition, cond_err := expand_unquote_calls(data.condition^, env, varena)
 		if cond_err != "" do return nil, cond_err
-
 		expanded_then, then_err := expand_unquote_calls(data.then, env, varena)
 		if then_err != "" do return nil, then_err
-
 		expanded_orelse: Ast_Block
 		if data.orelse != nil {
 			expanded_orelse_node, orelse_err := expand_unquote_calls(data.orelse, env, varena)
 			if orelse_err != "" do return nil, orelse_err
 			expanded_orelse = expanded_orelse_node.(Ast_Block)
 		}
-
 		return Ast_If {
 				condition = new_clone(expanded_condition, varena),
 				then = expanded_then.(Ast_Block),
 				orelse = expanded_orelse,
 			},
 			""
-
 	case:
 		return node, ""
 	}
 	return node, ""
 }
-
 evaluate_simple_expression :: proc(
 	expr: Ast_Infix,
 	env: ^Environment,
@@ -370,13 +330,10 @@ evaluate_simple_expression :: proc(
 			}
 		}
 	}
-
 	return nil, "unsupported expression in unquote"
 }
-
 evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, string) {
-	#partial switch data in node
-	{
+	#partial switch data in node {
 	case Ast_Call:
 		if ident, ok := data.function^.(Ast_Identifier); ok {
 			if ident.value == "quote" && len(data.arguments) > 0 {
@@ -389,23 +346,19 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 				return data.arguments[0], ""
 			}
 		}
-
 		expanded_function, err := evaluate_remaining_quotes(data.function^, varena)
 		if err != "" do return nil, err
-
 		expanded_args := make([dynamic]Node, 0, len(data.arguments), varena)
 		for arg in data.arguments {
 			expanded_arg, arg_err := evaluate_remaining_quotes(arg, varena)
 			if arg_err != "" do return nil, arg_err
 			append(&expanded_args, expanded_arg)
 		}
-
 		return Ast_Call {
 				function = new_clone(expanded_function, varena),
 				arguments = expanded_args,
 			},
 			""
-
 	case Ast_Program:
 		expanded := make(Ast_Program, 0, len(data), varena)
 		for stmt in data {
@@ -414,7 +367,6 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 			append(&expanded, expanded_stmt)
 		}
 		return expanded, ""
-
 	case Ast_Block:
 		expanded := make(Ast_Block, 0, len(data), varena)
 		for stmt in data {
@@ -423,12 +375,10 @@ evaluate_remaining_quotes :: proc(node: Node, varena: mem.Allocator) -> (Node, s
 			append(&expanded, expanded_stmt)
 		}
 		return expanded, ""
-
 	case:
 		return node, ""
 	}
 }
-
 is_quote_call :: proc(node: Node) -> bool {
 	if call, ok := node.(Ast_Call); ok {
 		if ident, ok := call.function^.(Ast_Identifier); ok {
@@ -437,7 +387,6 @@ is_quote_call :: proc(node: Node) -> bool {
 	}
 	return false
 }
-
 is_unquote_call :: proc(node: Node) -> bool {
 	if call, ok := node.(Ast_Call); ok {
 		if ident, ok := call.function^.(Ast_Identifier); ok {

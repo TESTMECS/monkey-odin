@@ -20,7 +20,6 @@ Commands:
 
 
 main :: proc() {
-	// Arena for the whole program.
 	v: virtual.Arena
 	err := virtual.arena_init_growing(&v)
 	ensure(err == nil)
@@ -50,20 +49,18 @@ main :: proc() {
 	case "repl":
 		reader: bufio.Reader
 		bufio.reader_init(&reader, os.stream_from_handle(os.stdin), bufio.DEFAULT_BUF_SIZE, varena)
-		cli_args := os.args[2:] // added as constants in the compiler
+		cli_args := os.args[2:]
 
 		fmt.println(
 			ansi.CSI + ansi.FG_BRIGHT_GREEN + ansi.SGR + "Monkey REPL. Type 'exit' to quit.",
 			ansi.CSI + ansi.RESET + ansi.SGR,
 		)
-		for { 	//repl
+		for {
 			fmt.print(">> ")
-			// readline
 			line, err := bufio.reader_read_string(&reader, '\n')
 			if err != nil do monkey_err("Error reading input", 1, &sb, false, err)
 			line = strings.trim_space(line)
 			if line == "exit" do monkey_result(nil, &sb, true) // exit
-			// Run
 			Monkey_Run_String(line, &sb, false, varena, cli_args, mexpand_rec) // don't exit
 		}
 	case "file":
@@ -80,37 +77,29 @@ main :: proc() {
 		_ = Monkey_Run_String(stmts, &sb, true, varena, all_args[:], mexpand_rec)
 	case "bytes":
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
-		// Parse file
 		p := Parser_New(stmts, varena)
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
-		// Compile to bytecode
 		c := Compiler_New(varena, os.args[3:], 1)
 		err := c->compile_program(program)
 		if err != "" do monkey_err("Error compiling file", 1, &sb, true, err)
-		// Print bytecode
 		bytecode := c->bytecode()
 		fmt.println(byte_to_instruction(bytecode.instructions))
 	case "ast":
 		fmt.println(os.args[2])
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
-		// Parse file
 		p := Parser_New(stmts, varena)
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
-		// Print AST
 		ast_to_string(program, &sb)
 		fmt.println(strings.to_string(sb))
 	case "mexpand":
 		stmts, _ := Monkey_Read_File(os.args[2], &sb, varena)
-		// Parse file
 		p := Parser_New(stmts, varena)
 		program := p->parse()
 		if monkey_parser_has_error(p) do monkey_err("Error parsing file", 1, &sb)
-		//expand macros
 		expanded_program, expand_err := expand_macros(program, mexpand_rec, varena)
 		if expand_err != "" do monkey_err("Error expanding macros", 1, &sb, true, expand_err)
-		//print expanded program
 		strings.builder_reset(&sb)
 		ast_to_string(expanded_program, &sb)
 		fmt.println(strings.to_string(sb))

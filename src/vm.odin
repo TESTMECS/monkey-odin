@@ -580,46 +580,22 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 
 	callee_idx := v.sp - 1 - int(num_args)
 	callee := v.stack[callee_idx]
-
-	#partial switch fn in callee
-
-
-	{
+	#partial switch fn in callee {
 	case ObjectCompiledFunction:
-		is_method_call := false
-		if fn.num_parameters == num_args + 1 && callee_idx > 0 {
-			if _, ok := v.stack[callee_idx - 1].(^ObjectInstance); ok {
-				is_method_call = true
-			}
+		if num_args != fn.num_parameters {
+			strings.builder_reset(&v.sb)
+			fmt.sbprintf(
+				&v.sb,
+				"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
+				fn.num_parameters,
+				num_args,
+			)
+			return strings.to_string(v.sb)
 		}
-
-		if is_method_call {
-			for i in 0 ..< num_args {
-				v.stack[callee_idx + i] = v.stack[callee_idx + 1 + i]
-			}
-
-			base_ptr := callee_idx - 1
-			frame := frame(fn.instructions[:], base_ptr)
-			v->push_frame(frame)
-			v.sp = base_ptr + fn.num_locals
-
-		}
-		 else {
-			if num_args != fn.num_parameters {
-				strings.builder_reset(&v.sb)
-				fmt.sbprintf(
-					&v.sb,
-					"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
-					fn.num_parameters,
-					num_args,
-				)
-				return strings.to_string(v.sb)
-			}
-			base_ptr := callee_idx + 1
-			frame := frame(fn.instructions[:], base_ptr)
-			v->push_frame(frame)
-			v.sp = base_ptr + fn.num_locals
-		}
+		base_ptr := callee_idx + 1
+		frame := frame(fn.instructions[:], base_ptr)
+		v->push_frame(frame)
+		v.sp = base_ptr + fn.num_locals
 		return ""
 	case ObjectBuilinFunction:
 		args := make([dynamic]ObjectBase, 0, v.varena)

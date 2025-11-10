@@ -1,9 +1,7 @@
 package monkey
-
 import "core:fmt"
 import "core:strconv"
 import "core:strings"
-
 b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Convert obj to str">>
@@ -21,14 +19,12 @@ b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	strings.builder_reset(&e.sb)
 	ObjectInspect(args[0], &e.sb)
 	return strings.to_string(e.sb), true
 }
 
 b_arr :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
-	// Str to arr
 	usage := `
 				"Convert str to arr">>
 				arr(value)
@@ -78,9 +74,7 @@ b_int :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-	{
+	#partial switch arg in args[0] {
 	case string:
 		value, ok := strconv.parse_int(arg)
 		if !ok {
@@ -96,7 +90,6 @@ b_int :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case int:
 		return arg, true
 	}
-
 	return eval_new_error(
 			e,
 			"'int' function error: not supported for argument of type '%v'.%s",
@@ -126,9 +119,7 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-	{
+	#partial switch arg in args[0] {
 	case string:
 		value, ok := strconv.parse_bool(arg)
 		if !ok {
@@ -144,7 +135,6 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case int:
 		return arg != 0, true
 	}
-
 	return eval_new_error(
 			e,
 			"'bool' function error: not supported for argument of type '%v'.%s",
@@ -153,7 +143,6 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		),
 		false
 }
-
 b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 						"Convert value to float">>
@@ -171,9 +160,7 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-	{
+	#partial switch arg in args[0] {
 	case string:
 		value, ok := strconv.parse_f64(arg)
 		if !ok {
@@ -191,7 +178,6 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	case f64:
 		return arg, true
 	}
-
 	return eval_new_error(
 			e,
 			"'float' function error: not supported for argument of type '%v'.%s",
@@ -200,7 +186,6 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 		),
 		false
 }
-
 b_typeof :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get type of obj">>
@@ -218,7 +203,6 @@ b_typeof :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
 	type_str := strings.clone(fmt.tprintf("%v", ObjectType(args[0])), e.varena)
 	return type_str, true
 }

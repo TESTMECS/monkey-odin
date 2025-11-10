@@ -1,8 +1,6 @@
 package monkey
-
 import "core:math"
 import "core:math/rand"
-
 b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get absolute value of int">>
@@ -20,7 +18,6 @@ b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	value, ok := args[0].(int)
 	if !ok {
 		return eval_new_error(
@@ -31,11 +28,9 @@ b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if value < 0 do return -value, true
 	return value, true
 }
-
 b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Get random int">>
@@ -54,10 +49,8 @@ b_rand :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	return int(rand.int31()), true
 }
-
 b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Choose rand element from array">>
@@ -75,7 +68,6 @@ b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -85,14 +77,11 @@ b_choose :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
 	if len(arr) == 0 {
 		return eval_new_error(e, "'choose' function error: cannot choose from empty array"), false
 	}
-
 	return arr[int(rand.int31()) % len(arr)], true
 }
-
 b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Sine of angle in degrees
@@ -120,10 +109,8 @@ b_sin :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	return math.sin(angle), true
 }
-
 b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Cosine of angle in degrees
@@ -151,10 +138,8 @@ b_cos :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	return math.cos(angle), true
 }
-
 b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Tangent of angle in degrees
@@ -182,7 +167,6 @@ b_tan :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	return math.tan(angle), true
 }
 

@@ -1,5 +1,4 @@
 package monkey
-
 b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Sort arr">>
@@ -17,7 +16,6 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -28,7 +26,6 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	// Check if all elements are integers
 	for elem in arr {
 		_, ok := elem.(int)
@@ -42,10 +39,8 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				false
 		}
 	}
-
 	sorted_arr := make([dynamic]ObjectBase, len(arr), e.varena)
 	copy(sorted_arr[:], arr[:])
-
 	// Simple bubble sort for integers
 	for i := 0; i < len(sorted_arr); i += 1 {
 		for j := 0; j < len(sorted_arr) - i - 1; j += 1 {
@@ -56,10 +51,8 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			}
 		}
 	}
-
 	return ObjectArray(sorted_arr), true
 }
-
 b_reverse :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Reverse arr">>
@@ -77,7 +70,6 @@ b_reverse :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -88,17 +80,13 @@ b_reverse :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			),
 			false
 	}
-
 	reversed_arr := make([dynamic]ObjectBase, len(arr), e.varena)
-
 	arr_len := len(arr)
 	for i in 0 ..< arr_len {
 		reversed_arr[arr_len - 1 - i] = arr[i]
 	}
-
 	return ObjectArray(reversed_arr), true
 }
-
 b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Get a arr slice from array>>
@@ -117,7 +105,6 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -128,7 +115,6 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	start, start_ok := args[1].(int)
 	if !start_ok {
 		return eval_new_error(
@@ -139,7 +125,6 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	end, end_ok := args[2].(int)
 	if !end_ok {
 		return eval_new_error(
@@ -150,7 +135,6 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	if start < 0 || end > len(arr) || start > end {
 		return eval_new_error(
 				e,
@@ -162,10 +146,8 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	sliced_arr := make([dynamic]ObjectBase, 0, e.varena)
 	append(&sliced_arr, ..arr[start:end])
-
 	return ObjectArray(sliced_arr), true
 }
 b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -185,7 +167,6 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -195,42 +176,29 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			),
 			false
 	}
-
 	target := args[1]
 	for i in 0 ..< len(arr) {
 		elem := arr[i]
-
-		// Check if types match first
 		if ObjectType(elem) != ObjectType(target) {
 			continue
 		}
-
-		// Now compare based on the common type
-		#partial switch elem_val in elem
-
-		{
+		#partial switch elem_val in elem {
 		case int:
-			#partial switch target_val in target
-
-			{
+			#partial switch target_val in target {
 			case int:
 				if elem_val == target_val {
 					return i, true
 				}
 			}
 		case string:
-			#partial switch target_val in target
-
-			{
+			#partial switch target_val in target {
 			case string:
 				if elem_val == target_val {
 					return i, true
 				}
 			}
 		case bool:
-			#partial switch target_val in target
-
-			{
+			#partial switch target_val in target {
 			case bool:
 				if elem_val == target_val {
 					return i, true
@@ -238,7 +206,6 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			}
 		}
 	}
-
 	return -1, true
 }
 b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -258,7 +225,6 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -269,7 +235,6 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	sum := 0
 	for elem in arr {
 		value, ok := elem.(int)
@@ -284,7 +249,6 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		}
 		sum += value
 	}
-
 	return sum, true
 }
 b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -304,7 +268,6 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -315,7 +278,6 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(arr) == 0 {
 		return eval_new_error(
 				e,
@@ -324,8 +286,6 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
-	// Check if all elements are integers
 	for elem in arr {
 		_, ok := elem.(int)
 		if !ok {
@@ -338,7 +298,6 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				false
 		}
 	}
-
 	min_val, _ := arr[0].(int)
 	for i := 1; i < len(arr); i += 1 {
 		value, _ := arr[i].(int)
@@ -346,7 +305,6 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			min_val = value
 		}
 	}
-
 	return min_val, true
 }
 b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -366,7 +324,6 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -377,7 +334,6 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(arr) == 0 {
 		return eval_new_error(
 				e,
@@ -386,7 +342,6 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	for elem in arr {
 		_, ok := elem.(int)
 		if !ok {
@@ -399,7 +354,6 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				false
 		}
 	}
-
 	max_val, _ := arr[0].(int)
 	for i := 1; i < len(arr); i += 1 {
 		value, _ := arr[i].(int)
@@ -407,7 +361,6 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			max_val = value
 		}
 	}
-
 	return max_val, true
 }
 b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -427,7 +380,6 @@ b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -438,11 +390,9 @@ b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-	// Create a new array with the appended element
 	new_arr := make([dynamic]ObjectBase, len(arr), e.varena)
 	copy(new_arr[:], arr[:])
 	append(&new_arr, args[1])
-
 	return ObjectArray(new_arr), true
 }
 b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -462,7 +412,6 @@ b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -473,15 +422,12 @@ b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(arr) > 0 {
 		new_arr := make([dynamic]ObjectBase, 0, e.varena)
 		append(&new_arr, ..arr[1:])
 		arr_obj := ObjectArray(new_arr)
-
 		return arr_obj, true
 	}
-
 	return NULL, true
 }
 b_last :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -501,7 +447,6 @@ b_last :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -512,9 +457,7 @@ b_last :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(arr) > 0 do return arr[len(arr) - 1], true
-
 	return NULL, true
 }
 b_first :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -534,7 +477,6 @@ b_first :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -545,9 +487,7 @@ b_first :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	if len(arr) > 0 do return arr[0], true
-
 	return NULL, true
 }
 b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -567,17 +507,12 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-
-	{
+	#partial switch arg in args[0] {
 	case string:
 		return len(arg), true
-
 	case ObjectArray:
 		return len(arg), true
 	}
-
 	return eval_new_error(
 			e,
 			"'len' function error: not supported for argument of type '%v'.%s",
@@ -586,7 +521,6 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		),
 		false
 }
-
 b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Create an arr of integers
@@ -606,7 +540,6 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	start, start_ok := args[0].(int)
 	if !start_ok {
 		return eval_new_error(
@@ -617,7 +550,6 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	end, end_ok := args[1].(int)
 	if !end_ok {
 		return eval_new_error(
@@ -628,7 +560,6 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	step, step_ok := args[2].(int)
 	if !step_ok {
 		return eval_new_error(
@@ -639,7 +570,6 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	if step == 0 {
 		return eval_new_error(
 				e,
@@ -649,15 +579,12 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	arr := make([dynamic]ObjectBase, 0, e.varena)
 	for i := start; i < end; i += step {
 		append(&arr, i)
 	}
-
 	return ObjectArray(arr), true
 }
-
 b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Pop element from array">>
@@ -675,7 +602,6 @@ b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
 		return eval_new_error(
@@ -686,16 +612,13 @@ b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	if len(arr) == 0 {
 		return eval_new_error(e, "'pop' function error: cannot pop from empty array.%s", usage),
 			false
 	}
-
 	new_arr := make([dynamic]ObjectBase, len(arr), e.varena)
 	copy(new_arr[:], arr[:])
 	pop(&new_arr)
-
 	return ObjectArray(new_arr), true
 }
 

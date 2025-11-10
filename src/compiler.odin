@@ -1,18 +1,14 @@
 package monkey
-
 import "core:fmt"
 import "core:log"
 import "core:strings"
-
 CDEBUG :: false
-
 compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
 	strings.builder_reset(&c.sb)
 	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
 	err = strings.to_string(c.sb)
 	return
 }
-
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
 	// run by main.odin, compiles all statements in the program after macro expansion
 	err = ""
@@ -120,11 +116,9 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 		}
 	case Ast_Infix:
-		// ugly
 		if data.op == "=" {
 			#partial switch left in data.left^ {
 			case Ast_Identifier:
-				// assignment
 				if err = c->compile(data.right^); err != "" do return err
 				symbol, ok := c.symbol_table->resolve(left.value)
 				if !ok {
@@ -133,14 +127,12 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 				c->emit(.Set_G if symbol.scope == .Global else .Set_L, symbol.index)
 				c->emit(.Get_G if symbol.scope == .Global else .Get_L, symbol.index)
 			case Ast_Index:
-				// Array index
 				if err = c->compile(left.operand^); err != "" do return err
 				if err = c->compile(left.index^); err != "" do return err
 				c->emit(.Idx)
 			}
-			return err // finish
+			return err
 		}
-		// Operations
 		if err = c->compile(data.left^); err != "" do return
 		if err = c->compile(data.right^); err != "" do return
 		switch data.op {
@@ -226,7 +218,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.body); err != "" do return
 		if c->last_instruction_is(.Pop) do c->replace_last_pop_with_return() // implicit return
 		if !c->last_instruction_is(.Ret_V) && !c->last_instruction_is(.Ret) do c->emit(.Ret_V if len(c->current_instructions()) > 0 else .Ret) // explicit
-
 		num_locals := len(c.symbol_table.store)
 		instructions := c->leave_scope()
 		instr_copy := make(Instructions, len(instructions), c.varena)
@@ -237,7 +228,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			num_parameters = len(data.parameters),
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
-
 	case Ast_Call:
 		if err = c->compile(data.function^); err != "" do return err
 		for arg in data.arguments {
@@ -272,18 +262,15 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	}
 	return err
 }
-
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
 	return pos
 }
-
 bytecode :: proc(c: ^Compiler) -> Bytecode {
 	return {instructions = c->current_instructions()[:], constants = c.compiler_state.constants[:]}
 }
-
 enter_scope :: proc(c: ^Compiler) {
 	scope := Compilation_Scope{}
 	instr := make(Instructions, 0, c.varena)
@@ -293,7 +280,6 @@ enter_scope :: proc(c: ^Compiler) {
 	symbol_clone := new_clone(c.symbol_table, c.varena) // Clone
 	c.symbol_table = Symbol_Table_New(c.varena, outer = symbol_clone)
 }
-
 leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	instructions := c->current_instructions()
 	pop(&c.scopes)
@@ -301,11 +287,9 @@ leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	c.symbol_table = c.symbol_table.outer^
 	return instructions
 }
-
 current_instructions :: proc(c: ^Compiler) -> ^Instructions {
 	return &c.scopes[c.scopes_idx].instructions
 }
-
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	prev := c.scopes[c.scopes_idx].last_instruction
 	last := new(Emitted_Instruction, c.varena)
@@ -314,7 +298,6 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	c.scopes[c.scopes_idx].previous_instruction = prev
 	c.scopes[c.scopes_idx].last_instruction = last
 }
-
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	pos := len(c->current_instructions())
 	n, err := append(c->current_instructions(), ..instructions)
@@ -323,37 +306,29 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	}
 	return pos
 }
-
 replace_last_pop_with_return :: proc(c: ^Compiler) {
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
-
 	c->replace_instructions(last_pop, make_instructions(c.varena, .Ret_V)[:])
-
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 }
-
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
 	append(&c.compiler_state.constants, obj)
 	return len(c.compiler_state.constants) - 1
 }
-
 remove_last_pop :: proc(c: ^Compiler) {
 	ordered_remove(c->current_instructions(), c.scopes[c.scopes_idx].last_instruction.pos)
 	c.scopes[c.scopes_idx].last_instruction = c.scopes[c.scopes_idx].previous_instruction
 }
-
 last_instruction_is :: proc(c: ^Compiler, op: Opcode) -> bool {
 	if len(c->current_instructions()) == 0 do return false
 	return c.scopes[c.scopes_idx].last_instruction.op_code == op
 }
-
 replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte) {
 	ins := c->current_instructions()
 	for i := 0; i < len(new_instructions); i += 1 {
 		ins[pos + i] = new_instructions[i]
 	}
 }
-
 change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)

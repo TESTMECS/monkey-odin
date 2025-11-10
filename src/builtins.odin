@@ -93,7 +93,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 		return b_readf
 	case "writef":
 		return b_writef
-	// quotes
 	case "quote":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				usage := `
@@ -112,10 +111,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 						),
 						false
 				}
-				#partial switch arg in args[0]
-
-
-				{
+				#partial switch arg in args[0] {
 				case int,
 				     bool,
 				     string,
@@ -133,7 +129,6 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 					),
 					false
 			}
-
 	case "unquote":
 		return proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 				usage := `
@@ -144,10 +139,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 
 				if len(args) != 1 do return eval_new_error(e, "'unquote' function error: wrong number of arguments, wants='1', got='%d'.%s", len(args), usage), false
-				#partial switch arg in args[0]
-
-
-				{
+				#partial switch arg in args[0] {
 				case ObjectQuote:
 					return arg, true // for quote, we need to convert the argument back to an AST node
 				}

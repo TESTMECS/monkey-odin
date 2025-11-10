@@ -1,12 +1,10 @@
 #+feature dynamic-literals
 package monkey
-
 import "base:runtime"
 import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:strings"
-
 Evaluator :: struct {
 	_env:   Environment,
 	varena: mem.Allocator,
@@ -14,11 +12,9 @@ Evaluator :: struct {
 	args:   []string,
 	eval:   proc(e: ^Evaluator, node: Ast_Program, allocator: mem.Allocator) -> (ObjectBase, bool),
 }
-
 Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
 	return Evaluator{_env = Env_New(nil, varena), eval = eval_statements, varena = varena}
 }
-
 eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	strings.builder_reset(&e.sb)
 	fmt.sbprintf(&e.sb, str, ..args)
@@ -26,11 +22,9 @@ eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
 	str_clone := strings.clone(err, e.varena)
 	return str_clone
 }
-
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
 	#partial switch &data in node {
-	// statements=>>begin
 	case Ast_Ret:
 		val, ok := eval(e, data.return_value^, current_env)
 		if !ok do return val, false
@@ -41,8 +35,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		_, ok = current_env->get(data.name)
 		if ok do return ObjectBase(eval_new_error(e, "identifier '%s' is already declared", data.name)), false
 		current_env->set(data.name, ToObjectBase(val))
-		return ObjectBase(NULL), true // end <<statements
-	// expressions=>>begin
+		return ObjectBase(NULL), true
 	case Ast_Identifier:
 		return eval_identifier(e, data, current_env)
 	case Ast_Prefix:
@@ -76,36 +69,27 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case Ast_Index:
 		operand, ok := eval(e, data.operand^, current_env)
 		if !ok do return operand, false
-
 		index, index_ok := eval(e, data.index^, current_env)
 		if !index_ok do return index, false
-
-		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index)) // end <<expressions
-	// literals=>>begin
+		return eval_index_expression(e, ToObjectBase(operand), ToObjectBase(index))
 	case int:
 		return ObjectBase(data), true
-
 	case bool:
 		return ObjectBase(data), true
-
 	case string:
 		return ObjectBase(strings.clone(data, e.varena)), true
-
 	case f64:
 		return ObjectBase(data), true
-
 	case Ast_Array:
 		elements, ok := eval_array_of_expressions_registered(e, data, current_env)
 		if !ok do return ObjectBase(elements), false
 		return ObjectBase(elements), true
-
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
-	} // end <<literals
+	}
 	return ObjectBase(eval_new_error(e, "unrecognized Node of type '%v'", Ast__Type__(node))),
 		false
 }
-// statements=>>begin
 eval_statements :: proc(
 	e: ^Evaluator,
 	node: Ast_Program,
@@ -116,19 +100,16 @@ eval_statements :: proc(
 ) {
 	result: Object
 	ok: bool
-
 	for stmt in node {
 		result, ok = eval(e, stmt, &e._env)
 		if !ok do return result.(ObjectBase), false
 		if _, ok_type := result.(ObjectReturn); ok_type do break
 	}
-
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
 		result = ObjectBase(str_obj)
 	}
 	return ToObjectBase(result), true
 }
-
 @(private = "file")
 eval_block_statements :: proc(
 	e: ^Evaluator,
@@ -140,41 +121,33 @@ eval_block_statements :: proc(
 ) {
 	result: Object
 	ok: bool
-
 	for stmt in program {
 		result, ok = eval(e, stmt, current_env)
 		if !ok do return result, false
 
 		if ObjectIsReturn(result) do break
 	}
-
 	if str_obj, is_str := ToObjectBase(result).(string); is_str {
 		result = ObjectBase(strings.clone(str_obj, e.varena))
 	}
-
 	return result, true
-} // end <<statements
-// expressions=>>begin
+}
 eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> ObjectBase {
 	#partial switch data in operand
 	{
 	case bool:
 		return !data
-
 	case ObjectNil:
 		return true
 	}
-
 	return false
 }
-
 eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (ObjectBase, bool) {
 	value, ok := operand.(int)
 	if !ok do return eval_new_error(e, "unknown operator: '-' on type '%v'", ObjectType(operand)), false
 
 	return -value, true
 }
-
 eval_prefix_expression :: proc(
 	e: ^Evaluator,
 	op: string,
@@ -186,15 +159,12 @@ eval_prefix_expression :: proc(
 	switch op {
 	case "!":
 		return eval_bang_operator_expression(e, operand), true
-
 	case "-":
 		return eval_minus_operator_expression(e, operand)
 	}
-
 	return eval_new_error(e, "unknown operator: '%s' for type '%v'", op, ObjectType(operand)),
 		false
 }
-
 @(private = "file")
 eval_integer_infix_expression :: proc(
 	e: ^Evaluator,
@@ -241,7 +211,6 @@ eval_integer_infix_expression :: proc(
 	}
 	return eval_new_error(e, "unknown integer infix operator '%s'", op), false
 }
-
 @(private = "file")
 eval_float_infix_expression :: proc(
 	e: ^Evaluator,
@@ -274,10 +243,8 @@ eval_float_infix_expression :: proc(
 	case "!=":
 		return left != right, true
 	}
-
 	return eval_new_error(e, "unknown float infix operator '%s'", op), false
 }
-
 @(private = "file")
 eval_string_infix_expression :: proc(
 	e: ^Evaluator,
@@ -289,13 +256,10 @@ eval_string_infix_expression :: proc(
 	bool,
 ) {
 	if op != "+" do return eval_new_error(e, "unknown string infix operator '%s'", op), false
-
 	strings.builder_reset(&e.sb)
 	fmt.sbprintf(&e.sb, "%s%s", left, right)
-
 	return strings.to_string(e.sb), true
 }
-
 eval_infix_expression :: proc(
 	e: ^Evaluator,
 	op: string,
@@ -322,7 +286,6 @@ eval_infix_expression :: proc(
 	 else if Ast__Type__(left) == string && Ast__Type__(right) == string {
 		return eval_string_infix_expression(e, op, left.(string), right.(string))
 	}
-
 	switch op {
 	case "==":
 		switch ObjectType(left) {
@@ -406,7 +369,6 @@ eval_infix_expression :: proc(
 		),
 		false
 }
-
 @(private = "file")
 is_truthy :: proc(obj: Object) -> bool {
 	#partial switch data in ToObjectBase(obj)
@@ -418,7 +380,6 @@ is_truthy :: proc(obj: Object) -> bool {
 	}
 	return true
 }
-
 @(private = "file")
 eval_if_expression :: proc(
 	e: ^Evaluator,
@@ -438,7 +399,6 @@ eval_if_expression :: proc(
 	}
 	return ObjectBase(NULL), true
 }
-
 @(private = "file")
 eval_identifier :: proc(
 	e: ^Evaluator,
@@ -449,12 +409,9 @@ eval_identifier :: proc(
 	bool,
 ) {
 	if val, ok := current_env->get(node.value); ok do return val, true
-
 	if builtin := find_builtin_fn(node.value); builtin != nil do return builtin, true
-
 	return eval_new_error(e, "identifier '%s' is not declared", node.value), false
 }
-
 @(private = "file")
 eval_array_of_expressions_fixed :: proc(
 	e: ^Evaluator,
@@ -465,17 +422,13 @@ eval_array_of_expressions_fixed :: proc(
 	bool,
 ) {
 	args := make([dynamic]ObjectBase, 0, len(expressions), e.varena)
-
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
 		append(&args, ToObjectBase(evaluated))
 		if !ok do return args, false
 	}
-
 	return args, true
 }
-
-
 @(private = "file")
 eval_array_of_expressions_registered :: proc(
 	e: ^Evaluator,
@@ -486,16 +439,13 @@ eval_array_of_expressions_registered :: proc(
 	bool,
 ) {
 	args := make(ObjectArray, 0, len(expressions), e.varena)
-
 	for expr in expressions {
 		evaluated, ok := eval(e, expr, current_env)
 		append(&args, ToObjectBase(evaluated))
 		if !ok do return args, false
 	}
-
 	return args, true
 }
-
 @(private = "file")
 extend_function_env :: proc(
 	e: ^Evaluator,
@@ -503,14 +453,11 @@ extend_function_env :: proc(
 	args: [dynamic]ObjectBase,
 ) -> ^Environment {
 	env := Env_Enclosed(fn.env, len(fn.parameters), e.varena)
-
 	for param, idx in fn.parameters {
 		env->set(param.value, args[idx])
 	}
-
 	return env
 }
-
 @(private = "file")
 apply_function :: proc(
 	e: ^Evaluator,
@@ -520,8 +467,7 @@ apply_function :: proc(
 	ObjectBase,
 	bool,
 ) {
-	#partial switch function in fn
-	{
+	#partial switch function in fn {
 	case ^ObjectFunction:
 		if len(function.parameters) != len(args) {
 			return eval_new_error(
@@ -536,15 +482,11 @@ apply_function :: proc(
 		evaluated, success := eval(e, function.body, extended_env)
 		extended_env->free()
 		return ToObjectBase(evaluated), success
-
 	case ObjectBuilinFunction:
 		return function(e, args)
 	}
-
 	return eval_new_error(e, "not a function: '%v'", ObjectType(fn)), false
 }
-
-
 @(private = "file")
 eval_hash_table_literal :: proc(
 	e: ^Evaluator,
@@ -555,17 +497,13 @@ eval_hash_table_literal :: proc(
 	bool,
 ) {
 	ht := make(ObjectHashTable, len(node.pairs), e.varena)
-
 	for pair in node.pairs {
 		key_obj, key_ok := eval(e, pair.key, current_env)
 		if !key_ok do return key_obj, false
-
 		val_obj, val_ok := eval(e, pair.value, current_env)
 		if !val_ok do return val_obj, false
-
 		key_base := ToObjectBase(key_obj)
 		val_base := ToObjectBase(val_obj)
-
 		key_str, key_is_string := key_base.(string)
 		if !key_is_string {
 			log.errorf(
@@ -580,7 +518,6 @@ eval_hash_table_literal :: proc(
 
 	return ObjectBase(ht), true
 }
-
 @(private = "file")
 eval_array_index_expression :: proc(
 	e: ^Evaluator,
@@ -591,15 +528,12 @@ eval_array_index_expression :: proc(
 	bool,
 ) {
 	max := len(array) - 1
-
 	if index < 0 || index > max {
 		return eval_new_error(e, "index out of boundary expect '0..%d', got='%d'", max, index),
 			false
 	}
-
 	return array[index], true
 }
-
 @(private = "file")
 eval_hash_table_index_expression :: proc(
 	e: ^Evaluator,
@@ -610,14 +544,11 @@ eval_hash_table_index_expression :: proc(
 	bool,
 ) {
 	value, ok := ht[key]
-
 	if !ok {
 		return eval_new_error(e, "key '%s' does not exists", key), false
 	}
-
 	return value, true
 }
-
 @(private = "file")
 eval_index_expression :: proc(
 	e: ^Evaluator,

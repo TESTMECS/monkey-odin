@@ -2,7 +2,6 @@ package monkey
 import "core:fmt"
 import "core:os"
 import "core:strings"
-
 b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Print obj">>
@@ -32,21 +31,18 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	strings.builder_reset(&e.sb)
-
-	// Count format specifiers to validate argument count
 	specifier_count := 0
 	for i := 0; i < len(format_str); i += 1 {
 		if format_str[i] == '%' {
-			if i + 1 >= len(format_str) {break} 	// dangling '%'
+			if i + 1 >= len(format_str) {break}
 			if format_str[i + 1] != '%' {
 				specifier_count += 1
 			}
 			 else {
-				i += 1 // skip escaped %%
+				i += 1
 			}
 		}
 	}
-
 	if specifier_count != len(args) - 1 {
 		return eval_new_error(
 				e,
@@ -57,15 +53,11 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			),
 			false
 	}
-
-	// Convert arguments to any type for fmt.sbprintf
 	fmt_args := make([]any, len(args) - 1, e.varena)
 	for i in 1 ..< len(args) {
 		fmt_args[i - 1] = args[i]
 	}
-
 	fmt.sbprintf(&e.sb, format_str, ..fmt_args)
-	// print and return
 	fmt.println(strings.to_string(e.sb))
 	return strings.to_string(e.sb), true
 }
@@ -86,16 +78,13 @@ b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	args_array := make([dynamic]ObjectBase, 0, e.varena)
 	for arg in e.args {
 		arg_clone := strings.clone(arg, e.varena)
 		append(&args_array, arg_clone)
 	}
-
 	return ObjectArray(args_array), true
 }
-
 b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Print obj">>
@@ -105,16 +94,13 @@ b_puts :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	strings.builder_reset(&e.sb)
-
 	for arg in args {
 		ObjectInspect(arg, &e.sb)
 		fmt.sbprintln(&e.sb)
 	}
 	fmt.println(strings.to_string(e.sb)) // also print for multiple statements.
-
 	return strings.to_string(e.sb), true
 }
-
 b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"read file"
@@ -146,7 +132,6 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	if !okk do return eval_new_error(e, "'readf' function error: cannot read file '%s'.%s", file, usage), false
 	return string(file_content), true
 }
-
 b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Write obj to file">>

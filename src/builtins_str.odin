@@ -3,7 +3,6 @@ import "core:crypto/hash"
 import "core:fmt"
 import "core:strings"
 import r "core:text/regex"
-
 b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Hash a string">>
@@ -22,11 +21,7 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-
-
-	{
+	#partial switch arg in args[0] {
 	case string:
 		s_copy := strings.clone(arg, e.varena)
 		digest := hash.hash_string(hash.Algorithm.SHA256, s_copy)
@@ -37,7 +32,6 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		hex_str := strings.to_string(sb)
 		return fmt.tprintfln("SHA-256(\"%s\") = %x", s_copy, hex_str), true
 	}
-
 	return eval_new_error(
 			e,
 			"'hash' function error: not supported for argument of type '%v'.%s",
@@ -46,7 +40,6 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		),
 		false
 }
-
 b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Convert string to uppercase">>
@@ -64,15 +57,10 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-
-
-	{
+	#partial switch arg in args[0] {
 	case string:
 		return strings.to_upper(arg), true
 	}
-
 	return eval_new_error(
 			e,
 			"'upper' function error: not supported for argument of type '%v'.%s",
@@ -81,7 +69,6 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 		),
 		false
 }
-
 b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Convert string to lowercase">>
@@ -99,15 +86,10 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
-	#partial switch arg in args[0]
-
-
-	{
+	#partial switch arg in args[0] {
 	case string:
 		return strings.to_lower(arg), true
 	}
-
 	return eval_new_error(
 			e,
 			"'lower' function error: not supported for argument of type '%v'.%s",
@@ -116,7 +98,6 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 		),
 		false
 }
-
 b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Split string by delimiter">>
@@ -135,7 +116,6 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	str, str_ok := args[0].(string)
 	if !str_ok {
 		return eval_new_error(
@@ -146,7 +126,6 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			),
 			false
 	}
-
 	delimiter, delim_ok := args[1].(string)
 	if !delim_ok {
 		return eval_new_error(
@@ -162,10 +141,8 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	for part in parts {
 		append(&result, ObjectBase(part))
 	}
-
 	return ObjectArray(result), true
 }
-
 b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Join array of strings with delimiter">>
@@ -184,7 +161,6 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	arr, arr_ok := args[0].(ObjectArray)
 	if !arr_ok {
 		return eval_new_error(
@@ -195,7 +171,6 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	delimiter, delim_ok := args[1].(string)
 	if !delim_ok {
 		return eval_new_error(
@@ -206,7 +181,6 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			),
 			false
 	}
-
 	str_parts := make([]string, len(arr), e.varena)
 	for i, item in arr {
 		str, ok := i.(string)
@@ -222,10 +196,8 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		}
 		str_parts[item] = str
 	}
-
 	return strings.join(str_parts, delimiter), true
 }
-
 b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Match string against regex, return array of groups captured >>
@@ -267,16 +239,13 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	regex_c, err := r.create(regex)
 	if err != nil do return eval_new_error(e, "'match' function error: bad regex '%s'.%s", regex, usage), false
 	c, ok := r.match_and_allocate_capture(regex_c, str)
-
 	if !ok do return eval_new_error(e, "'match' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	new_arr := make([dynamic]ObjectBase, 0, e.varena)
-	// skip first group which is original string.
 	for i in c.groups[1:] {
 		append(&new_arr, ObjectBase(i))
 	}
 	return ObjectArray(new_arr), true
 }
-
 b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				Replace string with regex, return string >>
@@ -328,16 +297,12 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	regex_c, err := r.create(regex)
 	if err != nil do return eval_new_error(e, "'replace' function error: bad regex '%s'.%s", regex, usage), false
-
 	c, ok := r.match_and_allocate_capture(regex_c, str)
 	if !ok do return eval_new_error(e, "'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
-
 	out, _ := strings.replace(str, c.groups[1], replacement, 1)
-
 	if !ok do return eval_new_error(e, "'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	return out, true
 }
-
 b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Check if string contains substring">>
@@ -356,7 +321,6 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 			),
 			false
 	}
-
 	str, str_ok := args[0].(string)
 	if !str_ok {
 		return eval_new_error(
@@ -367,7 +331,6 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 			),
 			false
 	}
-
 	substring, substring_ok := args[1].(string)
 	if !substring_ok {
 		return eval_new_error(
@@ -378,7 +341,6 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 			),
 			false
 	}
-
 	return strings.contains(str, substring), true
 }
 
