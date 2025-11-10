@@ -18,7 +18,9 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		op = Opcode(ins[ip])
 
 		switch op {
-		case .Bor, .Ban, .Bxor, .Bnot, .Shl, .Shr, .And, .Or, .Mod:
+		case .Bor, .Bxor, .Ban, .Mod:
+			if err = v->exec_binary_int_op(op, v->pop_vm().(int), v->pop_vm().(int)); err != "" do return
+		case .Bnot, .And, .Or, .Shl, .Shr:
 			unimplemented("Not implemented yet")
 		case .Iter_Init:
 			collection := v->pop_vm()
@@ -272,6 +274,14 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 		result = left * right
 	case .Div:
 		result = left / right
+	case .Bor:
+		result = left | right
+	case .Bxor:
+		result = left ~ right
+	case .Ban:
+		result = left & right
+	case .Mod:
+		result = left % right
 	case:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "unknown integer infix operator '%s'", op)
@@ -472,10 +482,7 @@ exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err
 
 exec_not_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
-	#partial switch operand in o
-
-
-	{
+	#partial switch operand in o {
 	case bool:
 		return v->push_vm(!operand)
 	case ObjectNil:
