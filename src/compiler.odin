@@ -144,6 +144,22 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		if err = c->compile(data.left^); err != "" do return
 		if err = c->compile(data.right^); err != "" do return
 		switch data.op {
+		case ">>":
+			c->emit(.Shr)
+		case "<<":
+			c->emit(.Shl)
+		case "&":
+			c->emit(.Ban)
+		case "^":
+			c->emit(.Bxor)
+		case "|":
+			c->emit(.Bor)
+		case "%":
+			c->emit(.Mod)
+		case "&&":
+			c->emit(.And)
+		case "||":
+			c->emit(.Or)
 		case "+":
 			c->emit(.Add)
 		case "-":

@@ -52,6 +52,7 @@ Opcode :: enum byte {
 	Shr,
 	And,
 	Or,
+	Mod,
 }
 
 Definition :: struct {
@@ -101,6 +102,7 @@ Definition__Map__ := [Opcode]Definition {
 	.Shr        = {"OpShiftRight", {}},
 	.And        = {"OpLogicalAnd", {}},
 	.Or         = {"OpLogicalOr", {}},
+	.Mod        = {"OpModulo", {}},
 }
 
 lookup :: proc(op: Opcode) -> (Definition, bool) {
