@@ -1,5 +1,5 @@
 ![monkey](logo.png)
-# demo.monkey 
+# ![demo.monkey](examples/demo.monkey)
 ```monkey
 #!/usr/bin/env monkey -- 1,2,3 T 24
 
@@ -102,3 +102,4 @@ let blshift = 1 << 2; puts(blshift);
 let lor = true || false; puts(lor);
 let land = true && false; puts(land);
 ```
+## Status: inactive
