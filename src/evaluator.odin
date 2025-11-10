@@ -206,18 +206,26 @@ eval_integer_infix_expression :: proc(
 	bool,
 ) {
 	switch op {
+	case ">>":
+		return left >> uint(right), true
+	case "<<":
+		return left << uint(right), true
+	case "&":
+		return left & right, true
+	case "^":
+		return left ~ right, true
+	case "|":
+		return left | right, true
+	case "%":
+		return left % right, true
 	case "+":
 		return left + right, true
-
 	case "-":
 		return left - right, true
-
 	case "*":
 		return left * right, true
-
 	case "/":
 		return left / right, true
-
 	case "<":
 		return left < right, true
 	case "<=":
@@ -226,14 +234,11 @@ eval_integer_infix_expression :: proc(
 		return left >= right, true
 	case ">":
 		return left > right, true
-
 	case "==":
 		return left == right, true
-
 	case "!=":
 		return left != right, true
 	}
-
 	return eval_new_error(e, "unknown integer infix operator '%s'", op), false
 }
 
@@ -250,31 +255,22 @@ eval_float_infix_expression :: proc(
 	switch op {
 	case "+":
 		return left + right, true
-
 	case "-":
 		return left - right, true
-
 	case "*":
 		return left * right, true
-
 	case "/":
 		return left / right, true
-
 	case "<":
 		return left < right, true
-
 	case ">":
 		return left > right, true
-
 	case "<=":
 		return left <= right, true
-
 	case ">=":
 		return left >= right, true
-
 	case "==":
 		return left == right, true
-
 	case "!=":
 		return left != right, true
 	}
@@ -390,8 +386,17 @@ eval_infix_expression :: proc(
 			}
 			return false, true
 		}
+	case "&&":
+		if ObjectType(left) == bool && ObjectType(right) == bool {
+			return left.(bool) && right.(bool), true
+		}
+		return false, true
+	case "||":
+		if ObjectType(left) == bool && ObjectType(right) == bool {
+			return left.(bool) || right.(bool), true
+		}
+		return false, true
 	}
-
 	return eval_new_error(
 			e,
 			"unknown operator '%s' for types '%v' and '%v'",
@@ -630,5 +635,4 @@ eval_index_expression :: proc(
 	}
 	return eval_new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false
 }
-//end <<expressions
 

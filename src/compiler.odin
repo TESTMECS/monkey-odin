@@ -2,7 +2,6 @@ package monkey
 
 import "core:fmt"
 import "core:log"
-import "core:mem"
 import "core:strings"
 
 CDEBUG :: false
@@ -17,7 +16,7 @@ compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) 
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
 	// run by main.odin, compiles all statements in the program after macro expansion
 	err = ""
-	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena) // macro expansion
+	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
 	if e1 != "" {
 		err = compiler_error(c, "macro expansion error:", e1)
 		return
@@ -56,6 +55,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		after_orelse_pos := len(c->current_instructions())
 		c->change_operand(jump_pos, after_orelse_pos)
 	case Ast_Ternery:
+		// same as above
 		if err = c->compile(data.condition^); err != "" do return err
 		jump_if_not_pos := c->emit(.Jmp_If_Not, 9999)
 		if err = c->compile(data.then^); err != "" do return err
@@ -160,7 +160,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.And)
 		case "||":
 			c->emit(.Or)
-		//
 		case "+":
 			c->emit(.Add)
 		case "-":
@@ -359,70 +358,5 @@ change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
-}
-
-//.bss
-Emitted_Instruction :: struct {
-	op_code: Opcode,
-	pos:     int,
-}
-
-Bytecode :: struct {
-	instructions: []byte,
-	constants:    []ObjectBase,
-}
-
-Compilation_Scope :: struct {
-	instructions:         Instructions,
-	last_instruction:     ^Emitted_Instruction,
-	previous_instruction: ^Emitted_Instruction,
-}
-
-Compiler :: struct {
-	using compiler_state:         Compiler_State,
-	scopes_idx:                   int,
-	compile_program:              proc(
-		c: ^Compiler,
-		node: Ast_Program,
-		mexpand_rec := 1,
-	) -> (
-		err: string
-	),
-	compile:                      proc(c: ^Compiler, node: Node) -> (err: string),
-	emit:                         proc(c: ^Compiler, op: Opcode, operands: ..int) -> int,
-	bytecode:                     proc(c: ^Compiler) -> Bytecode,
-	enter_scope:                  proc(c: ^Compiler),
-	leave_scope:                  proc(c: ^Compiler) -> ^Instructions,
-	current_instructions:         proc(c: ^Compiler) -> ^Instructions,
-	set_last_instruction:         proc(c: ^Compiler, op: Opcode, pos: int),
-	add_instructions:             proc(c: ^Compiler, instructions: []byte) -> int,
-	replace_last_pop_with_return: proc(c: ^Compiler),
-	add_constant:                 proc(c: ^Compiler, obj: ObjectBase) -> int,
-	remove_last_pop:              proc(c: ^Compiler),
-	last_instruction_is:          proc(c: ^Compiler, op: Opcode) -> bool,
-	replace_instructions:         proc(c: ^Compiler, pos: int, new_instructions: []byte),
-	change_operand:               proc(c: ^Compiler, pos: int, new_operand: int),
-}
-
-Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {
-	return Compiler {
-		compiler_state = Compiler_State_New(varena, cli_args, mexpand_rec),
-		scopes_idx = 0,
-		compile_program = compile_program,
-		compile = compile,
-		emit = emit,
-		bytecode = bytecode,
-		enter_scope = enter_scope,
-		leave_scope = leave_scope,
-		current_instructions = current_instructions,
-		set_last_instruction = set_last_instruction,
-		add_instructions = add_instructions,
-		replace_last_pop_with_return = replace_last_pop_with_return,
-		add_constant = add_constant,
-		remove_last_pop = remove_last_pop,
-		last_instruction_is = last_instruction_is,
-		replace_instructions = replace_instructions,
-		change_operand = change_operand,
-	}
 }
 
