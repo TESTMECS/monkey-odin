@@ -95,32 +95,34 @@ Precedence :: enum {
 
 GetPrecedence: [Token_Type]Precedence
 
-init_precedences :: proc() {
-	GetPrecedence = #partial {
-		.Plus               = .Sum,
-		.Minus              = .Sum,
-		.Pipe               = .Sum,
-		.Caret              = .Sum,
-		.Ampersand          = .Sum,
-		.Asterisk           = .Product,
-		.Slash              = .Product,
-		.Percent            = .Product,
-		.RShift             = .Product,
-		.LShift             = .Product,
-		.Less_Than          = .Less_Greater,
-		.Greater_Than       = .Less_Greater,
-		.Greater_Than_Equal = .Less_Greater,
-		.Less_Than_Equal    = .Less_Greater,
-		.Equal              = .Equals,
-		.Not_Equal          = .Equals,
-		.Question_Mark      = .Equals,
-		.Assign             = .Assign,
-		.Left_Paren         = .Call,
-		.Macro              = .Lowest,
-		.Left_Bracket       = .Index,
-		// All others lowest
+	init_precedences :: proc() {
+		GetPrecedence = #partial {
+			.Plus               = .Sum,
+			.Minus              = .Sum,
+			.Pipe               = .Sum,
+			.Caret              = .Sum,
+			.Ampersand          = .Sum,
+			.Lor                = .Sum,
+			.Land               = .Sum,
+			.Asterisk           = .Product,
+			.Slash              = .Product,
+			.Percent            = .Product,
+			.RShift             = .Product,
+			.LShift             = .Product,
+			.Less_Than          = .Less_Greater,
+			.Greater_Than       = .Less_Greater,
+			.Greater_Than_Equal = .Less_Greater,
+			.Less_Than_Equal    = .Less_Greater,
+			.Equal              = .Equals,
+			.Not_Equal          = .Equals,
+			.Question_Mark      = .Equals,
+			.Assign             = .Assign,
+			.Left_Paren         = .Call,
+			.Macro              = .Lowest,
+			.Left_Bracket       = .Index,
+			// All others lowest
+		}
 	}
-}
 
 peek_precedence :: proc(p: ^Parser) -> Precedence {
 	return GetPrecedence[p.peek_token.type]
@@ -132,46 +134,48 @@ cur_precedence :: proc(p: ^Parser) -> Precedence {
 // Expressions_types=>>begin
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
-prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
-	.Identifier   = parse_identifier,
-	.Int          = parse_integer_literal,
-	.String       = parse_string_literal,
-	.Minus        = parse_prefix_expression,
-	.Bang         = parse_prefix_expression,
-	.Left_Paren   = parse_grouped_expression,
-	.Left_Bracket = parse_array_literal,
-	.Left_Brace   = parse_hash_table_literal,
-	.Function     = parse_function_literal,
-	.True         = parse_boolean_literal,
-	.False        = parse_boolean_literal,
-	.If           = parse_if_expression,
-	.Macro        = parse_macro_expression,
-	.For          = parse_for_expression,
-	.Foreach      = parse_foreach_expression,
-}
-infix_parse_fns := #partial [Token_Type]infix_parse_fn {
-	.Plus               = parse_infix_expression,
-	.Minus              = parse_infix_expression,
-	.Asterisk           = parse_infix_expression,
-	.Slash              = parse_infix_expression,
-	.Percent            = parse_infix_expression,
-	.Pipe               = parse_infix_expression,
-	.RShift             = parse_infix_expression,
-	.LShift             = parse_infix_expression,
-	.Ampersand          = parse_infix_expression,
-	.Caret              = parse_infix_expression,
-	.Less_Than          = parse_infix_expression,
-	.Greater_Than       = parse_infix_expression,
-	.Greater_Than_Equal = parse_infix_expression,
-	.Less_Than_Equal    = parse_infix_expression,
-	.Equal              = parse_infix_expression,
-	.Not_Equal          = parse_infix_expression,
-	.Assign             = parse_infix_expression,
-	.Left_Paren         = parse_call_expression,
-	.Left_Bracket       = parse_index_expression,
-	.Question_Mark      = parse_ternary_expression,
-} // end <<Expressions_types
-// Literals=>>begin
+	prefix_parse_fns := #partial [Token_Type]prefix_parse_fn {
+		.Identifier   = parse_identifier,
+		.Int          = parse_integer_literal,
+		.String       = parse_string_literal,
+		.Minus        = parse_prefix_expression,
+		.Bang         = parse_prefix_expression,
+		.Tilde        = parse_prefix_expression,
+		.Left_Paren   = parse_grouped_expression,
+		.Left_Bracket = parse_array_literal,
+		.Left_Brace   = parse_hash_table_literal,
+		.Function     = parse_function_literal,
+		.True         = parse_boolean_literal,
+		.False        = parse_boolean_literal,
+		.If           = parse_if_expression,
+		.Macro        = parse_macro_expression,
+		.For          = parse_for_expression,
+		.Foreach      = parse_foreach_expression,
+	}
+	infix_parse_fns := #partial [Token_Type]infix_parse_fn {
+		.Plus               = parse_infix_expression,
+		.Minus              = parse_infix_expression,
+		.Asterisk           = parse_infix_expression,
+		.Slash              = parse_infix_expression,
+		.Percent            = parse_infix_expression,
+		.Pipe               = parse_infix_expression,
+		.RShift             = parse_infix_expression,
+		.LShift             = parse_infix_expression,
+		.Ampersand          = parse_infix_expression,
+		.Caret              = parse_infix_expression,
+		.Lor                = parse_infix_expression,
+		.Land               = parse_infix_expression,
+		.Less_Than          = parse_infix_expression,
+		.Greater_Than       = parse_infix_expression,
+		.Greater_Than_Equal = parse_infix_expression,
+		.Less_Than_Equal    = parse_infix_expression,
+		.Equal              = parse_infix_expression,
+		.Not_Equal          = parse_infix_expression,
+		.Assign             = parse_infix_expression,
+		.Left_Paren         = parse_call_expression,
+		.Left_Bracket       = parse_index_expression,
+		.Question_Mark      = parse_ternary_expression,
+	}
 parse_identifier :: proc(p: ^Parser) -> Node {
 	return Ast_Identifier{string(p.cur_token.text_slice)}
 }

@@ -20,8 +20,31 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 		switch op {
 		case .Bor, .Bxor, .Ban, .Mod:
 			if err = v->exec_binary_int_op(op, v->pop_vm().(int), v->pop_vm().(int)); err != "" do return
-		case .Bnot, .And, .Or, .Shl, .Shr:
-			unimplemented("Not implemented yet")
+		case .Bnot:
+			operand := v->pop_vm()
+			operand_int, ok := operand.(int)
+			if !ok {
+				strings.builder_reset(&v.sb)
+				fmt.sbprintf(&v.sb, "bitwise NOT operator not supported for type '%v'", reflect.union_variant_typeid(operand))
+				return strings.to_string(v.sb)
+			}
+			if err = v->push_vm(~operand_int); err != "" do return
+		case .And:
+			right := v->pop_vm()
+			left := v->pop_vm()
+			left_truthy := object_is_truthy(left)
+			right_truthy := object_is_truthy(right)
+			if err = v->push_vm(left_truthy && right_truthy); err != "" do return
+		case .Or:
+			right := v->pop_vm()
+			left := v->pop_vm()
+			left_truthy := object_is_truthy(left)
+			right_truthy := object_is_truthy(right)
+			if err = v->push_vm(left_truthy || right_truthy); err != "" do return
+		case .Shl:
+			if err = v->exec_binary_int_op(op, v->pop_vm().(int), v->pop_vm().(int)); err != "" do return
+		case .Shr:
+			if err = v->exec_binary_int_op(op, v->pop_vm().(int), v->pop_vm().(int)); err != "" do return
 		case .Iter_Init:
 			collection := v->pop_vm()
 			#partial switch coll in collection {
@@ -282,6 +305,10 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 		result = left & right
 	case .Mod:
 		result = left % right
+	case .Shl:
+		result = left << uint(right)
+	case .Shr:
+		result = left >> uint(right)
 	case:
 		strings.builder_reset(&v.sb)
 		fmt.sbprintf(&v.sb, "unknown integer infix operator '%s'", op)

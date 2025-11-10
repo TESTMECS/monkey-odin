@@ -191,6 +191,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 			c->emit(.Not)
 		case "-":
 			c->emit(.Neg)
+		case "~":
+			c->emit(.Bnot)
 		case:
 			return compiler_error(c, "unknown prefix operator", data.op)
 		}
