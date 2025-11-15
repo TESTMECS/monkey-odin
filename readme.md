@@ -1,4 +1,4 @@
-![monkey](logo.png)
+[![monkey](logo.png)](https://monkeylang.org/)
 # ![demo.monkey](examples/demo.monkey)
 ```monkey
 #!/usr/bin/env monkey -- 1,2,3 T 24
