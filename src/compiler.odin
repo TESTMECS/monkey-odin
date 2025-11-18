@@ -229,6 +229,8 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
+		if CDEBUG do fmt.printfln("DEBUG: compiling call")
+		if CDEBUG do fmt.printfln("DEBUG: data.function^ %v", data.function^)
 		if err = c->compile(data.function^); err != "" do return err
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return err

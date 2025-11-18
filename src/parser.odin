@@ -104,6 +104,7 @@ init_precedences :: proc() {
 		.Question_Mark      = .Equals,
 		.Assign             = .Assign,
 		.Left_Paren         = .Call,
+		.Arrow              = .Call,
 		.Macro              = .Lowest,
 		.Left_Bracket       = .Index,
 	}
@@ -155,6 +156,7 @@ infix_parse_fns := #partial [Token_Type]infix_parse_fn {
 	.Not_Equal          = parse_infix_expression,
 	.Assign             = parse_infix_expression,
 	.Left_Paren         = parse_call_expression,
+	.Arrow              = parse_arrow_call_expression,
 	.Left_Bracket       = parse_index_expression,
 	.Question_Mark      = parse_ternary_expression,
 }
@@ -317,6 +319,14 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 	}
 	if !expect_peek(p, end) do return nil, false
 	return args, true
+}
+parse_arrow_call_expression :: proc(p: ^Parser, function: Node) -> Node { 	// TODO: fix this
+	next_token(p)
+	expr := parse_expression(p, .Lowest)
+	if expr == nil do return nil
+	new_expr := new_clone(expr, p.varena)
+	new_function := new_clone(function, p.varena)
+	return Ast_Call{function = new_function, arguments = [dynamic]Node{new_expr^}}
 }
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	arguments, ok := parse_expression_list(p, .Right_Paren)

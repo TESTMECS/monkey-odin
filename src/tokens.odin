@@ -48,6 +48,7 @@ Token_Type :: enum {
 	Lor,
 	Land,
 	Tilde,
+	Arrow,
 }
 
 Token :: struct {
