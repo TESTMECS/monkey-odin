@@ -2,6 +2,7 @@
 test_dir := "./examples/"
 exe := "./monkey-odin.out"
 test_file := "arrow_call.monkey"
+ts_parse_test_file := "./examples/demo.monkey"
 
 default: build test
 
@@ -45,4 +46,11 @@ alias cp := commit-push
 commit-push MSG:
 	git add . && git commit -m "{{MSG}}" && git push
 
+alias tsgen := tree-sitter-gen
+tree-sitter-gen:
+	tree-sitter generate
+
+alias tstest := tree-sitter-test
+tree-sitter-test:
+	tree-sitter parse {{ts_parse_test_file}} 
 

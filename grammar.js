@@ -82,6 +82,7 @@ module.exports = grammar({
     // --- Expressions ---
     _expression: ($) =>
       choice(
+        $.assignment_expression,
         $.identifier,
         $.integer,
         $.float,
@@ -98,7 +99,11 @@ module.exports = grammar({
         $.if_expression,
         $.grouped_expression,
       ),
-
+    assignment_expression: ($) =>
+      prec.right(
+        PREC.assignment,
+        seq(field("left", $._expression), "=", field("right", $._expression)),
+      ),
     // Defines "fn(x, y) { ... }"
     function_definition: ($) =>
       seq("fn", field("parameters", $.parameter_list), field("body", $.block)),
@@ -222,6 +227,13 @@ module.exports = grammar({
     hash_pair: ($) =>
       seq(field("key", $._expression), ":", field("value", $._expression)),
 
-    comment: ($) => token(choice(/#!.*/, /\/\/.*/, /\/\*[\s\S]*?\*\//)),
+    comment: ($) =>
+      token(
+        choice(
+          /#.*/, // NEW: Matches # comments (also handles shebangs)
+          /\/\/.*/, // Keep // if you want to support both
+          /\/\*[\s\S]*?\*\//, // Keep /* */ if you want to support both
+        ),
+      ),
   },
 });
