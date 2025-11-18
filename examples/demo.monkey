@@ -2,8 +2,8 @@
 
 # io
 let arr = args(); # =>>["1", "2", "3", "T", "24"]
-printf("args[1]='%d'", int(args()[2]));
-let str_of_file = readf("tests.txt");
+printf("args[1]='%d'", int->args()[2]); # ARROW Functions take 1 argument
+let str_of_file = readf->"tests.txt";
 let res = writef("tests.txt", "hello BANANAS")
 # fn
 let fibonacci = fn(x) {
@@ -37,7 +37,7 @@ foreach k in reverse(keys(d)) {
 }
 # macros
 let check_positive = macro(x) {
-	quote(if (unquote(x) > 0) { puts("positive") } else { puts("zero or negative") })
+	quote(if (unquote(x) > 0) { puts->"positive" } else { puts->"zero or negative" })
 }
 check_positive(5);                   # prints: positive  
 check_positive(0);                   # prints: zero or negative
@@ -68,35 +68,35 @@ let arr2 = ["a", "b", "c"];
 let my_num_arr = [1, 2, 3];
 let v = slice(my_arr, 0, 2); # =>>["1", "2"]
 indexOf(my_arr, "2"); # =>>1
-sum(my_num_arr); # =>>6
-min(my_num_arr); # =>>1
-max(my_num_arr); # =>>3
-puts(len(my_arr)); # =>>3
+sum->my_num_arr; # =>>6
+min->my_num_arr; # =>>1
+max->my_num_arr; # =>>3
+puts->len(my_arr); # =>>3
 #
 # map
 let map = map(arr2, my_arr); # {"a": 1, "b": 2, "c": 3}
-let my_keys = keys(map); # =>["a", "b", "c"]
+let my_keys = keys->map; # =>["a", "b", "c"]
 let my_values = values(map); # =>[1, 2, 3]
 let my_has = has(map, "a"); # =>true
 #
 # math
 let my_rand = rand();
-let my_hash = hash(my_str);
-let my_sin = sin(float(0));
-let my_cos = cos(float(0));
-let my_tan = tan(float(0));
+let my_hash = hash->my_str;
+let my_sin = sin->float(0);
+let my_cos = cos->float(0);
+let my_tan = tan->float(0);
 
 # Bitwise ops
-let bor = 1 | 2; puts(bor);
-let bxor = 1 ^ 2; puts(bxor);
-let band = 1 & 2; puts(band);
-let bnot = ~1; puts(bnot);
+let bor = 1 | 2; puts->bor;
+let bxor = 1 ^ 2; puts->bxor;
+let band = 1 & 2; puts->band;
+let bnot = ~1; puts->bnot;
 
-let mod = 1 % 2; puts(mod);
-let brshift = 4 >> 2; puts(brshift);
-let blshift = 1 << 2; puts(blshift);
+let mod = 1 % 2; puts->mod;
+let brshift = 4 >> 2; puts->brshift;
+let blshift = 1 << 2; puts->blshift;
 
-let lor = true || false; puts(lor);
-let land = true && false; puts(land);
+let lor = true || false; puts->lor;
+let land = true && false; puts->land;
 
 
