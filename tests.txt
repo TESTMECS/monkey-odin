@@ -1,1 +1,1 @@
-hello BANANAS
+(Needed for demo.monkey)

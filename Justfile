@@ -52,5 +52,5 @@ tree-sitter-gen:
 
 alias tstest := tree-sitter-test
 tree-sitter-test:
-	tree-sitter parse {{ts_parse_test_file}} 
+	tree-sitter parse -- --abi 15 {{ts_parse_test_file}} 
 
