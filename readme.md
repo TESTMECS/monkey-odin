@@ -102,12 +102,13 @@ let blshift = 1 << 2; puts->blshift;
 let lor = true || false; puts->lor;
 let land = true && false; puts->land;
 ```
-## Justfile
+## [Justfile](https://github.com/casey/just/tree/master)
 ```shell
 test_dir := "./examples/"
 exe := "./monkey-odin.out"
 test_file := "arrow_call.monkey"
 tree_sitter_parse_test_file := "./examples/demo.monkey"
+
 default:
 	@just --list
 alias t := test
