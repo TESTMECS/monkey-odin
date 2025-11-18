@@ -147,7 +147,7 @@ tree-sitter-test:
 
 
 ```
-![[screenshot.jpg]]
-## Status: hmm....
+![screenshot](screenshot.jpg)
+hmm....
 
 
