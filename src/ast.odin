@@ -4,12 +4,12 @@ import "core:reflect"
 * Copyright (C) 2025 TESTMEE
 * ./ast.odin 
 * This file defines the ast for monkey-odin.
-* Type-Structs<< Ast_Hash_Table, kvpair, Ast_Function, Ast_Macro >>
-	* Stmt-Structs<< Ast_Program, Ast_Block, Ast_Block, Ast_Identifier, Ast_For, Ast_Call, Ast_Ternery, Ast_If >>
-	* Expr-Structs<< Ast_Index, Ast_Ret, Ast_Foreach, Ast_Let, Ast_Prefix, Ast_Infix >>
-* Unions<< Node >>
-* Aliases<< Ast_Type_Value, Ast_Array >>
-* Methods<< Ast__Type__, Ast_IsExpr  >>
+* Type-Structs|Ast_Hash_Table|kvpair|Ast_Function|Ast_Macro|
+	* Stmt-Structs|Ast_Program|Ast_Block|Ast_Block|Ast_Identifier|Ast_For|Ast_Call|Ast_Ternery|Ast_If|
+	* Expr-Structs|Ast_Index|Ast_Ret|Ast_Foreach|Ast_Let|Ast_Prefix|Ast_Infix|
+* Unions|Node|
+* Aliases|Ast_Type_Value|Ast_Array|
+* Methods|Ast__Type__|Ast_IsExpr| 
 */
 Ast__Type__ :: proc {
 	Ast_Type_Value,

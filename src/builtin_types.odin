@@ -6,7 +6,7 @@ import "core:strings"
 * Copyright (C) 2025 TESTMEE
 * ./builtins.odin
 * This file defines the builtin type functions for monkey-odin.
-* << b_str, b_arr, b_int, b_bool, b_float, b_typeof >>
+* |b_str|b_arr|b_int|b_bool|b_float|b_typeof|
 */
 b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
