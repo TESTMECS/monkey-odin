@@ -4,7 +4,7 @@ import "core:log"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* `./compiler.odin`
+* ./compiler.odin
 */
 // run by `main.odin`, compiles all statements in the program after macro expansion
 @(private = "file")

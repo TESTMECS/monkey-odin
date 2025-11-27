@@ -2,34 +2,13 @@ package monkey
 import "core:fmt"
 import "core:reflect"
 import "core:strings"
+/*
+* Copyright (C) 2025 TESTMEE
+* ./object.odin
+*/
 NULL :: ObjectNil{}
 ObjectNil :: struct {}
-ObjectFunction :: struct {
-	parameters: [dynamic]Ast_Identifier,
-	body:       Ast_Block,
-	env:        ^Environment,
-}
-ObjectMacro :: struct {
-	parameters: [dynamic]Ast_Identifier,
-	body:       Ast_Block,
-	env:        ^Environment,
-}
-ObjectQuote :: struct {
-	node: Node,
-}
-ObjectHashTable :: map[string]ObjectBase
-ObjectArray :: distinct [dynamic]ObjectBase
-ObjectCompiledFunction :: struct {
-	instructions:   Instructions,
-	num_locals:     int,
-	num_parameters: int,
-}
-ObjectIterator :: struct {
-	collection: ^ObjectBase,
-	index:      int,
-	keys:       [dynamic]string,
-	is_array:   bool,
-}
+// Base Object union, includes nil.
 ObjectBase :: union {
 	int,
 	f64,
@@ -46,9 +25,38 @@ ObjectBase :: union {
 	ObjectIterator,
 }
 ObjectReturn :: distinct ObjectBase
+// Union of base and return objects, includes nil.
 Object :: union {
 	ObjectBase,
 	ObjectReturn,
+}
+ObjectFunction :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
+	env:        ^Environment, // closure of values + map of string to values.
+}
+ObjectMacro :: struct {
+	parameters: [dynamic]Ast_Identifier,
+	body:       Ast_Block,
+	env:        ^Environment,
+}
+ObjectQuote :: struct {
+	node: Node,
+}
+// Map of string to ObjectBase
+ObjectHashTable :: map[string]ObjectBase
+// Array of ObjectBase, distinct for Hashable.
+ObjectArray :: distinct [dynamic]ObjectBase
+ObjectCompiledFunction :: struct {
+	instructions:   Instructions, // List of bytes
+	num_locals:     int,
+	num_parameters: int,
+}
+ObjectIterator :: struct {
+	collection: ^ObjectBase, // collection to iterate over
+	index:      int, // index of current iteration
+	keys:       [dynamic]string, // keys of collection
+	is_array:   bool,
 }
 ToObjectBase :: proc {
 	to_object_base_val,
@@ -103,6 +111,7 @@ object_type_val :: proc(o: Object) -> typeid {
 object_type_ptr :: proc(o: ^Object) -> typeid {
 	return reflect.union_variant_typeid(ToObjectBase(o^))
 }
+// Display of the object.
 ObjectInspect :: proc {
 	object_inspect_ptr,
 	object_inspect_val,

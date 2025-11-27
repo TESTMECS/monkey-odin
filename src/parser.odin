@@ -1,4 +1,3 @@
-#+feature dynamic-literals
 package monkey
 import "core:fmt"
 import "core:strconv"
@@ -235,13 +234,14 @@ parse_expression_list :: proc(p: ^Parser, end: Token_Type) -> (nodelst: [dynamic
 	return args, true
 }
 @(private = "file")
-parse_arrow_call_expression :: proc(p: ^Parser, function: Node) -> Node { 	// TODO: fix this
+parse_arrow_call_expression :: proc(p: ^Parser, function: Node) -> Node {
 	p->advance()
 	expr := parse_expression(p, .Lowest)
 	if expr == nil do return nil
-	new_expr := new_clone(expr, p.varena)
 	new_function := new_clone(function, p.varena)
-	return Ast_Call{function = new_function, arguments = [dynamic]Node{new_expr^}}
+	args := make([dynamic]Node, p.varena)
+	append(&args, expr)
+	return Ast_Call{function = new_function, arguments = args}
 }
 @(private = "file")
 parse_call_expression :: proc(p: ^Parser, function: Node) -> Node {

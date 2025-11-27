@@ -1,12 +1,14 @@
 package monkey
-
 import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
 import "core:strings"
 import "core:terminal/ansi"
-
+/*
+* Copyright (C) 2025 TESTMEE
+* ./monkey_helpers.odin
+*/
 Monkey_Run_String :: proc(
 	stmts: string,
 	sb: ^strings.Builder,
@@ -114,9 +116,6 @@ monkey_print_help :: proc(sb: ^strings.Builder) {
 		ansi.CSI + ansi.FG_GREEN + ansi.SGR + HELPMSG + ansi.CSI + ansi.RESET + ansi.SGR
 	fmt.sbprintfln(sb, green_greeting)
 	fmt.println(strings.to_string(sb^))
-}
-dbg :: proc(fstring: string, args: ..any) {
-	fmt.printfln(fstring, ..args)
 }
 byte_to_instruction :: proc(bs: []byte) -> []string {
 	ins := make([dynamic]string, 0, len(bs))

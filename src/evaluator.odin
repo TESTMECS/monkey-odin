@@ -1,9 +1,12 @@
-#+feature dynamic-literals
 package monkey
 import "base:runtime"
 import "core:fmt"
 import "core:log"
 import "core:strings"
+/*
+* Copyright (C) 2025 TESTMEE
+* ./evaluator.odin
+*/
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
 	#partial switch &data in node {

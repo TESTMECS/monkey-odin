@@ -1,4 +1,3 @@
-#+feature dynamic-literals
 package monkey
 import "base:runtime"
 import "core:encoding/endian"
@@ -13,8 +12,8 @@ import "core:strings"
 * << Instructions, Opcode >>
 * << Definition, Definition__Map__>>
 */
+// Instruction are just a list of bytes(u8)
 Instructions :: [dynamic]byte
-
 Opcode :: enum byte {
 	Cnst,
 	Arr,
@@ -59,12 +58,11 @@ Opcode :: enum byte {
 	Or,
 	Mod,
 }
-
 Definition :: struct {
 	name:           string,
 	operand_widths: []int,
 }
-
+@(rodata)
 Definition__Map__ := [Opcode]Definition {
 	.Cnst       = {"OpConstant", {2}},
 	.Arr        = {"OpArray", {2}},
@@ -109,7 +107,6 @@ Definition__Map__ := [Opcode]Definition {
 	.Or         = {"OpLogicalOr", {}},
 	.Mod        = {"OpModulo", {}},
 }
-
 lookup :: proc(op: Opcode) -> (Definition, bool) {
 	def := Definition__Map__[Opcode(op)]
 	if def.name == "" do return Definition{}, false

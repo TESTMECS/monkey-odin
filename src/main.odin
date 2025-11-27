@@ -1,5 +1,4 @@
 package monkey
-
 import "core:bufio"
 import "core:fmt"
 import "core:io"
@@ -8,7 +7,10 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:terminal/ansi"
-
+/*
+* Copyright (C) 2025 TESTMEE
+* ./main.odin
+*/
 HELPMSG :: ` Usage: monkey-odin << repl |file <file_path>|bytes <file_path>|mexpand <file_path> |help >>
 Commands:
   repl     Start the Monkey REPL.
@@ -17,8 +19,6 @@ Commands:
 	ast      Run a << file_path >> and prettyprint AST. 
 	mexpand  Run a << file_path >> and prettyprint file with all macros expanded.
   help     Show this help message`
-
-
 main :: proc() {
 	v: virtual.Arena
 	err := virtual.arena_init_growing(&v)
