@@ -147,6 +147,8 @@ tree-sitter-test:
 	tree-sitter parse {{tree_sitter_parse_test_file}} 
 ```
 ![screenshot](images/screenshot.jpg)
+## Status:
+- Currently working on cleaning up the code and making it readable.
 
 
 
