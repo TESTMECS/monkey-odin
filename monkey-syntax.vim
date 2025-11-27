@@ -1,6 +1,6 @@
 " Vim syntax file
-" Language: Monkey (custom language)
-" Maintainer: Drew
+" Language: Monkey 
+" Maintainer: TESTMEE 
 " Version: 1.0
 
 if exists("b:current_syntax")

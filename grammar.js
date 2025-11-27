@@ -230,9 +230,9 @@ module.exports = grammar({
     comment: ($) =>
       token(
         choice(
-          /#.*/, // NEW: Matches # comments (also handles shebangs)
-          /\/\/.*/, // Keep // if you want to support both
-          /\/\*[\s\S]*?\*\//, // Keep /* */ if you want to support both
+          /#.*/, 
+          /\/\/.*/, 
+          /\/\*[\s\S]*?\*\//, 
         ),
       ),
   },
