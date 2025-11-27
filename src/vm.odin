@@ -1,21 +1,20 @@
 package monkey
-
 import "core:fmt"
 import "core:reflect"
 import "core:strings"
-
+/*
+* Copyright (C) 2025 TESTMEE
+* ./vm.odin
+*/
 run_vm :: proc(v: ^VM) -> (err: string) {
 	ip: int
 	ins: []byte
 	op: Opcode
-
 	for v->current_frame().ip < len(v->current_frame().instructions) - 1 {
 		v->current_frame().ip += 1
-
 		ip = v->current_frame().ip
 		ins = v->current_frame().instructions
 		op = Opcode(ins[ip])
-
 		switch op {
 		case .Bor, .Bxor, .Ban, .Mod:
 			if err = v->exec_binary_int_op(op, v->pop_vm().(int), v->pop_vm().(int)); err != "" do return
@@ -218,16 +217,13 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 	}
 	return ""
 }
-
 stack_top :: proc(v: ^VM) -> ObjectBase {
 	if v.sp == 0 do return nil
 	return v.stack[v.sp - 1]
 }
-
 current_frame :: proc(v: ^VM) -> ^Frame {
 	return &v.frames[v.frames_idx - 1]
 }
-
 push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 	if v.sp >= STACK_SIZE {
 		strings.builder_reset(&v.sb)
@@ -238,29 +234,24 @@ push_vm :: proc(v: ^VM, obj: ObjectBase) -> (err: string) {
 	v.sp += 1
 	return ""
 }
-
 pop_vm :: proc(v: ^VM) -> ObjectBase {
 	o := v.stack[v.sp - 1]
 	v.sp -= 1
 	return o
 }
-
 last_popped :: proc(v: ^VM) -> ObjectBase {
 	if v.sp < 0 do return nil
 	return v.stack[v.sp]
 }
-
 exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right := v->pop_vm()
 	left := v->pop_vm()
-
 	_, left_is_int := left.(int)
 	_, right_is_int := right.(int)
 	_, left_is_float := left.(f64)
 	_, right_is_float := right.(f64)
 	_, left_is_string := left.(string)
 	_, right_is_string := right.(string)
-
 	if left_is_int && right_is_int {
 		return v->exec_binary_int_op(op, left.(int), right.(int))
 	}
@@ -286,10 +277,8 @@ exec_binary_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	)
 	return strings.to_string(v.sb)
 }
-
 exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 	result: int
-
 	#partial switch op {
 	case .Add:
 		result = left + right
@@ -318,10 +307,8 @@ exec_binary_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: s
 	}
 	return v->push_vm(result)
 }
-
 exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
 	result: f64
-
 	#partial switch op {
 	case .Add:
 		result = left + right
@@ -338,10 +325,8 @@ exec_binary_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err:
 	}
 	return v->push_vm(result)
 }
-
 exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -> (err: string) {
 	result: string
-
 	#partial switch op {
 	case .Add:
 		strings.builder_reset(&v.sb)
@@ -354,16 +339,13 @@ exec_binary_string_op :: proc(v: ^VM, op: Opcode, left: string, right: string) -
 	}
 	return v->push_vm(result)
 }
-
 exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	right := v->pop_vm()
 	left := v->pop_vm()
-
 	right_val, right_is_int := right.(int)
 	left_val, left_is_int := left.(int)
 	right_val_f, right_is_float := right.(f64)
 	left_val_f, left_is_float := left.(f64)
-
 	if right_is_int && left_is_int {
 		return v->exec_compare_int_op(op, left_val, right_val)
 	}
@@ -462,7 +444,6 @@ exec_compare_op :: proc(v: ^VM, op: Opcode) -> (err: string) {
 	fmt.sbprintf(&v.sb, "unknown operator '%s' for types '%v' and '%v'", op, left, right)
 	return strings.to_string(v.sb)
 }
-
 exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: string) {
 	result: bool
 	#partial switch op {
@@ -485,7 +466,6 @@ exec_compare_int_op :: proc(v: ^VM, op: Opcode, left: int, right: int) -> (err: 
 	}
 	return v->push_vm(result)
 }
-
 exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err: string) {
 	result: bool
 	#partial switch op {
@@ -508,7 +488,6 @@ exec_compare_float_op :: proc(v: ^VM, op: Opcode, left: f64, right: f64) -> (err
 	}
 	return v->push_vm(result)
 }
-
 exec_not_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	#partial switch operand in o {
@@ -520,7 +499,6 @@ exec_not_op :: proc(v: ^VM) -> (err: string) {
 		return v->push_vm(false)
 	}
 }
-
 exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	o := v->pop_vm()
 	operand, ok := o.(int)
@@ -535,7 +513,6 @@ exec_neg_op :: proc(v: ^VM) -> (err: string) {
 	}
 	return v->push_vm(-operand)
 }
-
 exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	_, operand_is_array := operand.(ObjectArray)
 	_, operand_is_ht := operand.(ObjectHashTable)
@@ -558,25 +535,21 @@ exec_idx_expr :: proc(v: ^VM, operand, index: ObjectBase) -> (err: string) {
 	)
 	return strings.to_string(v.sb)
 }
-
 exec_arr_idx :: proc(v: ^VM, arr: ObjectArray, index: int) -> (err: string) {
 	max := len(arr) - 1
 	if index < 0 || index > max do return v->push_vm(NULL)
 	return v->push_vm(arr[index])
 }
-
 exec_ht_idx :: proc(v: ^VM, ht: ObjectHashTable, key: string) -> (err: string) {
 	value, key_exists := ht[key]
 	if !key_exists do return v->push_vm(NULL)
 	return v->push_vm(value)
 }
-
 exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	if v.sp - 1 - int(num_args) < 0 {
 		err = "stack underflow in function call"
 		return
 	}
-
 	callee_idx := v.sp - 1 - int(num_args)
 	callee := v.stack[callee_idx]
 	#partial switch fn in callee {
@@ -630,16 +603,13 @@ exec_call :: proc(v: ^VM, num_args: int) -> (err: string) {
 	fmt.sbprintf(&v.sb, "not a function: '%v'", ObjectType(callee))
 	return strings.to_string(v.sb)
 }
-
 build_array :: proc(v: ^VM, start, end: int) -> ObjectBase {
 	elements := make(ObjectArray, 0, v.varena)
-
 	for i := start; i < end; i += 1 {
 		append(&elements, v.stack[i])
 	}
 	return elements
 }
-
 build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 	ht := make(ObjectHashTable, (end - start) / 2, v.varena)
 
@@ -657,17 +627,14 @@ build_hash_table :: proc(v: ^VM, start, end: int) -> (ObjectBase, string) {
 	}
 	return ht, ""
 }
-
 pop_frame :: proc(v: ^VM) -> ^Frame {
 	v.frames_idx -= 1
 	return &v.frames[v.frames_idx]
 }
-
 push_frame :: proc(v: ^VM, f: Frame) {
 	v.frames[v.frames_idx] = f
 	v.frames_idx += 1
 }
-
 exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: string) {
 	_, operand_is_array := operand.(ObjectArray)
 	_, operand_is_ht := operand.(ObjectHashTable)
@@ -693,7 +660,6 @@ exec_set_idx_expr :: proc(v: ^VM, operand, index, value: ObjectBase) -> (err: st
 	)
 	return strings.to_string(v.sb)
 }
-
 exec_arr_set_idx :: proc(
 	v: ^VM,
 	arr: ObjectArray,
