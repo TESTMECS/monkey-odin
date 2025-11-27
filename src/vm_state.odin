@@ -23,7 +23,7 @@ DEBUG_VM :: false
 
 VM :: struct {
 	varena:                 mem.Allocator,
-	compiler_state:         ^Compiler_State,
+	compiler_state:         ^Compiler,
 	constants:              []ObjectBase,
 	frames:                 []Frame,
 	frames_idx:             int,
@@ -65,9 +65,9 @@ VM :: struct {
 	push_frame:             proc(v: ^VM, f: Frame),
 }
 
-Vm_New :: proc(bytecode: Bytecode, compiler_state: ^Compiler_State, varena: mem.Allocator) -> VM {
+Vm_New :: proc(bytecode: Bytecode, compiler: ^Compiler, varena: mem.Allocator) -> VM {
 	vm := VM {
-		compiler_state        = compiler_state,
+		compiler_state        = compiler,
 		stack                 = make([]ObjectBase, STACK_SIZE, varena),
 		frames                = make([]Frame, MAX_FRAMES, varena),
 		frames_idx            = 0,

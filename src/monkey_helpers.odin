@@ -29,7 +29,7 @@ Monkey_Run_String :: proc(
 		return nil
 	}
 	bytecode := c->bytecode()
-	vm := Vm_New(bytecode, &c.compiler_state, varena)
+	vm := Vm_New(bytecode, &c, varena)
 	vm_err := vm->run_vm()
 	if vm_err != "" {
 		monkey_err("Error running file: ", 1, sb, exit, vm_err)

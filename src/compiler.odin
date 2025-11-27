@@ -276,7 +276,7 @@ emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 }
 // Returns the bytecode for the current program.
 bytecode :: proc(c: ^Compiler) -> Bytecode {
-	return {instructions = c->current_instructions()[:], constants = c.compiler_state.constants[:]}
+	return {instructions = c->current_instructions()[:], constants = c.constants[:]}
 }
 enter_scope :: proc(c: ^Compiler) {
 	scope := Compilation_Scope{}
@@ -321,8 +321,8 @@ replace_last_pop_with_return :: proc(c: ^Compiler) {
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 }
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
-	append(&c.compiler_state.constants, obj)
-	return len(c.compiler_state.constants) - 1
+	append(&c.constants, obj)
+	return len(c.constants) - 1
 }
 remove_last_pop :: proc(c: ^Compiler) {
 	ordered_remove(c->current_instructions(), c.scopes[c.scopes_idx].last_instruction.pos)
@@ -342,5 +342,23 @@ change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
+}
+@(rodata)
+COMPILERVTABLE := Compiler_VTable {
+	compile_program              = compile_program,
+	compile                      = compile,
+	emit                         = emit,
+	bytecode                     = bytecode,
+	enter_scope                  = enter_scope,
+	leave_scope                  = leave_scope,
+	current_instructions         = current_instructions,
+	set_last_instruction         = set_last_instruction,
+	add_instructions             = add_instructions,
+	replace_last_pop_with_return = replace_last_pop_with_return,
+	add_constant                 = add_constant,
+	remove_last_pop              = remove_last_pop,
+	last_instruction_is          = last_instruction_is,
+	replace_instructions         = replace_instructions,
+	change_operand               = change_operand,
 }
 
