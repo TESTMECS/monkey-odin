@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:strings"
 // Entry Point for the Parser
+@(private = "file")
 parse_program :: proc(p: ^Parser) -> Ast_Program {
 	p->advance()
 	p->advance()
@@ -16,10 +17,12 @@ parse_program :: proc(p: ^Parser) -> Ast_Program {
 	}
 	return program
 }
+@(private = "file")
 advance :: proc(p: ^Parser) {
 	p.cur_token = p.peek_token
 	p.peek_token = p.l->next_token()
 }
+@(private = "file")
 parse_statement :: proc(p: ^Parser) -> Node {
 	#partial switch p.cur_token.type {
 	case .Let:
@@ -32,20 +35,8 @@ parse_statement :: proc(p: ^Parser) -> Node {
 	return parse_expression_statement(p)
 }
 @(private = "file")
-parser_new_error :: proc(p: ^Parser, str: string, args: ..any) {
-	strings.builder_reset(&p.sb)
-	fmt.sbprintf(&p.sb, str, ..args)
-	err := strings.to_string(p.sb)
-	append(&p.errors, err)
-	return
-}
-@(private = "file")
-peek_error :: proc(p: ^Parser, t: Token_Type) {
-	parser_new_error(p, "expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
-}
-@(private = "file")
 no_prefix_parse_fn_error :: proc(p: ^Parser, t: Token_Type) {
-	parser_new_error(p, "unexpected token '%v'", t)
+	p->parse_error("unexpected token '%v'", t)
 }
 @(private = "file")
 current_token_is :: proc(p: ^Parser, t: Token_Type) -> bool {
@@ -86,14 +77,14 @@ parse_integer_literal :: proc(p: ^Parser) -> Node {
 	if strings.contains(text, ".") {
 		value, ok := strconv.parse_f64(text)
 		if !ok {
-			parser_new_error(p, "could not parse %s as float", p.l.input)
+			p->parse_error("could not parse %s as float", p.l.input)
 			return nil
 		}
 		return value
 	}
 	value, ok := strconv.parse_int(text)
 	if !ok {
-		parser_new_error(p, "could not parse %s as integer", p.l.input)
+		p->parse_error("could not parse %s as integer", p.l.input)
 		return nil
 	}
 	return value
@@ -119,8 +110,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		key_expr := parse_expression(p, .Lowest)
 		key_str_node, ok := key_expr.(string)
 		if !ok {
-			parser_new_error(
-				p,
+			p->parse_error(
 				"expected hash key to be a string literal, got '%s' instead.",
 				Ast__Type__(key_expr),
 			)
@@ -131,7 +121,7 @@ parse_hash_table_literal :: proc(p: ^Parser) -> Node {
 		p->advance()
 		value_expr := parse_expression(p, .Lowest)
 		if key_str in result.table {
-			parser_new_error(p, "duplicate key '%s' in hash literal", key_str)
+			p->parse_error("duplicate key '%s' in hash literal", key_str)
 			return nil
 		}
 		new_pair := kvpair {
@@ -382,6 +372,18 @@ parse_expression_statement :: proc(p: ^Parser) -> Node {
 	expr := parse_expression(p, .Lowest)
 	if peek_token_is(p, .Semicolon) do p->advance()
 	return expr
+}
+@(private = "file")
+parser_new_error :: proc(p: ^Parser, str: string, args: ..any) {
+	strings.builder_reset(&p.sb)
+	fmt.sbprintf(&p.sb, str, ..args)
+	err := strings.to_string(p.sb)
+	append(&p.errors, err)
+	return
+}
+@(private = "file")
+peek_error :: proc(p: ^Parser, t: Token_Type) {
+	p->parse_error("expected next token: '%s', got '%s' instead.", t, p.peek_token.type)
 }
 prefix_parse_fn :: #type proc(p: ^Parser) -> Node
 infix_parse_fn :: #type proc(p: ^Parser, left: Node) -> Node
