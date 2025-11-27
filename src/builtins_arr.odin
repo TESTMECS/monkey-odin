@@ -15,8 +15,7 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'sort' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -25,8 +24,7 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'sort' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -37,8 +35,7 @@ b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for elem in arr {
 		_, ok := elem.(int)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'sort' function error: all elements must be integers, got '%v'.%s",
 					ObjectType(elem),
 					usage,
@@ -69,8 +66,7 @@ b_reverse :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'reverse' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -79,8 +75,7 @@ b_reverse :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'reverse' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -104,8 +99,7 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 3 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"function error: wrong number of arguments, wants='3', got='%d'.%s",
 				len(args),
 				usage,
@@ -114,8 +108,7 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'slice' function error: first argument must be array, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -124,8 +117,7 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	start, start_ok := args[1].(int)
 	if !start_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'slice' function error: start index must be integer, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -134,8 +126,7 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	end, end_ok := args[2].(int)
 	if !end_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'slice' function error: end index must be integer, got '%v'.%s",
 				ObjectType(args[2]),
 				usage,
@@ -143,8 +134,7 @@ b_slice :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			false
 	}
 	if start < 0 || end > len(arr) || start > end {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'slice' function error: invalid slice range [%d, %d] for array of length %d.%s",
 				start,
 				end,
@@ -167,8 +157,7 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'indexOf' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 			),
@@ -176,8 +165,7 @@ b_indexOf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'indexOf' function error: first argument must be array, got '%v'.%s",
 				ObjectType(args[0]),
 			),
@@ -224,8 +212,7 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'sum' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -234,8 +221,7 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'sum' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -246,8 +232,7 @@ b_sum :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for elem in arr {
 		value, ok := elem.(int)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'sum' function error: all elements must be integers, got '%v'.%s",
 					ObjectType(elem),
 					usage,
@@ -267,8 +252,7 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'min' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -277,8 +261,7 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'min' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -286,8 +269,7 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			false
 	}
 	if len(arr) == 0 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'min' function error: cannot find minimum of empty array.%s",
 				usage,
 			),
@@ -296,8 +278,7 @@ b_min :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for elem in arr {
 		_, ok := elem.(int)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'min' function error: all elements must be integers, got '%v'.%s",
 					ObjectType(elem),
 					usage,
@@ -323,8 +304,7 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'max' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -333,8 +313,7 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'max' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -342,8 +321,7 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			false
 	}
 	if len(arr) == 0 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'max' function error: cannot find maximum of empty array.%s",
 				usage,
 			),
@@ -352,8 +330,7 @@ b_max :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for elem in arr {
 		_, ok := elem.(int)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'max' function error: all elements must be integers, got '%v'.%s",
 					ObjectType(elem),
 					usage,
@@ -379,8 +356,7 @@ b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'push' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -389,8 +365,7 @@ b_push :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'push' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -411,8 +386,7 @@ b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'rest' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -421,8 +395,7 @@ b_rest :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'rest' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -446,8 +419,7 @@ b_last :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'last' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -456,8 +428,7 @@ b_last :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'last' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -476,8 +447,7 @@ b_first :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'first' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -486,8 +456,7 @@ b_first :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'first' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -506,8 +475,7 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'len' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -520,8 +488,7 @@ b_len :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case ObjectArray:
 		return len(arg), true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'len' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -539,8 +506,7 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 3 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'range' function error: wrong number of arguments, wants='3', got='%d'.%s",
 				len(args),
 				usage,
@@ -549,8 +515,7 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	start, start_ok := args[0].(int)
 	if !start_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'range' function error: start index must be integer, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -559,8 +524,7 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	end, end_ok := args[1].(int)
 	if !end_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'range' function error: end index must be integer, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -569,8 +533,7 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	step, step_ok := args[2].(int)
 	if !step_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'range' function error: step must be integer, got '%v'.%s",
 				ObjectType(args[2]),
 				usage,
@@ -578,8 +541,7 @@ b_range :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			false
 	}
 	if step == 0 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'range' function error: step cannot be 0, got '%v'.%s",
 				ObjectType(args[2]),
 				usage,
@@ -601,8 +563,7 @@ b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'pop' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -611,8 +572,7 @@ b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, ok := args[0].(ObjectArray)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'pop' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -620,7 +580,7 @@ b_pop :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			false
 	}
 	if len(arr) == 0 {
-		return eval_new_error(e, "'pop' function error: cannot pop from empty array.%s", usage),
+		return e->eval_new_error("'pop' function error: cannot pop from empty array.%s", usage),
 			false
 	}
 	new_arr := make([dynamic]ObjectBase, len(arr), e.varena)

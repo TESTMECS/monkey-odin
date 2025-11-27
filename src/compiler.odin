@@ -4,16 +4,10 @@ import "core:log"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./compiler.odin
-* This file defines the Compiler for the Monkey-odin language.
+* `./compiler.odin`
 */
-compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
-	strings.builder_reset(&c.sb)
-	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
-	err = strings.to_string(c.sb)
-	return
-}
 // run by `main.odin`, compiles all statements in the program after macro expansion
+@(private = "file")
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
 	err = ""
 	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
@@ -30,6 +24,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 	return
 }
 // Main procedure for compiling an AST.
+@(private = "file")
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	switch data in ast {
@@ -268,6 +263,7 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	return err
 }
 // Emits an instruction to the current scope.
+@(private = "file")
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
@@ -275,9 +271,11 @@ emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 	return pos
 }
 // Returns the bytecode for the current program.
+@(private = "file")
 bytecode :: proc(c: ^Compiler) -> Bytecode {
 	return {instructions = c->current_instructions()[:], constants = c.constants[:]}
 }
+@(private = "file")
 enter_scope :: proc(c: ^Compiler) {
 	scope := Compilation_Scope{}
 	instr := make(Instructions, 0, c.varena)
@@ -287,6 +285,7 @@ enter_scope :: proc(c: ^Compiler) {
 	symbol_clone := new_clone(c.symbol_table, c.varena) // Clone
 	c.symbol_table = Symbol_Table_New(c.varena, outer = symbol_clone)
 }
+@(private = "file")
 leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	instructions := c->current_instructions()
 	pop(&c.scopes)
@@ -294,9 +293,11 @@ leave_scope :: proc(c: ^Compiler) -> ^Instructions {
 	c.symbol_table = c.symbol_table.outer^
 	return instructions
 }
+@(private = "file")
 current_instructions :: proc(c: ^Compiler) -> ^Instructions {
 	return &c.scopes[c.scopes_idx].instructions
 }
+@(private = "file")
 set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	prev := c.scopes[c.scopes_idx].last_instruction
 	last := new(Emitted_Instruction, c.varena)
@@ -306,6 +307,7 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	c.scopes[c.scopes_idx].last_instruction = last
 }
 // Adds instructions to the current scope.
+@(private = "file")
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	pos := len(c->current_instructions())
 	n, err := append(c->current_instructions(), ..instructions)
@@ -315,33 +317,46 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	return pos
 }
 // Replaces the last pop instruction with a return instruction.
+@(private = "file")
 replace_last_pop_with_return :: proc(c: ^Compiler) {
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
 	c->replace_instructions(last_pop, make_instructions(c.varena, .Ret_V)[:])
 	c.scopes[c.scopes_idx].last_instruction.op_code = .Ret_V
 }
+@(private = "file")
 add_constant :: proc(c: ^Compiler, obj: ObjectBase) -> int {
 	append(&c.constants, obj)
 	return len(c.constants) - 1
 }
+@(private = "file")
 remove_last_pop :: proc(c: ^Compiler) {
 	ordered_remove(c->current_instructions(), c.scopes[c.scopes_idx].last_instruction.pos)
 	c.scopes[c.scopes_idx].last_instruction = c.scopes[c.scopes_idx].previous_instruction
 }
+@(private = "file")
 last_instruction_is :: proc(c: ^Compiler, op: Opcode) -> bool {
 	if len(c->current_instructions()) == 0 do return false
 	return c.scopes[c.scopes_idx].last_instruction.op_code == op
 }
+@(private = "file")
 replace_instructions :: proc(c: ^Compiler, pos: int, new_instructions: []byte) {
 	ins := c->current_instructions()
 	for i := 0; i < len(new_instructions); i += 1 {
 		ins[pos + i] = new_instructions[i]
 	}
 }
+@(private = "file")
 change_operand :: proc(c: ^Compiler, pos: int, new_operand: int) {
 	op := Opcode(c->current_instructions()[pos])
 	new_instructions := make_instructions(c.varena, op, new_operand)
 	c->replace_instructions(pos, new_instructions[:])
+}
+@(private = "file")
+compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
+	strings.builder_reset(&c.sb)
+	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
+	err = strings.to_string(c.sb)
+	return
 }
 @(rodata)
 COMPILERVTABLE := Compiler_VTable {

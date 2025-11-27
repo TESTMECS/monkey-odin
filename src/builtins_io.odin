@@ -18,8 +18,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 
 	if len(args) < 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'printf' function error: wrong number of arguments, wants=<<Greater than or equal to 1>>, got='%d'.%s",
 				len(args),
 				usage,
@@ -28,8 +27,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 	format_str, ok := args[0].(string)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'printf' function error: first argument must be a valid format string, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -50,8 +48,7 @@ b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 		}
 	}
 	if specifier_count != len(args) - 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'printf' function error: format string expects %d arguments, got %d.%s",
 				specifier_count,
 				len(args) - 1,
@@ -76,8 +73,7 @@ b_args :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 0 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'args' function error: wrong number of arguments, wants='0', got='%d'.%s",
 				len(args),
 				usage,
@@ -116,8 +112,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'readf' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -126,8 +121,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	file, ok := args[0].(string)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'readf' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -135,7 +129,7 @@ b_readf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			false
 	}
 	file_content, okk := os.read_entire_file(file)
-	if !okk do return eval_new_error(e, "'readf' function error: cannot read file '%s'.%s", file, usage), false
+	if !okk do return e->eval_new_error("'readf' function error: cannot read file '%s'.%s", file, usage), false
 	return string(file_content), true
 }
 b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -148,8 +142,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'writef' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -158,8 +151,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 	file, ok := args[0].(string)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'writef' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -168,8 +160,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 	str_obj, okk := args[1].(string)
 	if !okk {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'writef' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -177,7 +168,7 @@ b_writef :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 			false
 	}
 	okkk := os.write_entire_file(file, transmute([]u8)str_obj)
-	if !okkk do return eval_new_error(e, "'writef' function error: cannot write file '%s'.%s", file, usage), false
+	if !okkk do return e->eval_new_error("'writef' function error: cannot write file '%s'.%s", file, usage), false
 	return true, true
 }
 

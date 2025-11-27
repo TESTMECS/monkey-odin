@@ -19,8 +19,7 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'hash' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -38,8 +37,7 @@ b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 		hex_str := strings.to_string(sb)
 		return fmt.tprintfln("SHA-256(\"%s\") = %x", s_copy, hex_str), true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'hash' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -55,8 +53,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'upper' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -67,8 +64,7 @@ b_upper :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	case string:
 		return strings.to_upper(arg), true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'upper' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -84,8 +80,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'lower' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -96,8 +91,7 @@ b_lower :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	case string:
 		return strings.to_lower(arg), true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'lower' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -114,8 +108,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'split' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -124,8 +117,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	str, str_ok := args[0].(string)
 	if !str_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'split' function error: first argument must be string, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -134,8 +126,7 @@ b_split :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	delimiter, delim_ok := args[1].(string)
 	if !delim_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'split' function error: second argument must be string, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -159,8 +150,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'join' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -169,8 +159,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	arr, arr_ok := args[0].(ObjectArray)
 	if !arr_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'join' function error: first argument must be array, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -179,8 +168,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	delimiter, delim_ok := args[1].(string)
 	if !delim_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'join' function error: second argument must be string, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -191,8 +179,7 @@ b_join :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for i, item in arr {
 		str, ok := i.(string)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'join' function error: array elements must be strings, got '%v' at index %d.%s",
 					ObjectType(i),
 					i,
@@ -214,8 +201,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'match' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -224,8 +210,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	str, str_ok := args[0].(string)
 	if !str_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'match' function error: first argument must be string, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -234,8 +219,7 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	}
 	regex, regex_ok := args[1].(string)
 	if !regex_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'match' function error: second argument must be string, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -243,9 +227,9 @@ b_match :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 			false
 	}
 	regex_c, err := r.create(regex)
-	if err != nil do return eval_new_error(e, "'match' function error: bad regex '%s'.%s", regex, usage), false
+	if err != nil do return e->eval_new_error("'match' function error: bad regex '%s'.%s", regex, usage), false
 	c, ok := r.match_and_allocate_capture(regex_c, str)
-	if !ok do return eval_new_error(e, "'match' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
+	if !ok do return e->eval_new_error("'match' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	new_arr := make([dynamic]ObjectBase, 0, e.varena)
 	for i in c.groups[1:] {
 		append(&new_arr, ObjectBase(i))
@@ -263,8 +247,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 
 
 	if len(args) != 3 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'replace' function error: wrong number of arguments, wants='3', got='%d'.%s",
 				len(args),
 				usage,
@@ -273,8 +256,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	str, str_ok := args[0].(string)
 	if !str_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'replace' function error: first argument must be string, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -283,8 +265,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	regex, regex_ok := args[1].(string)
 	if !regex_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'replace' function error: second argument must be string, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -293,8 +274,7 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 	}
 	replacement, replacement_ok := args[2].(string)
 	if !replacement_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'replace' function error: third argument must be string, got '%v'.%s",
 				ObjectType(args[2]),
 				usage,
@@ -302,11 +282,11 @@ b_replace :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool
 			false
 	}
 	regex_c, err := r.create(regex)
-	if err != nil do return eval_new_error(e, "'replace' function error: bad regex '%s'.%s", regex, usage), false
+	if err != nil do return e->eval_new_error("'replace' function error: bad regex '%s'.%s", regex, usage), false
 	c, ok := r.match_and_allocate_capture(regex_c, str)
-	if !ok do return eval_new_error(e, "'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
+	if !ok do return e->eval_new_error("'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	out, _ := strings.replace(str, c.groups[1], replacement, 1)
-	if !ok do return eval_new_error(e, "'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
+	if !ok do return e->eval_new_error("'replace' function error: cannot match string '%s' against regex '%s'.%s", str, regex, usage), false
 	return out, true
 }
 b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
@@ -319,8 +299,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'contains' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -329,8 +308,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 	}
 	str, str_ok := args[0].(string)
 	if !str_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'contains' function error: first argument must be string, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -339,8 +317,7 @@ b_contains :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, boo
 	}
 	substring, substring_ok := args[1].(string)
 	if !substring_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'contains' function error: second argument must be string, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,

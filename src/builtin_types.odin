@@ -17,8 +17,7 @@ b_str :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'str' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -39,8 +38,7 @@ b_arr :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'arr' function error: wrong number of arguments, wants='1', got='%d'",
 				len(args),
 			),
@@ -48,8 +46,7 @@ b_arr :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	str_arg, ok := args[0].(string)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'arr' function error: not supported for argument of type '%v'",
 				ObjectType(args[0]),
 			),
@@ -72,8 +69,7 @@ b_int :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'int' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -84,8 +80,7 @@ b_int :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case string:
 		value, ok := strconv.parse_int(arg)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'int' function error: cannot convert '%s' to int.%s",
 					arg,
 					usage,
@@ -96,8 +91,7 @@ b_int :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case int:
 		return arg, true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'int' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -117,8 +111,7 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'bool' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -129,8 +122,7 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case string:
 		value, ok := strconv.parse_bool(arg)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'bool' function error: cannot convert '%s' to bool.%s",
 					arg,
 					usage,
@@ -141,8 +133,7 @@ b_bool :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	case int:
 		return arg != 0, true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'bool' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -158,8 +149,7 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'float' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -170,8 +160,7 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	case string:
 		value, ok := strconv.parse_f64(arg)
 		if !ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'float' function error: cannot convert '%s' to float.%s",
 					arg,
 					usage,
@@ -184,8 +173,7 @@ b_float :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) 
 	case f64:
 		return arg, true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"'float' function error: not supported for argument of type '%v'.%s",
 			ObjectType(args[0]),
 			usage,
@@ -201,8 +189,7 @@ b_typeof :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'typeof' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,

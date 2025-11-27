@@ -14,8 +14,7 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'keys' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -24,8 +23,7 @@ b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'keys' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -47,8 +45,7 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 
 
 	if len(args) != 1 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'values' function error: wrong number of arguments, wants='1', got='%d'.%s",
 				len(args),
 				usage,
@@ -57,8 +54,7 @@ b_values :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool)
 	}
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'values' function error: not supported for argument of type '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -81,8 +77,7 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'has' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -91,8 +86,7 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	hash_table, ok := args[0].(ObjectHashTable)
 	if !ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'has' function error: first argument must be hash table, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -101,8 +95,7 @@ b_has :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	key_str, key_ok := args[1].(string)
 	if !key_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'has' function error: hash table keys must be strings, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -122,8 +115,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 
 
 	if len(args) != 2 {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'map' function error: wrong number of arguments, wants='2', got='%d'.%s",
 				len(args),
 				usage,
@@ -132,8 +124,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	keys_arr, keys_ok := args[0].(ObjectArray)
 	if !keys_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'map' function error: first argument must be array, got '%v'.%s",
 				ObjectType(args[0]),
 				usage,
@@ -142,8 +133,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	}
 	values_arr, values_ok := args[1].(ObjectArray)
 	if !values_ok {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'map' function error: second argument must be array, got '%v'.%s",
 				ObjectType(args[1]),
 				usage,
@@ -151,8 +141,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 			false
 	}
 	if len(keys_arr) != len(values_arr) {
-		return eval_new_error(
-				e,
+		return e->eval_new_error(
 				"'map' function error: arrays must have same length, keys='%d', values='%d'.%s",
 				len(keys_arr),
 				len(values_arr),
@@ -164,8 +153,7 @@ b_map :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	for i in 0 ..< len(keys_arr) {
 		key_str, key_ok := keys_arr[i].(string)
 		if !key_ok {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"'map' function error: all keys must be strings, got '%v' at index %d.%s",
 					ObjectType(keys_arr[i]),
 					i,

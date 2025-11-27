@@ -137,6 +137,10 @@ is_letter :: proc(ch: u8) -> bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
 @(private = "file")
+peek_char :: proc(l: ^Lexer) -> u8 {
+	return l.read_pos >= len(l.input) ? 0 : l.input[l.read_pos]
+}
+@(private = "file")
 is_digit :: proc(ch: u8) -> bool {
 	return '0' <= ch && ch <= '9'
 }
@@ -175,10 +179,34 @@ create_string :: proc(l: ^Lexer) -> Token {
 	}
 	return GetToken(.String, l.input, start, l.pos - start)
 }
-
-@(private = "file")
-peek_char :: proc(l: ^Lexer) -> u8 {
-	return l.read_pos >= len(l.input) ? 0 : l.input[l.read_pos]
+GetToken :: proc(type: Token_Type, input: []u8, start: int, length: int) -> Token {
+	return {type, input[start:start + length]}
+}
+UpdateKwType :: proc(tok: ^Token) {
+	switch (string(tok.text_slice)) {
+	case "fn":
+		tok.type = .Function
+	case "let":
+		tok.type = .Let
+	case "true":
+		tok.type = .True
+	case "false":
+		tok.type = .False
+	case "if":
+		tok.type = .If
+	case "else":
+		tok.type = .Else
+	case "return":
+		tok.type = .Return
+	case "macro":
+		tok.type = .Macro
+	case "for":
+		tok.type = .For
+	case "foreach":
+		tok.type = .Foreach
+	case "in":
+		tok.type = .In
+	}
 }
 @(rodata)
 LEXERVTABLE := Lexer_VTable {

@@ -4,9 +4,63 @@ import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
 * ./state.odin
-* One-stop-shop for all State
 * Sections: << Lexer >> << Parser >> << Evaluator >> << Compiler >> << VM >>
 */
+// Lexer
+Token_Type :: enum {
+	Illegal,
+	EOF,
+	Identifier,
+	Int,
+	String,
+	Assign,
+	Plus,
+	Minus,
+	Bang,
+	Asterisk,
+	Slash,
+	Less_Than,
+	Greater_Than_Equal,
+	Less_Than_Equal,
+	Greater_Than,
+	Equal,
+	Not_Equal,
+	Comma,
+	Semicolon,
+	Colon,
+	Left_Paren,
+	Right_Paren,
+	Left_Brace,
+	Right_Brace,
+	Left_Bracket,
+	Right_Bracket,
+	Function,
+	Let,
+	True,
+	False,
+	If,
+	Else,
+	Return,
+	Macro,
+	For,
+	Foreach,
+	In,
+	Question_Mark,
+	Percent,
+	Pipe,
+	RShift,
+	LShift,
+	Ampersand,
+	Caret,
+	Lor,
+	Land,
+	Tilde,
+	Arrow,
+}
+Token :: struct {
+	type:       Token_Type,
+	text_slice: []u8,
+}
 Lexer_VTable :: struct {
 	next_token: proc(l: ^Lexer) -> Token,
 	read_char:  proc(l: ^Lexer),
@@ -42,34 +96,32 @@ Precedence :: enum {
 	Call         = 7,
 	Index        = 8,
 }
-GetPrecedence: [Token_Type]Precedence
-init_precedences :: proc() {
-	GetPrecedence = #partial {
-		.Plus               = .Sum,
-		.Minus              = .Sum,
-		.Pipe               = .Sum,
-		.Caret              = .Sum,
-		.Ampersand          = .Sum,
-		.Lor                = .Sum,
-		.Land               = .Sum,
-		.Asterisk           = .Product,
-		.Slash              = .Product,
-		.Percent            = .Product,
-		.RShift             = .Product,
-		.LShift             = .Product,
-		.Less_Than          = .Less_Greater,
-		.Greater_Than       = .Less_Greater,
-		.Greater_Than_Equal = .Less_Greater,
-		.Less_Than_Equal    = .Less_Greater,
-		.Equal              = .Equals,
-		.Not_Equal          = .Equals,
-		.Question_Mark      = .Equals,
-		.Assign             = .Assign,
-		.Left_Paren         = .Call,
-		.Arrow              = .Call,
-		.Macro              = .Lowest,
-		.Left_Bracket       = .Index,
-	}
+@(rodata)
+GetPrecedence := #partial [Token_Type]Precedence {
+	.Plus               = .Sum,
+	.Minus              = .Sum,
+	.Pipe               = .Sum,
+	.Caret              = .Sum,
+	.Ampersand          = .Sum,
+	.Lor                = .Sum,
+	.Land               = .Sum,
+	.Asterisk           = .Product,
+	.Slash              = .Product,
+	.Percent            = .Product,
+	.RShift             = .Product,
+	.LShift             = .Product,
+	.Less_Than          = .Less_Greater,
+	.Greater_Than       = .Less_Greater,
+	.Greater_Than_Equal = .Less_Greater,
+	.Less_Than_Equal    = .Less_Greater,
+	.Equal              = .Equals,
+	.Not_Equal          = .Equals,
+	.Question_Mark      = .Equals,
+	.Assign             = .Assign,
+	.Left_Paren         = .Call,
+	.Arrow              = .Call,
+	.Macro              = .Lowest,
+	.Left_Bracket       = .Index,
 }
 Parser_VTable :: struct {
 	parse:       proc(p: ^Parser) -> Ast_Program,
@@ -86,7 +138,6 @@ Parser :: struct {
 	using vtable: Parser_VTable,
 }
 Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
-	init_precedences()
 	return Parser {
 		varena = varena,
 		errors = make([dynamic]string, 0, varena),
@@ -94,7 +145,115 @@ Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
 		vtable = PARSERVTABLE,
 	}
 }
+// Evaluator
+Environment :: struct {
+	store: map[string]ObjectBase,
+	outer: ^Environment,
+	get:   proc(env: ^Environment, name: string) -> (ObjectBase, bool),
+	set:   proc(env: ^Environment, name: string, value: ObjectBase) -> ObjectBase,
+	free:  proc(env: ^Environment),
+}
+Env_New :: proc(outer: ^Environment = nil, allocator: mem.Allocator) -> Environment {
+	store_mem := make(map[string]ObjectBase, 0, allocator)
+	return {
+		get = environment_get,
+		set = environment_set,
+		free = environment_free,
+		outer = outer,
+		store = store_mem,
+	}
+}
+Env_Enclosed :: proc(
+	outer: ^Environment,
+	reserved: uint,
+	allocator: mem.Allocator,
+) -> ^Environment {
+	env := Env_New(outer, allocator)
+	env.store = make(map[string]ObjectBase, reserved, allocator)
+	return new_clone(env, allocator)
+}
+@(private = "file")
+environment_free :: proc(env: ^Environment) {
+	delete(env.store)
+}
+@(private = "file")
+environment_get :: proc(env: ^Environment, name: string) -> (ObjectBase, bool) {
+	obj, ok := env.store[name]
+	if !ok && env.outer != nil {obj, ok = env.outer->get(name)}
+
+	return obj, ok
+}
+@(private = "file")
+environment_set :: proc(env: ^Environment, name: string, value: ObjectBase) -> ObjectBase {
+	env.store[name] = value
+	return value
+}
+Eval_VTable :: struct {
+	eval:           proc(
+		e: ^Evaluator,
+		node: Ast_Program,
+		allocator: mem.Allocator,
+	) -> (
+		ObjectBase,
+		bool,
+	),
+	eval_new_error: proc(e: ^Evaluator, str: string, args: ..any) -> string,
+}
+Evaluator :: struct {
+	_env:         Environment,
+	varena:       mem.Allocator,
+	sb:           strings.Builder,
+	args:         []string,
+	using vtable: Eval_VTable,
+}
+Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
+	return Evaluator{_env = Env_New(nil, varena), varena = varena, vtable = EVALVTABLE}
+}
 // Compiler
+Symbol_Scope :: enum {
+	Global,
+	Local,
+	Builtin,
+}
+Symbol :: struct {
+	name:  string,
+	scope: Symbol_Scope,
+	index: int,
+}
+Symbol_Table :: struct {
+	store:          map[string]Symbol,
+	outer:          ^Symbol_Table,
+	free:           proc(table: ^Symbol_Table),
+	define:         proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol,
+	define_builtin: proc(table: ^Symbol_Table, name: string, index: int),
+	resolve:        proc(table: ^Symbol_Table, name: string) -> (Symbol, bool),
+}
+Symbol_Table_New :: proc(allocator: mem.Allocator, outer: ^Symbol_Table = nil) -> Symbol_Table {
+	return Symbol_Table {
+		store = make(map[string]Symbol, allocator),
+		outer = outer,
+		free = proc(table: ^Symbol_Table) {
+			delete(table.store)
+		},
+		define = proc(table: ^Symbol_Table, name: string, allocator: mem.Allocator) -> Symbol {
+			name_copied := strings.clone(name, allocator)
+			scope: Symbol_Scope = .Global if table.outer == nil else .Local
+			symbol := Symbol{name_copied, scope, len(table.store)}
+			table.store[name_copied] = symbol
+			return symbol
+		},
+		define_builtin = proc(table: ^Symbol_Table, name: string, index: int) {
+			name_copied := strings.clone(name, table.store.allocator)
+			symbol := Symbol{name_copied, .Builtin, index}
+			table.store[name_copied] = symbol
+		},
+		resolve = proc(table: ^Symbol_Table, name: string) -> (Symbol, bool) {
+			obj, ok := table.store[name]
+			if !ok && table.outer != nil do return table.outer->resolve(name)
+			return obj, ok
+		},
+	}
+}
 Compiler_VTable :: struct {
 	compile_program:              proc(
 		c: ^Compiler,
@@ -132,15 +291,15 @@ Compilation_Scope :: struct {
 	previous_instruction: ^Emitted_Instruction,
 }
 Compiler :: struct {
-	varena:        mem.Allocator,
 	symbol_table:  Symbol_Table,
 	globals:       []ObjectBase,
 	constants:     [dynamic]ObjectBase,
 	scopes:        [dynamic]Compilation_Scope,
 	cli_arguments: []string,
-	sb:            strings.Builder,
 	mexpand_rec:   int,
 	scopes_idx:    int,
+	sb:            strings.Builder,
+	varena:        mem.Allocator,
 	using vtable:  Compiler_VTable,
 }
 Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1) -> Compiler {

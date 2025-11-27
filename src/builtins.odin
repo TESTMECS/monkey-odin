@@ -115,8 +115,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 
 
 				if len(args) != 1 {
-					return eval_new_error(
-							e,
+					return e->eval_new_error(
 							"'quote' function error: wrong number of arguments, wants='1', got='%d'.%s",
 							len(args),
 							usage,
@@ -133,8 +132,7 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				     ObjectQuote:
 					return arg, true
 				}
-				return eval_new_error(
-						e,
+				return e->eval_new_error(
 						"'quote' function error: cannot quote type '%v'.%s",
 						ObjectType(args[0]),
 						usage,
@@ -150,13 +148,12 @@ find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 				Usage: unquote(1)=>>1<<`
 
 
-				if len(args) != 1 do return eval_new_error(e, "'unquote' function error: wrong number of arguments, wants='1', got='%d'.%s", len(args), usage), false
+				if len(args) != 1 do return e->eval_new_error("'unquote' function error: wrong number of arguments, wants='1', got='%d'.%s", len(args), usage), false
 				#partial switch arg in args[0] {
 				case ObjectQuote:
 					return arg, true // for quote, we need to convert the argument back to an AST node
 				}
-				return eval_new_error(
-						e,
+				return e->eval_new_error(
 						"'unquote' function error: not supported for argument of type '%v'.%s",
 						ObjectType(args[0]),
 						usage,

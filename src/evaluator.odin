@@ -3,25 +3,7 @@ package monkey
 import "base:runtime"
 import "core:fmt"
 import "core:log"
-import "core:mem"
 import "core:strings"
-Evaluator :: struct {
-	_env:   Environment,
-	varena: mem.Allocator,
-	sb:     strings.Builder,
-	args:   []string,
-	eval:   proc(e: ^Evaluator, node: Ast_Program, allocator: mem.Allocator) -> (ObjectBase, bool),
-}
-Evaluator_New :: proc(varena: mem.Allocator) -> Evaluator {
-	return Evaluator{_env = Env_New(nil, varena), eval = eval_statements, varena = varena}
-}
-eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
-	strings.builder_reset(&e.sb)
-	fmt.sbprintf(&e.sb, str, ..args)
-	err := strings.to_string(e.sb)
-	str_clone := strings.clone(err, e.varena)
-	return str_clone
-}
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {
 	#partial switch &data in node {
@@ -33,7 +15,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 		val, ok := eval(e, data.value^, current_env)
 		if !ok do return val, false
 		_, ok = current_env->get(data.name)
-		if ok do return ObjectBase(eval_new_error(e, "identifier '%s' is already declared", data.name)), false
+		if ok do return ObjectBase(e->eval_new_error("identifier '%s' is already declared", data.name)), false
 		current_env->set(data.name, ToObjectBase(val))
 		return ObjectBase(NULL), true
 	case Ast_Identifier:
@@ -87,7 +69,7 @@ eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, b
 	case Ast_Hash_Table:
 		return eval_hash_table_literal(e, data, current_env)
 	}
-	return ObjectBase(eval_new_error(e, "unrecognized Node of type '%v'", Ast__Type__(node))),
+	return ObjectBase(e->eval_new_error("unrecognized Node of type '%v'", Ast__Type__(node))),
 		false
 }
 eval_statements :: proc(
@@ -144,7 +126,7 @@ eval_bang_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> Obj
 }
 eval_minus_operator_expression :: proc(e: ^Evaluator, operand: ObjectBase) -> (ObjectBase, bool) {
 	value, ok := operand.(int)
-	if !ok do return eval_new_error(e, "unknown operator: '-' on type '%v'", ObjectType(operand)), false
+	if !ok do return e->eval_new_error("unknown operator: '-' on type '%v'", ObjectType(operand)), false
 
 	return -value, true
 }
@@ -162,7 +144,7 @@ eval_prefix_expression :: proc(
 	case "-":
 		return eval_minus_operator_expression(e, operand)
 	}
-	return eval_new_error(e, "unknown operator: '%s' for type '%v'", op, ObjectType(operand)),
+	return e->eval_new_error("unknown operator: '%s' for type '%v'", op, ObjectType(operand)),
 		false
 }
 @(private = "file")
@@ -209,7 +191,7 @@ eval_integer_infix_expression :: proc(
 	case "!=":
 		return left != right, true
 	}
-	return eval_new_error(e, "unknown integer infix operator '%s'", op), false
+	return e->eval_new_error("unknown integer infix operator '%s'", op), false
 }
 @(private = "file")
 eval_float_infix_expression :: proc(
@@ -243,7 +225,7 @@ eval_float_infix_expression :: proc(
 	case "!=":
 		return left != right, true
 	}
-	return eval_new_error(e, "unknown float infix operator '%s'", op), false
+	return e->eval_new_error("unknown float infix operator '%s'", op), false
 }
 @(private = "file")
 eval_string_infix_expression :: proc(
@@ -255,7 +237,7 @@ eval_string_infix_expression :: proc(
 	ObjectBase,
 	bool,
 ) {
-	if op != "+" do return eval_new_error(e, "unknown string infix operator '%s'", op), false
+	if op != "+" do return e->eval_new_error("unknown string infix operator '%s'", op), false
 	strings.builder_reset(&e.sb)
 	fmt.sbprintf(&e.sb, "%s%s", left, right)
 	return strings.to_string(e.sb), true
@@ -294,7 +276,7 @@ eval_infix_expression :: proc(
 		     ObjectBuilinFunction,
 		     ObjectCompiledFunction,
 		     ObjectFunction:
-			if ObjectType(right) == ObjectArray do return eval_new_error(e, "cannot compare arrays with '=='"), false
+			if ObjectType(right) == ObjectArray do return e->eval_new_error("cannot compare arrays with '=='"), false
 		case ObjectNil:
 			return false, true
 		case int, f64, string, bool:
@@ -325,7 +307,7 @@ eval_infix_expression :: proc(
 		     ObjectBuilinFunction,
 		     ObjectCompiledFunction,
 		     ObjectFunction:
-			return eval_new_error(e, "cannot compare arrays with '=='"), false
+			return e->eval_new_error("cannot compare arrays with '=='"), false
 		case ObjectNil:
 			return true, true
 		case int, f64, string, bool:
@@ -360,8 +342,7 @@ eval_infix_expression :: proc(
 		}
 		return false, true
 	}
-	return eval_new_error(
-			e,
+	return e->eval_new_error(
 			"unknown operator '%s' for types '%v' and '%v'",
 			op,
 			ObjectType(left),
@@ -410,7 +391,7 @@ eval_identifier :: proc(
 ) {
 	if val, ok := current_env->get(node.value); ok do return val, true
 	if builtin := find_builtin_fn(node.value); builtin != nil do return builtin, true
-	return eval_new_error(e, "identifier '%s' is not declared", node.value), false
+	return e->eval_new_error("identifier '%s' is not declared", node.value), false
 }
 @(private = "file")
 eval_array_of_expressions_fixed :: proc(
@@ -470,8 +451,7 @@ apply_function :: proc(
 	#partial switch function in fn {
 	case ^ObjectFunction:
 		if len(function.parameters) != len(args) {
-			return eval_new_error(
-					e,
+			return e->eval_new_error(
 					"number of passed arguments does not match the number of needed parameters, need='%d', got='%d'",
 					len(function.parameters),
 					len(args),
@@ -485,7 +465,7 @@ apply_function :: proc(
 	case ObjectBuilinFunction:
 		return function(e, args)
 	}
-	return eval_new_error(e, "not a function: '%v'", ObjectType(fn)), false
+	return e->eval_new_error("not a function: '%v'", ObjectType(fn)), false
 }
 @(private = "file")
 eval_hash_table_literal :: proc(
@@ -529,7 +509,7 @@ eval_array_index_expression :: proc(
 ) {
 	max := len(array) - 1
 	if index < 0 || index > max {
-		return eval_new_error(e, "index out of boundary expect '0..%d', got='%d'", max, index),
+		return e->eval_new_error("index out of boundary expect '0..%d', got='%d'", max, index),
 			false
 	}
 	return array[index], true
@@ -545,7 +525,7 @@ eval_hash_table_index_expression :: proc(
 ) {
 	value, ok := ht[key]
 	if !ok {
-		return eval_new_error(e, "key '%s' does not exists", key), false
+		return e->eval_new_error("key '%s' does not exists", key), false
 	}
 	return value, true
 }
@@ -564,6 +544,19 @@ eval_index_expression :: proc(
 	if ObjectType(operand) == ObjectHashTable && ObjectType(index) == string {
 		return eval_hash_table_index_expression(e, operand.(ObjectHashTable), index.(string))
 	}
-	return eval_new_error(e, "index operator does not support: '%v'", ObjectType(operand)), false
+	return e->eval_new_error("index operator does not support: '%v'", ObjectType(operand)), false
+}
+@(private = "file")
+eval_new_error :: proc(e: ^Evaluator, str: string, args: ..any) -> string {
+	strings.builder_reset(&e.sb)
+	fmt.sbprintf(&e.sb, str, ..args)
+	err := strings.to_string(e.sb)
+	str_clone := strings.clone(err, e.varena)
+	return str_clone
+}
+@(rodata)
+EVALVTABLE := Eval_VTable {
+	eval           = eval_statements,
+	eval_new_error = eval_new_error,
 }
 
