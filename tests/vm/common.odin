@@ -1,18 +1,18 @@
 package vm_tests
-
 import monkey "../../src"
 import test_commons "../../tests_commons"
 import "core:log"
 import "core:mem/virtual"
 import "core:testing"
-
+/*
+* Copyright (C) 2025 TESTMEE
+* ./tests/vm/common.odin
+*/
 tc :: test_commons
-
 VM_Test_Cases :: struct {
 	input:    string,
 	expected: tc.Test_Data,
 }
-
 run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 	using monkey
 	using tc
@@ -33,7 +33,7 @@ run_vm_tests :: proc(t: ^testing.T, tests: []VM_Test_Cases) {
 			continue
 		}
 
-		vm := Vm_New(compiler->bytecode(), &compiler.compiler_state, a)
+		vm := Vm_New(compiler->bytecode(), &compiler, a)
 		err = vm->run_vm()
 		if err != "" {
 			log.errorf("test [%d] has failed, vm has error: %s", i, err)

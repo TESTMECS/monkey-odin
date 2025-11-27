@@ -161,7 +161,6 @@ run_vm :: proc(v: ^VM) -> (err: string) {
 			if err = v->exec_call(num_args); err != "" do return
 		case .Ret_V:
 			ret_val := v->pop_vm()
-			if DEBUG_VM do fmt.printf("DEBUG: Ret_V returning %v (type %T)\n", ret_val, ret_val)
 			frame := v->pop_frame()
 			v.sp = frame.base_pointer - 1
 			if err = v->push_vm(ret_val); err != "" do return
