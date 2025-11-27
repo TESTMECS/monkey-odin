@@ -1,4 +1,6 @@
 package monkey
+import "core:mem"
+import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
 * ./state.odin
@@ -27,5 +29,24 @@ Lexer_New :: proc(input: string) -> Lexer {
 	}
 	read_char(&l)
 	return l
+}
+Parser :: struct {
+	l:          Lexer,
+	cur_token:  Token,
+	peek_token: Token,
+	varena:     mem.Allocator,
+	errors:     [dynamic]string,
+	sb:         strings.Builder,
+	parse:      proc(p: ^Parser) -> Ast_Program,
+	free:       proc(p: ^Parser),
+}
+Parser_New :: proc(input: string, varena: mem.Allocator) -> Parser {
+	init_precedences()
+	return Parser {
+		varena = varena,
+		errors = make([dynamic]string, 0, varena),
+		l = Lexer_New(input),
+		parse = parse_program,
+	}
 }
 
