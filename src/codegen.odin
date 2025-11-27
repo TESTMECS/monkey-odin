@@ -6,7 +6,15 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:strings"
+/*
+* Copyright (C) 2025 TESTMEE
+* ./codegen.odin
+* This file defines Opcodes and Instructions for the VM.
+* << Instructions, Opcode >>
+* << Definition, Definition__Map__>>
+*/
 Instructions :: [dynamic]byte
+
 Opcode :: enum byte {
 	Cnst,
 	Arr,
@@ -51,10 +59,12 @@ Opcode :: enum byte {
 	Or,
 	Mod,
 }
+
 Definition :: struct {
 	name:           string,
 	operand_widths: []int,
 }
+
 Definition__Map__ := [Opcode]Definition {
 	.Cnst       = {"OpConstant", {2}},
 	.Arr        = {"OpArray", {2}},
@@ -99,11 +109,13 @@ Definition__Map__ := [Opcode]Definition {
 	.Or         = {"OpLogicalOr", {}},
 	.Mod        = {"OpModulo", {}},
 }
+
 lookup :: proc(op: Opcode) -> (Definition, bool) {
 	def := Definition__Map__[Opcode(op)]
 	if def.name == "" do return Definition{}, false
 	return def, true
 }
+// Creates an instruction with the given opcode and operands.
 make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int) -> Instructions {
 	def, ok := lookup(op)
 	if !ok do return {}
@@ -138,6 +150,7 @@ make_instructions :: proc(allocator: mem.Allocator, op: Opcode, operands: ..int)
 	}
 	return instruction
 }
+// Helper function for instructions_to_string
 @(private = "file")
 format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []int) {
 	operand_count := len(def.operand_widths)
@@ -160,6 +173,7 @@ format_instruction :: proc(sb: ^strings.Builder, def: Definition, operands: []in
 	}
 	fmt.sbprintfln(sb, "ERROR: unhandled operand_count for %s", def.name)
 }
+// Converts an instruction to a string.
 instructions_to_string :: proc(instructions: Instructions, allocator: mem.Allocator) -> string {
 	sb := strings.builder_make(allocator)
 	i := 0
@@ -177,6 +191,7 @@ instructions_to_string :: proc(instructions: Instructions, allocator: mem.Alloca
 	}
 	return strings.to_string(sb)
 }
+// Reads operands from an instruction.
 read_operands :: proc(
 	def: Definition,
 	instructions: []byte,
@@ -198,11 +213,12 @@ read_operands :: proc(
 	}
 	return operands, offset
 }
+// Reads a u16 from an instruction.
 read_u16 :: proc(ins: []byte) -> u16 {
 	res, _ := endian.get_u16(ins, .Big)
-
 	return res
 }
+// Reads a u8 from an instruction.
 read_u8 :: proc(ins: []byte) -> u8 {
 	return u8(ins[0])
 }

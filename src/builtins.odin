@@ -1,4 +1,16 @@
 package monkey
+/*
+* Copyright (C) 2025 TESTMEE
+* ./builtins.odin
+* For mapping names to builtin functions. 
+*/
+ObjectBuilinFunction :: #type proc(
+	e: ^Evaluator,
+	args: [dynamic]ObjectBase,
+) -> (
+	ret: ObjectBase,
+	ok: bool,
+)
 find_builtin_fn :: proc(name: string) -> ObjectBuilinFunction {
 	switch name {
 	// str

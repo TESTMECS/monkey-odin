@@ -3,6 +3,12 @@ import "core:crypto/hash"
 import "core:fmt"
 import "core:strings"
 import r "core:text/regex"
+/*
+* Copyright (C) 2025 TESTMEE
+* ./builtins_str.odin
+* This file defines the builtin string functions for monkey-odin.
+* << b_hash, b_join, b_split, b_lower, b_upper, b_match, b_replace, b_contains >>
+*/
 b_hash :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Hash a string">>

@@ -46,7 +46,7 @@ Compilation_Scope :: struct {
 }
 Compiler :: struct {
 	using compiler_state:         Compiler_State,
-	scopes_idx:                   int, // lowkey should be in compiler state
+	scopes_idx:                   int,
 	compile_program:              proc(
 		c: ^Compiler,
 		node: Ast_Program,

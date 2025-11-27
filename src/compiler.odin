@@ -2,15 +2,19 @@ package monkey
 import "core:fmt"
 import "core:log"
 import "core:strings"
-CDEBUG :: false
+/*
+* Copyright (C) 2025 TESTMEE
+* ./compiler.odin
+* This file defines the Compiler for the Monkey-odin language.
+*/
 compiler_error :: proc(c: ^Compiler, msg: string, args: ..any) -> (err: string) {
 	strings.builder_reset(&c.sb)
 	fmt.sbprintf(&c.sb, "compiler error: %v %v", msg, args)
 	err = strings.to_string(c.sb)
 	return
 }
+// run by `main.odin`, compiles all statements in the program after macro expansion
 compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) -> (err: string) {
-	// run by main.odin, compiles all statements in the program after macro expansion
 	err = ""
 	expanded_program, e1 := expand_macros(program, c.mexpand_rec, c.varena)
 	if e1 != "" {
@@ -25,6 +29,7 @@ compile_program :: proc(c: ^Compiler, program: Ast_Program, mexpand_rec := 1) ->
 	}
 	return
 }
+// Main procedure for compiling an AST.
 compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	err = ""
 	switch data in ast {
@@ -229,8 +234,6 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 		}
 		c->emit(.Cnst, c->add_constant(compiled_fn))
 	case Ast_Call:
-		if CDEBUG do fmt.printfln("DEBUG: compiling call")
-		if CDEBUG do fmt.printfln("DEBUG: data.function^ %v", data.function^)
 		if err = c->compile(data.function^); err != "" do return err
 		for arg in data.arguments {
 			if err = c->compile(arg); err != "" do return err
@@ -264,12 +267,14 @@ compile :: proc(c: ^Compiler, ast: Node) -> (err: string) {
 	}
 	return err
 }
+// Emits an instruction to the current scope.
 emit :: proc(c: ^Compiler, op: Opcode, operands: ..int) -> int {
 	ins := make_instructions(c.varena, op, ..operands)
 	pos := c->add_instructions(ins[:])
 	c->set_last_instruction(op, pos)
 	return pos
 }
+// Returns the bytecode for the current program.
 bytecode :: proc(c: ^Compiler) -> Bytecode {
 	return {instructions = c->current_instructions()[:], constants = c.compiler_state.constants[:]}
 }
@@ -300,6 +305,7 @@ set_last_instruction :: proc(c: ^Compiler, op: Opcode, pos: int) {
 	c.scopes[c.scopes_idx].previous_instruction = prev
 	c.scopes[c.scopes_idx].last_instruction = last
 }
+// Adds instructions to the current scope.
 add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	pos := len(c->current_instructions())
 	n, err := append(c->current_instructions(), ..instructions)
@@ -308,6 +314,7 @@ add_instructions :: proc(c: ^Compiler, instructions: []byte) -> int {
 	}
 	return pos
 }
+// Replaces the last pop instruction with a return instruction.
 replace_last_pop_with_return :: proc(c: ^Compiler) {
 	last_pop := c.scopes[c.scopes_idx].last_instruction.pos
 	c->replace_instructions(last_pop, make_instructions(c.varena, .Ret_V)[:])

@@ -1,4 +1,11 @@
 package monkey
+/*
+* Copyright (C) 2025 TESTMEE
+* ./builtins_arr.odin
+* This file defines the builtin array functions for monkey-odin.
+* << b_sort, b_reverse, b_slice, b_indexOf, b_sum, b_min, b_max, 
+* b_len, b_range, b_first, b_last, b_rest, b_push, b_pop >>
+*/
 b_sort :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `
 				"Sort arr">>

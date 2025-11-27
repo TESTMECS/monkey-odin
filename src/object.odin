@@ -18,13 +18,6 @@ ObjectQuote :: struct {
 	node: Node,
 }
 ObjectHashTable :: map[string]ObjectBase
-ObjectBuilinFunction :: #type proc(
-	e: ^Evaluator,
-	args: [dynamic]ObjectBase,
-) -> (
-	ret: ObjectBase,
-	ok: bool,
-)
 ObjectArray :: distinct [dynamic]ObjectBase
 ObjectCompiledFunction :: struct {
 	instructions:   Instructions,
