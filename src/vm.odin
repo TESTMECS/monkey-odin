@@ -4,7 +4,6 @@ import "core:reflect"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./vm.odin
 */
 run_vm :: proc(v: ^VM) -> (err: string) {
 	ip: int

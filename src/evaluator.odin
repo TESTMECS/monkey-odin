@@ -5,7 +5,6 @@ import "core:log"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./evaluator.odin
 */
 @(private = "file")
 eval :: proc(e: ^Evaluator, node: Node, current_env: ^Environment) -> (Object, bool) {

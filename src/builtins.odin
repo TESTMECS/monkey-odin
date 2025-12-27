@@ -1,8 +1,6 @@
 package monkey
 /*
 * Copyright (C) 2025 TESTMEE
-* ./builtins.odin
-* For mapping names to builtin functions. 
 */
 ObjectBuilinFunction :: #type proc(
 	e: ^Evaluator,

@@ -3,8 +3,6 @@ import "core:mem"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./state.odin
-* Sections: << Lexer >> << Parser >> << Evaluator >> << Compiler >> << VM >>
 */
 // Lexer
 Token_Type :: enum {
@@ -321,7 +319,6 @@ Compiler_New :: proc(varena: mem.Allocator, cli_args: []string, mexpand_rec := 1
 		vtable = COMPILERVTABLE,
 	}
 }
-// << VM >>
 Frame :: struct {
 	instructions: []byte,
 	ip:           int,

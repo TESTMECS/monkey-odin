@@ -3,9 +3,6 @@ import "core:math"
 import "core:math/rand"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./builtins_math.odin
-* This file defines the builtin math functions for monkey-odin.
-* |b_abs|b_rand|b_choose|b_sin|b_cos|b_tan|
 */
 b_abs :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `

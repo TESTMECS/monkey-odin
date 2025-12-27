@@ -1,9 +1,6 @@
 package monkey
 /*
 * Copyright (C) 2025 TESTMEE
-* ./builtins_map.odin
-* This file defines the builtin map functions for monkey-odin.
-* |b_keys|b_values|b_has|b_map|
 */
 b_keys :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `

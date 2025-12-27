@@ -7,7 +7,6 @@ import "core:strings"
 import "core:terminal/ansi"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./monkey_helpers.odin
 */
 Monkey_Run_String :: proc(
 	stmts: string,

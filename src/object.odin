@@ -4,7 +4,6 @@ import "core:reflect"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./object.odin
 */
 NULL :: ObjectNil{}
 ObjectNil :: struct {}

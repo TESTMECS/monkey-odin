@@ -4,8 +4,6 @@ import "core:mem"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./ast_display.odin
-* This file implements |Ast__Copy__|ast_to_string| procedure groups for copying and displaying the AST.
 */
 // Calls the corresponding procedure based on function parameters.
 Ast__Copy__ :: proc {

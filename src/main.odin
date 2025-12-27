@@ -9,7 +9,6 @@ import "core:strings"
 import "core:terminal/ansi"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./main.odin
 */
 HELPMSG :: ` Usage: monkey-odin << repl |file <file_path>|bytes <file_path>|mexpand <file_path> |help >>
 Commands:

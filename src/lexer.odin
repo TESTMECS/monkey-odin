@@ -1,7 +1,6 @@
 package monkey
 /*
 * Copyright (C) 2025 TESTMEE
-* ./lexer.odin
 */
 // Main procedure for getting the next token from the input string.
 next_token :: proc(l: ^Lexer) -> Token {

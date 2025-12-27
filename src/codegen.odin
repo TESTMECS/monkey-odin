@@ -7,10 +7,6 @@ import "core:mem"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./codegen.odin
-* This file defines Opcodes and Instructions for the VM.
-* |Instructions|Opcode|
-* |Definition|Definition__Map__|
 */
 // Instruction are just a list of bytes(u8)
 Instructions :: [dynamic]byte

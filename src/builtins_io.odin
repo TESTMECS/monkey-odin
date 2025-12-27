@@ -4,9 +4,6 @@ import "core:os"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./builtins_io.odin
-* This file defines the builtin io functions for monkey-odin.
-* |b_printf|b_puts|b_readf|b_writef
 */
 b_printf :: proc(e: ^Evaluator, args: [dynamic]ObjectBase) -> (ObjectBase, bool) {
 	usage := `

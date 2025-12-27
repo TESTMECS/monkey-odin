@@ -5,7 +5,6 @@ import "core:mem"
 import "core:strings"
 /*
 * Copyright (C) 2025 TESTMEE
-* ./macro_expansion.odin
 */
 Macro_Expansion_Result :: struct {
 	expanded: Node,
